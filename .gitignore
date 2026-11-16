@@ -1,0 +1,205 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# =============================================================================
+# Dependencies
+# =============================================================================
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+# package-lock.json is deliberately TRACKED and must stay that way: the Dockerfile
+# runs `npm ci`, which requires a lockfile, and a clone without one resolves a
+# different version of every dependency on each install. The other two lockfiles
+# belong to package managers this project does not use.
+yarn.lock
+pnpm-lock.yaml
+
+# =============================================================================
+# Testing
+# =============================================================================
+/coverage
+/.nyc_output
+/test-results
+*.lcov
+
+# =============================================================================
+# Next.js
+# =============================================================================
+/.next/
+/out/
+/.swc/
+.turbo/
+
+# =============================================================================
+# Production
+# =============================================================================
+/build
+/dist
+
+# =============================================================================
+# Environment Variables & Secrets
+# =============================================================================
+.env*
+!.env.example
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.key
+*.pem
+*.crt
+secrets/
+.credentials/
+
+# =============================================================================
+# Database
+# =============================================================================
+*.db
+*.sqlite
+*.sqlite3
+*.sql.gz
+*.dump
+/database/
+/data/
+/postgres-data/
+/pgdata/
+
+# =============================================================================
+# File Storage & Uploads
+# =============================================================================
+/.data/
+public/uploads/
+/storage/
+/temp/
+/tmp/
+
+# =============================================================================
+# Logs
+# =============================================================================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+lerna-debug.log*
+/logs/
+*.log.*
+
+# =============================================================================
+# Debug
+# =============================================================================
+/.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# =============================================================================
+# Editor / IDE
+# =============================================================================
+.vscode/
+# Claude Code: rules, skills and hooks are shared; personal settings are not.
+.claude/settings.local.json
+.idea/
+*.sublime-project
+*.sublime-workspace
+.fleet/
+.project
+.classpath
+.settings/
+*.iml
+
+# =============================================================================
+# TypeScript
+# =============================================================================
+*.tsbuildinfo
+next-env.d.ts
+next-env.d.ts.map
+
+# =============================================================================
+# Vercel
+# =============================================================================
+.vercel
+
+# =============================================================================
+# Turbo
+# =============================================================================
+.turbo
+
+# =============================================================================
+# Cache
+# =============================================================================
+.cache/
+.parcel-cache/
+.next/cache/
+.eslintcache
+.stylelintcache
+
+# =============================================================================
+# Misc
+# =============================================================================
+*.pid
+*.seed
+*.pid.lock
+.npm
+.eslintcache
+.prettierignore
+.cache
+/temp/
+/tmp/
+*.tmp
+
+# =============================================================================
+# Security & Compliance
+# =============================================================================
+*.backup
+*.bak
+security-audit.json
+*.sarif
+
+# =============================================================================
+# Documentation Drafts
+# =============================================================================
+docs/draft/
+docs/*.draft.md
+
+# =============================================================================
+# Docker
+# =============================================================================
+docker-compose.override.yml
+docker-compose.dev.yml
+docker-compose.prod.yml
+
+# =============================================================================
+# Devin
+# =============================================================================
+.devin/
+
+
+AGENTS.md
+CLAUDE.md
+/vendor/
+
+# Playwright browser automation output (screenshots, snapshots, console logs)
+/.playwright-mcp/
+
+/playwright-report/
+/tests/.auth/
+!.env.test.example
+/.next-test/
+/.playwright-runs/

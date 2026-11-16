@@ -1,0 +1,51 @@
+import { test, expect } from "@playwright/test";
+const routes = [
+  "/account",
+  "/dashboard",
+  "/contacts",
+  "/contacts/archive",
+  "/contacts/new",
+  "/pipeline",
+  "/pipeline/list",
+  "/pipeline/lost",
+  "/developments",
+  "/developments/new",
+  "/properties",
+  "/properties/new",
+  "/tasks",
+  "/tasks/my-tasks",
+  "/calendar",
+  "/calendar/closings",
+  "/calendar/follow-ups",
+  "/calendar/viewings",
+  "/marketing",
+  "/marketing/campaigns",
+  "/marketing/campaigns/new",
+  "/marketing/automations",
+  "/marketing/automations/new",
+  "/marketing/email-templates",
+  "/marketing/email-templates/new",
+  "/marketing/sms-templates",
+  "/marketing/sms-templates/new",
+  "/documents",
+  "/documents/archive",
+  "/billing",
+  "/payments",
+  "/reports/sales",
+  "/reports/forecast",
+  "/reports/agents",
+  "/reports/conversion",
+  "/settings",
+  "/settings/logs",
+  "/settings/roles",
+  "/settings/archived-users",
+  "/settings/agents/new",
+  "/settings/users",
+  "/settings/users/organization-chart",
+];
+for (const route of routes)
+  test("anonymous direct access " + route, async ({ request }) => {
+    const r = await request.get(route, { maxRedirects: 0 });
+    expect([303, 307, 308]).toContain(r.status());
+    expect(r.headers().location).toMatch(/\/login/);
+  });

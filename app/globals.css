@@ -1,0 +1,298 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@custom-variant dark (&:where(.dark, .dark *));
+
+.crm-shell:has([data-property-presentation="true"]) > aside,
+.crm-shell:has([data-property-presentation="true"]) .crm-shell-header {
+  display: none;
+}
+
+.crm-shell:has([data-property-presentation="true"]) > .crm-shell-content {
+  padding-left: 0;
+}
+
+/*
+ * Give a bare `border` utility the theme's border colour.
+ *
+ * Tailwind v3's preflight defaulted borders to `gray-200`; v4 reset them with
+ * `border: 0 solid` — a width and a style but no *colour* — so the colour falls
+ * back to `currentColor` and a lone `border` draws in the surrounding text
+ * colour. Here that is `--foreground` (#202636), which is why panels written as
+ * `rounded-xl border bg-card` came out with a near-black hairline while the
+ * ones written as `border border-border/50` looked right.
+ *
+ * Utilities are emitted in a later layer than `base`, so any element that names
+ * its own border colour — `border-border`, `border-destructive/40`,
+ * `border-gray-300` — still wins. This only fills in the elements that name
+ * none, which is the v3 behaviour they were written against.
+ */
+@layer base {
+  *,
+  ::before,
+  ::after,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--border);
+  }
+}
+
+:root {
+  /* shadcn zinc neutrals; the brand violet is kept for primary actions and focus. */
+  --background: #fafafa;
+  --foreground: #09090b;
+  --card: #ffffff;
+  --card-foreground: #09090b;
+  --popover: #ffffff;
+  --popover-foreground: #09090b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --primary: #443086;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --ring: #443086;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #18181b;
+  --sidebar-muted: #71717a;
+  --sidebar-border: #e4e4e7;
+  --sidebar-hover: #f4f4f5;
+  --sidebar-active: #efecf8;
+  --sidebar-active-foreground: #443086;
+  /*
+   * The brand ramp: one family in two halves.
+   *
+   * `brand-1` is the violet the CRM has always used; the rest carry on into the
+   * blues. Screens that need several distinguishable steps of a single colour —
+   * the dashboard's donuts, the calendar's today marker and active filters, the
+   * task summary — draw from here, so those screens are the product's own
+   * colours rather than the stock blues each of them used to pick separately.
+   *
+   * The order is the order they were chosen in: violet, navy, deep blue, mid
+   * blue. It is a ramp, so a tint at 10% is a background and the same step at
+   * full strength is legible text — but no two steps are interchangeable.
+   */
+  --brand-1: #443086;
+  --brand-2: #144272;
+  --brand-3: #205295;
+  --brand-4: #2c74b3;
+  /*
+   * Chart ramp: the slices of a donut and the lines of a series.
+   *
+   * Drawn from the brand ramp above, so the charts are the same family as the
+   * rest of the screens. Four hues cannot tell nine pipeline stages apart, so
+   * the family supplies four more steps of its own. Alternating violet and blue
+   * matters more than the ordering within each: adjacent slices are what the eye
+   * has to separate.
+   *
+   * Defined per theme, because a ramp legible on the light card is not legible on
+   * the dark one.
+   */
+  --chart-1: #443086;
+  --chart-2: #2c74b3;
+  --chart-3: #144272;
+  --chart-4: #6f56b3;
+  --chart-5: #205295;
+  --chart-6: #4a90c9;
+  --chart-7: #1e1655;
+  --chart-8: #7fb2d9;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-hover: var(--sidebar-hover);
+  --color-sidebar-active: var(--sidebar-active);
+  --color-sidebar-active-foreground: var(--sidebar-active-foreground);
+  --color-brand-1: var(--brand-1);
+  --color-brand-2: var(--brand-2);
+  --color-brand-3: var(--brand-3);
+  --color-brand-4: var(--brand-4);
+  --font-sans:
+    var(--font-inter), "Segoe UI", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+.dark {
+  --background: #09090b;
+  --foreground: #fafafa;
+  --card: #111113;
+  --card-foreground: #fafafa;
+  --popover: #111113;
+  --popover-foreground: #fafafa;
+  --muted: #27272a;
+  --muted-foreground: #a1a1aa;
+  --border: #27272a;
+  --input: #3f3f46;
+  --primary: #b8a6ec;
+  --primary-foreground: #1a1033;
+  --secondary: #27272a;
+  --secondary-foreground: #fafafa;
+  --accent: #27272a;
+  --accent-foreground: #fafafa;
+  --destructive: #f87171;
+  --destructive-foreground: #1c0a0a;
+  --ring: #b8a6ec;
+  --sidebar: #0c0c0e;
+  --sidebar-foreground: #fafafa;
+  --sidebar-muted: #a1a1aa;
+  --sidebar-border: #27272a;
+  --sidebar-hover: #18181b;
+  --sidebar-active: #221c36;
+  --sidebar-active-foreground: #d4c9f5;
+  /*
+   * The same ramp, lifted for the dark surface — see the note in `:root`. The
+   * progression is preserved rather than the lightness: `brand-1` is still the
+   * violet and `brand-4` still the furthest blue, and that is what the screens
+   * key off.
+   */
+  --brand-1: #b8a6ec;
+  --brand-2: #6f9fd0;
+  --brand-3: #8fc0e8;
+  --brand-4: #b6dcf7;
+  /* Same ramp, lifted for the dark surface — see the note in `:root`. */
+  --chart-1: #b8a6ec;
+  --chart-2: #7fb6e3;
+  --chart-3: #6f9fd0;
+  --chart-4: #9b87d6;
+  --chart-5: #8fc0e8;
+  --chart-6: #5b8fc4;
+  --chart-7: #d9cdf5;
+  --chart-8: #b6dcf7;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  letter-spacing: -0.01em;
+}
+
+/* Thin, track-less scrollbars everywhere instead of the chunky OS default. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--foreground) 18%, transparent) transparent;
+}
+
+/* Sidebar nav: invisible scrollbar until hovered */
+.sidebar-nav {
+  scrollbar-color: transparent transparent;
+}
+.sidebar-nav:hover {
+  scrollbar-color: color-mix(in oklab, var(--foreground) 12%, transparent) transparent;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+::selection {
+  background: color-mix(in oklab, var(--primary) 22%, transparent);
+}
+
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+  body {
+    -webkit-font-smoothing: antialiased;
+  }
+}
+/* Comfortable touch targets and no automatic iOS input zoom. */
+@media (pointer: coarse) {
+  button,
+  select {
+    min-height: 44px;
+  }
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Login showcase: Sotera, then Fairfield, cross-fading every 8 seconds. */
+@keyframes showcase-in {
+  0%,
+  42% {
+    opacity: 0;
+  }
+  50%,
+  92% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes showcase-out {
+  0%,
+  42% {
+    opacity: 1;
+  }
+  50%,
+  92% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+.showcase-in {
+  animation: showcase-in 16s ease-in-out infinite;
+}
+.showcase-out {
+  animation: showcase-out 16s ease-in-out infinite;
+}
+/* The global rule above would make an endless fade flicker; hold on Sotera instead. */
+@media (prefers-reduced-motion: reduce) {
+  .showcase-in {
+    animation: none;
+    opacity: 0;
+  }
+  .showcase-out {
+    animation: none;
+    opacity: 1;
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/require-changelog.mjs\""
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.local)",
+      "Read(./.env.*.local)",
+      "Read(./.env.development)",
+      "Read(./.env.production)",
+      "Read(./.env.staging)",
+      "Read(./.env.playwright)",
+      "Read(**/.env)",
+      "Read(**/.env.local)",
+      "Read(**/.env.*.local)",
+      "Read(**/.env.development)",
+      "Read(**/.env.production)",
+      "Read(**/.env.staging)",
+      "Read(**/.env.playwright)",
+      "Read(./secrets/**)",
+      "Read(**/secrets/**)",
+      "Edit(./.env)",
+      "Edit(./.env.*)",
+      "Edit(**/.env)",
+      "Edit(**/.env.*)",
+      "Edit(./secrets/**)",
+      "Edit(**/secrets/**)",
+      "Bash(* .env*)",
+      "Bash(*/.env*)",
+      "Bash(*\\.env*)",
+      "Bash(*\".env*)",
+      "Bash(*'.env*)",
+      "Bash(*loadEnvConfig*)",
+      "Bash(*@next/env*)",
+      "Bash(*load-environment*)",
+      "PowerShell(* .env*)",
+      "PowerShell(*/.env*)",
+      "PowerShell(*\\.env*)",
+      "PowerShell(*\".env*)",
+      "PowerShell(*'.env*)",
+      "PowerShell(*loadEnvConfig*)",
+      "PowerShell(*@next/env*)",
+      "PowerShell(*load-environment*)"
+    ]
+  }
+}

@@ -1,0 +1,279 @@
+.viewport {
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: #fff;
+}
+.viewport:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+.stage {
+  position: relative;
+  height: 600px;
+  min-width: 760px;
+}
+.overlay {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.overlayRoot {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.overlayAnchor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 128px;
+  height: 210px;
+  transform-origin: 0 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.bay {
+  position: relative;
+  width: 128px;
+  height: 210px;
+  list-style: none;
+  pointer-events: none;
+  color: #fff;
+}
+.statusControl {
+  position: absolute;
+  z-index: 2;
+  inset: 4px 3px auto;
+  pointer-events: auto;
+}
+.statusSelect {
+  height: 28px;
+  border: 1px solid #d1e3e7;
+  border-radius: 7px;
+  background: #f9feff;
+  color: #174654;
+  padding-left: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  box-shadow: 0 3px 7px #182b3a30;
+}
+.statusSelect:focus-visible {
+  border-color: #78c1d9;
+  box-shadow: 0 0 0 3px #8bcee780;
+}
+.statusControl svg {
+  right: 7px;
+  width: 12px;
+  height: 12px;
+  color: #497684;
+}
+.bayCode {
+  position: absolute;
+  inset: auto 6px 57px;
+  overflow: hidden;
+  color: #fff;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 24px;
+  font-weight: 750;
+  line-height: 1.1;
+  text-shadow: 0 2px 2px #24303955;
+}
+.bay[data-taken="true"] .bayCode {
+  font-size: 15px;
+  bottom: 55px;
+  border-radius: 3px;
+  background: #263744b3;
+  justify-self: center;
+  padding: 1px 6px;
+}
+.bayStatus {
+  position: absolute;
+  bottom: 35px;
+  left: 50%;
+  max-width: calc(100% - 12px);
+  overflow: hidden;
+  transform: translateX(-50%);
+  border: 1px solid #c6e7ce;
+  border-radius: 4px;
+  padding: 1px 6px;
+  background: #34774c;
+  color: #f1fff5;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  box-shadow: 0 2px 4px #102a2333;
+}
+.bay[data-status="deposit_paid"] .bayStatus {
+  border-color: #ffdf9b;
+  background: #80581d;
+  color: #fff6df;
+}
+.bay[data-status="sold"] .bayStatus {
+  border-color: #e6b4b8;
+  background: #843f48;
+  color: #fff1f3;
+}
+.bay[data-status="inactive"] .bayStatus {
+  border-color: #bdc5cd;
+  background: #525e69;
+  color: #f3f5f7;
+}
+.bay[data-managed="false"] .bayStatus {
+  bottom: 15px;
+}
+.bay[data-managed="false"] .bayCode {
+  bottom: 39px;
+}
+.bayActions {
+  position: absolute;
+  inset: auto 0 0;
+  display: flex;
+  justify-content: center;
+  gap: 3px;
+  pointer-events: auto;
+}
+.iconButton {
+  width: 32px;
+  height: 32px;
+  padding: 7px;
+  border-radius: 5px;
+  color: #f2f6f8;
+}
+.iconButton:hover {
+  color: #fff;
+  background: #ffffff24;
+}
+.iconButton:focus-visible {
+  box-shadow: 0 0 0 2px white;
+}
+.list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 12px;
+  list-style: none;
+  background: #fff;
+  /* Same height as the 3D stage, so switching views keeps the panel steady. */
+  min-height: 600px;
+  align-content: start;
+}
+.list .bay {
+  display: grid;
+  grid-template-rows: 24px 22px 24px 34px 32px;
+  justify-items: center;
+  align-items: center;
+  gap: 8px;
+  width: auto;
+  min-width: 0;
+  height: auto;
+  padding: 16px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  color: #263244;
+  background: #fff;
+}
+.list .bay[data-managed="false"] {
+  grid-template-rows: 24px 22px 24px;
+}
+.list .statusControl,
+.list .bayCode,
+.list .bayStatus,
+.list .bayActions {
+  position: static;
+  inset: auto;
+  transform: none;
+}
+.carIcon {
+  display: none;
+}
+.list .carIcon {
+  display: block;
+  order: 0;
+  width: 22px;
+  height: 22px;
+  color: #7b8797;
+}
+.list .bay[data-status="deposit_paid"] .carIcon {
+  color: #a56c22;
+}
+.list .bay[data-status="sold"] .carIcon {
+  color: #b45362;
+}
+.list .bay[data-status="inactive"] .carIcon {
+  opacity: 0.4;
+}
+.list .bayCode,
+.list .bay[data-taken="true"] .bayCode {
+  order: 1;
+  max-width: 100%;
+  padding: 0;
+  background: transparent;
+  color: #263244;
+  font-size: 14px;
+  font-weight: 700;
+  text-shadow: none;
+}
+.list .bayStatus {
+  order: 2;
+  padding: 2px 8px;
+  border-color: #a7f3d0;
+  background: #ecfdf5;
+  color: #047857;
+  box-shadow: none;
+}
+.list .bay[data-status="deposit_paid"] .bayStatus {
+  border-color: #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+}
+.list .bay[data-status="sold"] .bayStatus {
+  border-color: #fecdd3;
+  background: #fff1f2;
+  color: #b4233b;
+}
+.list .bay[data-status="inactive"] .bayStatus {
+  border-color: #e2e8f0;
+  background: #f3f4f6;
+  color: #64748b;
+}
+.list .statusControl {
+  order: 3;
+  position: relative;
+  width: 100%;
+}
+.list .statusSelect {
+  height: 34px;
+  border-color: #d8dee7;
+  background: #fff;
+  color: #334155;
+  font-size: 12px;
+  box-shadow: none;
+}
+.list .bayActions {
+  order: 4;
+  gap: 8px;
+}
+.list .iconButton {
+  color: #64748b;
+}
+.list .iconButton:hover {
+  background: #f1f5f9;
+  color: #334155;
+}
+.list .iconButton:focus-visible {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+@media (max-width: 640px) {
+  .stage {
+    height: 540px;
+  }
+  .list {
+    min-height: 540px;
+  }
+}
