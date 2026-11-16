@@ -52,15 +52,15 @@ npm run db:migrate         # applies new migrations only
 npm run db:check-schema    # read-only: fails if a table or column the code uses is missing
 ```
 
-**3. Deploy:** commit, push, then redeploy the Portainer stack with rebuild. The `migrate` service applies new migrations automatically **before** the app starts. If a migration fails, the new version does not start and the old one keeps running.
+**3. Deploy:** run the new migrations against the production database yourself, then commit, push and redeploy the Portainer stack with rebuild. The stack does not migrate the database.
 
-**Manual commands on the server** (from the stack's folder):
+**Database commands on the server** (from the repo folder, with `DATABASE_URL` exported):
 
 ```bash
-docker logs vraland-crm-migrate                                   # what the last deploy applied
-docker start -a vraland-crm-migrate                               # re-run pending migrations
-docker compose run --rm migrate npm run db:check-schema           # verify the live schema
-docker compose run --rm migrate npm run db:sync-permissions       # after adding a permission to the catalog
+docker build --target migrator -t vraland-crm-migrate .          # rebuild after each pull
+docker run --rm --network app-net -e DATABASE_URL vraland-crm-migrate                                       # apply new migrations
+docker run --rm --network app-net -e DATABASE_URL vraland-crm-migrate npm run db:check-schema   # verify the live schema
+docker run --rm --network app-net -e DATABASE_URL vraland-crm-migrate npm run db:sync-permissions  # after adding a permission to the catalog
 ```
 
 `db:sync-permissions` adds new permission keys from `src/lib/permissions/catalog.ts` and grants them to the system roles once. It never removes a grant an administrator changed.
@@ -81,23 +81,23 @@ CREATE DATABASE new_db_name OWNER db_user;
 
 3. In Portainer, set the stack's `DATABASE_URL` to the new database. Don't redeploy yet.
 
-From the stack's folder on the server:
+From the repo folder on the server, after building `vraland-crm-migrate` as above:
 
 ```bash
 # 4. Create all tables by running every migration in order
-docker compose run --rm migrate npm run db:baseline
+docker run --rm --network app-net -e DATABASE_URL vraland-crm-migrate npm run db:baseline
 
 # 5. Organization, roles, permissions and pipeline stages
-docker compose run --rm migrate npm run db:seed:reference
+docker run --rm --network app-net -e DATABASE_URL vraland-crm-migrate npm run db:seed:reference
 
 # 6. First administrator: enter the values without saving them in shell history
 read -r ADMIN_EMAIL; read -rs ADMIN_PASSWORD; read -r ADMIN_FIRST_NAME; read -r ADMIN_LAST_NAME
 export ADMIN_EMAIL ADMIN_PASSWORD ADMIN_FIRST_NAME ADMIN_LAST_NAME
-docker compose run --rm -e ADMIN_EMAIL -e ADMIN_PASSWORD -e ADMIN_FIRST_NAME -e ADMIN_LAST_NAME migrate npm run auth:provision-admin
+docker run --rm --network app-net -e DATABASE_URL -e ADMIN_EMAIL -e ADMIN_PASSWORD -e ADMIN_FIRST_NAME -e ADMIN_LAST_NAME vraland-crm-migrate npm run auth:provision-admin
 unset ADMIN_EMAIL ADMIN_PASSWORD ADMIN_FIRST_NAME ADMIN_LAST_NAME
 ```
 
-7. Redeploy the stack in Portainer. `migrate` finds nothing new and the app starts on the new database.
+7. Redeploy the stack in Portainer. The app starts on the new database.
 
 - The admin password must be 12 to 128 characters.
 - `db:seed:reference` and `auth:provision-admin` use the organization code `CRM-PROD` by default. Set `ORGANIZATION_CODE` (and optionally `ORGANIZATION_NAME`) on both if you want another one.
@@ -128,10 +128,9 @@ To add only executive test accounts to an existing organization, use the same en
 
 ## Deployment (Docker / Portainer)
 
-The stack (`docker-compose.yml`) has two services:
+The stack (`docker-compose.yml`) runs one service, **app** (`vraland-crm`): the CRM, published on host port `3004` (container port `3000`; set `APP_PORT=3004`). Database migrations are run by hand (see above).
 
-- **migrate**: one-off job that runs `npm run db:migrate`, then exits. The app waits for it to succeed.
-- **app** (`vraland-crm`): the CRM, published on host port `3004` (container port `3000`).
+To deploy on the server, run `./deploy.sh` from the repo folder (or `./deploy.sh v0.4.0` for a tag). It pulls the code, rebuilds, restarts the app and waits for the health check. It stops if files were edited on the server. Variables come from a `.env` file in that folder. Run migrations yourself before deploying.
 
 Uploaded documents and images are stored in the `documents` volume (`/app/.data`). Back it up together with the database:
 

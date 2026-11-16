@@ -60,6 +60,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
 import { OpportunityDialog } from "./opportunity-dialog";
+import { isCloseDateOverdue } from "../lib/close-date";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 /** A lane: the shared `MoveStage` shape, under the board's own name for it. */
@@ -460,6 +461,7 @@ function StageLane({
             draggable={canActOnDeal(deal, stages, canChangeStage, userRole, canMoveBack)}
             disabled={pending}
             canApprove={canApprove}
+            closed={stage.isWonStage || stage.isLostStage || stage.isCancelledStage}
           />
         ))}
         {rows.length >= BOARD_COLUMN_LIMIT && (
@@ -487,19 +489,22 @@ function DealCard({
   draggable,
   disabled,
   canApprove,
+  closed,
 }: {
   deal: Deal;
   draggable: boolean;
   disabled: boolean;
   /** Approvers get a link from the waiting badge to the approvals queue. */
   canApprove: boolean;
+  /** In a Won, Lost or Cancelled lane: the close date can no longer be late. */
+  closed: boolean;
 }) {
   const { listeners, setNodeRef, isDragging } = useDraggable({
     id: dealDragId(deal.id),
     disabled: !draggable || disabled,
   });
 
-  const overdue = isOverdue(deal.expectedCloseDate);
+  const overdue = isCloseDateOverdue(deal.expectedCloseDate, closed);
 
   return (
     <article
@@ -551,7 +556,7 @@ function DealCard({
         </span>
         <span
           className="flex shrink-0 items-center gap-2 text-[11px] text-muted-foreground"
-          title={owner(deal)}
+          title={agentName(deal) ? `Agent: ${agentName(deal)}` : "No agent"}
         >
           <span
             className={cn(
@@ -751,10 +756,13 @@ function ReasonDialog({
   );
 }
 
+/** The agent's initials; the contact already titles the card. */
 function initials(deal: Deal) {
-  const first = deal.contactFirstName || deal.agentFirstName;
-  const last = deal.contactLastName || deal.agentLastName;
-  return `${first?.[0] ?? ""}${last?.[0] ?? ""}`.toUpperCase() || "—";
+  return `${deal.agentFirstName?.[0] ?? ""}${deal.agentLastName?.[0] ?? ""}`.toUpperCase() || "—";
+}
+
+function agentName(deal: Deal) {
+  return [deal.agentFirstName, deal.agentLastName].filter(Boolean).join(" ");
 }
 
 /** "Development · building · units" for the card's second line; the full label when the deal names none. */
@@ -776,11 +784,3 @@ function owner(deal: Deal) {
   return "Unassigned";
 }
 
-function isOverdue(date: string | null) {
-  if (!date) return false;
-  const parsed = new Date(date);
-  if (Number.isNaN(parsed.getTime())) return false;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return parsed.getTime() < today.getTime();
-}

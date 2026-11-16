@@ -6,12 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Added
+- `deploy.sh` deploys the latest code on the server in one command.
 
 - "Delete developments" now works: an empty development can be deleted from its page.
 - "Delete opportunities" now works: an opportunity entered by mistake can be deleted from its page, unless it is Won, has payments, holds units or parking, or is the contact's only opportunity.
 - "Reassign agent" on an opportunity's page moves it to another agent, with a reason. On a Won opportunity the commission moves too.
 
 ### Changed
+- Deploying no longer runs database migrations; run them by hand before deploying.
 
 - Tasks can only be assigned to active users within the assigner's data access.
 - Marketing recipient and follow-up lists hide the name, email and mobile number of contacts outside the viewer's data access.
@@ -26,6 +28,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - The "Approve contacts" and "Manage settings" permissions. Neither ever did anything: contacts are approved automatically, and there are no organization settings to manage.
 
 ### Fixed
+- Pipeline cards show the agent's initials instead of repeating the contact's.
+- Pipeline cards in Won, Lost or Cancelled no longer show the close date as overdue; overdue now follows Manila time.
 
 - Buttons for actions a user can't complete are hidden: Add contact, Edit, notes and Add details on contacts; Reassign broker without "Reassign a contact's broker"; Edit, Archive and unit controls on properties outside the user's reach. Only Super Administrators see the option to override the won-sale lock.
 

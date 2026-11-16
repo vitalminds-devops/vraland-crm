@@ -21,7 +21,7 @@ COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
-# One-shot schema migration, run by the compose "migrate" service before the app starts.
+# Database scripts, run by hand: docker build --target migrator -t vraland-crm-migrate .
 FROM dependencies AS migrator
 COPY . .
 CMD ["npm", "run", "db:migrate"]
