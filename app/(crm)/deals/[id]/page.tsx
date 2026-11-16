@@ -8,6 +8,7 @@ import { RecordTable, RecordTd, RecordTh } from "@/components/common/record-tabl
 import { TableBody, TableRow } from "@/components/ui/table";
 import { EmptyCardState, formatContactName, cardClass } from "@/features/contacts";
 import { DealActions } from "@/features/deals/components/deal-actions";
+import { ReassignAgentButton } from "@/features/deals/components/reassign-agent-button";
 import {
   AddOpportunityButton,
   ChangeUnitsButton,
@@ -36,7 +37,14 @@ export default async function DealPage({ params }: { params: Promise<{ id: strin
         actions={
           <>
             <BackButton fallbackHref="/pipeline" label="Back to pipeline" />
-            {data.canUpdate || data.canChangeStage ? (
+            {data.canReassignAgent && (
+              <ReassignAgentButton
+                dealId={id}
+                currentAgentId={d.primaryAgentUserId}
+                agents={options.agents}
+              />
+            )}
+            {data.canUpdate || data.canChangeStage || data.canDelete ? (
               <DealActions
                 dealId={id}
                 dealTitle={d.title}
@@ -46,6 +54,7 @@ export default async function DealPage({ params }: { params: Promise<{ id: strin
                 stages={options.stages}
                 lostReasons={options.lostReasons}
                 canChangeStage={data.canChangeStage}
+                canDelete={data.canDelete}
                 canApproveStageChange={data.canApproveStageChange}
                 canMoveBack={data.canMoveBack}
                 userRole={data.userRole}

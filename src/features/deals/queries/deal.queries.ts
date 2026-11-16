@@ -542,9 +542,11 @@ export async function getDeal(id: string) {
     parking: parkingRows,
     canCreate: context.permissions.has("deals.create"),
     canUpdate: context.permissions.has("deals.update"),
+    canDelete: context.permissions.has("deals.delete"),
     canChangeStage: context.permissions.has("deals.change_stage"),
     canApproveStageChange: context.permissions.has("deals.approve_stage_change"),
     canMoveBack: context.permissions.has("deals.move_back"),
+    canReassignAgent: context.permissions.has("deals.reassign_agent"),
     userRole: resolveMoveRole(context.roles),
   };
 }

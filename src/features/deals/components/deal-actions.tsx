@@ -17,8 +17,9 @@ import {
   DialogPortal,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { AlertTriangle, ArrowRightLeft, X } from "lucide-react";
+import { AlertTriangle, ArrowRightLeft, Trash2, X } from "lucide-react";
 import { changeDealStage, markDealLost, type DealActionResult } from "../actions/deal.actions";
+import { deleteDeal } from "../actions/deal-delete.actions";
 import {
   canMoveDealToStage,
   dropHintFor,
@@ -37,7 +38,7 @@ import { useRouter } from "next/navigation";
 import { OpportunityDialog } from "./opportunity-dialog";
 
 type Option = { id: string; name: string };
-type Mode = "stage" | "lost";
+type Mode = "stage" | "lost" | "delete";
 
 export function DealActions({
   dealId,
@@ -48,6 +49,7 @@ export function DealActions({
   stages,
   lostReasons,
   canChangeStage,
+  canDelete,
   canApproveStageChange,
   canMoveBack,
   userRole,
@@ -60,6 +62,8 @@ export function DealActions({
   stages: MoveStage[];
   lostReasons: Option[];
   canChangeStage: boolean;
+  /** Holds `deals.delete`. */
+  canDelete?: boolean;
   /** Whether this viewer's gated moves land rather than being parked. */
   canApproveStageChange?: boolean;
   /** Holds `deals.move_back`. */
@@ -138,6 +142,12 @@ export function DealActions({
         <Button variant="danger" className="gap-2" onClick={() => open("lost")}>
           <AlertTriangle aria-hidden="true" className="size-4" />
           Mark lost
+        </Button>
+      )}
+      {canDelete && (
+        <Button variant="danger" className="gap-2" onClick={() => open("delete")}>
+          <Trash2 aria-hidden="true" className="size-4" />
+          Delete opportunity
         </Button>
       )}
 
@@ -302,6 +312,27 @@ export function DealActions({
               tone="danger"
               disabled={!hasLostReason}
             />
+          </form>
+        </ActionDialog>
+      )}
+
+      {mode === "delete" && (
+        <ActionDialog title="Delete opportunity?" description={dealTitle} onClose={close}>
+          <form
+            onSubmit={(event: FormEvent<HTMLFormElement>) => {
+              event.preventDefault();
+              startTransition(async () => {
+                const result = await deleteDeal({ dealId });
+                if (!result.success) {
+                  notify(result.error.message || "Couldn't delete. Try again.", "error");
+                  return;
+                }
+                notify("Opportunity deleted.", "success");
+                router.push("/pipeline");
+              });
+            }}
+          >
+            <Footer onCancel={close} pending={pending} label="Delete opportunity" tone="danger" />
           </form>
         </ActionDialog>
       )}

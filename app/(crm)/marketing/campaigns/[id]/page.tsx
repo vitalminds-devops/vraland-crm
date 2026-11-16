@@ -19,6 +19,7 @@ import {
   MarketingStat,
 } from "@/features/marketing/components/marketing-section";
 import { campaignStatusLabel, channelLabel } from "@/features/marketing/lib/marketing-meta";
+import { OUTSIDE_ACCESS_LABEL } from "@/features/marketing/lib/recipient-privacy";
 import { RECIPIENT_PAGE_SIZE, getCampaign } from "@/features/marketing/queries/marketing.queries";
 import { ButtonLink } from "@/components/ui/button";
 import { requirePagePermission } from "@/lib/permissions/authorization";
@@ -129,18 +130,22 @@ export default async function CampaignPage({
               }
             >
               <TableBody className="divide-y divide-border/40">
-                {data.recipients.map((recipient) => (
+                {data.recipients.map((recipient, index) => (
                   <TableRow
-                    key={recipient.contactId}
+                    key={recipient.contactId ?? `masked-${index}`}
                     className="transition-colors hover:bg-muted/30"
                   >
-                    <RecordTd>
-                      {recipient.firstName} {recipient.lastName}
+                    <RecordTd className={recipient.masked ? "text-muted-foreground" : undefined}>
+                      {recipient.masked
+                        ? OUTSIDE_ACCESS_LABEL
+                        : `${recipient.firstName ?? ""} ${recipient.lastName ?? ""}`}
                     </RecordTd>
                     <RecordTd className="hidden md:table-cell">
-                      {campaign.channel === "sms"
-                        ? (recipient.mobilePhone ?? "—")
-                        : (recipient.email ?? "—")}
+                      {recipient.masked
+                        ? "—"
+                        : campaign.channel === "sms"
+                          ? (recipient.mobilePhone ?? "—")
+                          : (recipient.email ?? "—")}
                     </RecordTd>
                     <RecordTd>
                       <RecipientStatusBadge status={recipient.status} />

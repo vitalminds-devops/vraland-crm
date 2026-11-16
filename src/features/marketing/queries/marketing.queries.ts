@@ -37,6 +37,7 @@ import {
   isCampaignStatus,
   isSequenceTrigger,
 } from "../lib/marketing-meta";
+import { maskEnrollment, maskRecipient } from "../lib/recipient-privacy";
 
 function pageBounds(page: number | undefined, pageSize: number | undefined) {
   const safePage = Math.max(1, Math.floor(Number(page) || 1));
@@ -203,9 +204,12 @@ export async function getCampaign(id: string, page = 1) {
     .limit(1);
   if (!row) return null;
 
-  const [recipients, statusRows] = await Promise.all([
+  // Results stay organization-wide; who received them follows the viewer's data access.
+  const { contacts: contactScope } = marketingOptionScopes(context);
+  const [recipientRows, statusRows] = await Promise.all([
     db
       .select({
+        inScope: sql<boolean>`coalesce(${contactScope}, false)`,
         contactId: contacts.id,
         firstName: contacts.firstName,
         lastName: contacts.lastName,
@@ -240,7 +244,7 @@ export async function getCampaign(id: string, page = 1) {
     creatorName,
     emailTemplateName: row.emailTemplateName,
     smsTemplateName: row.smsTemplateName,
-    recipients,
+    recipients: recipientRows.map(maskRecipient),
     statusCounts,
     recipientTotal: statusRows.reduce((sum, r) => sum + r.total, 0),
     canManage: context.permissions.has("marketing.manage"),
@@ -566,7 +570,8 @@ export async function getSequence(id: string) {
     )
     .limit(1);
   if (!record) return null;
-  const [steps, enrollments, runs, runCount] = await Promise.all([
+  const { contacts: contactScope, deals: dealScope } = marketingOptionScopes(context);
+  const [steps, enrollmentRows, runs, runCount] = await Promise.all([
     db
       .select({
         step: automationSteps,
@@ -580,6 +585,9 @@ export async function getSequence(id: string) {
       .orderBy(asc(automationSteps.stepOrder)),
     db
       .select({
+        // Visible only when every linked contact and deal is within the viewer's data access.
+        inScope: sql<boolean>`(${automationEnrollments.contactId} is null or coalesce(${contactScope}, false))
+          and (${automationEnrollments.dealId} is null or coalesce(${dealScope}, false))`,
         id: automationEnrollments.id,
         status: automationEnrollments.status,
         currentStepOrder: automationEnrollments.currentStepOrder,
@@ -619,7 +627,7 @@ export async function getSequence(id: string) {
   return {
     record,
     steps,
-    enrollments,
+    enrollments: enrollmentRows.map(maskEnrollment),
     runs,
     runTotal: runCount[0]?.v ?? 0,
     canManage: context.permissions.has("marketing.manage"),

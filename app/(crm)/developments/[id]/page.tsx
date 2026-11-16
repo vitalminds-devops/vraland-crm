@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button";
 import { Detail, Stat, formatDate, label } from "@/features/developments";
 import { DevelopmentBuildingCard } from "@/features/developments/components/development-building-card";
+import { DevelopmentDeleteButton } from "@/features/developments/components/development-delete-button";
 import { getDevelopment } from "@/features/developments/queries/development.queries";
 import { developmentCoverImageUrl } from "@/features/developments/lib/cover-image";
 import { requirePagePermission } from "@/lib/permissions/authorization";
@@ -21,6 +22,7 @@ export default async function DevelopmentPage({ params }: { params: Promise<{ id
   const { record, buildings, unitCount } = data;
   const canEdit = context.permissions.has("developments.update");
   const canAddProperty = context.permissions.has("properties.create");
+  const canDelete = context.permissions.has("developments.delete");
   // The form preselects this development and copies its address.
   const addPropertyHref = `/properties/new?developmentId=${id}`;
   const coverUrl = developmentCoverImageUrl(record);
@@ -41,6 +43,7 @@ export default async function DevelopmentPage({ params }: { params: Promise<{ id
                 Edit development
               </ButtonLink>
             ) : undefined}
+            {canDelete ? <DevelopmentDeleteButton id={id} name={record.name} /> : undefined}
             {canAddProperty ? (
               <ButtonLink href={addPropertyHref} className="gap-2">
                 <Plus aria-hidden="true" className="size-4" />

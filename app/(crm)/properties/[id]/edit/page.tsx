@@ -1,19 +1,26 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { BackButton } from "@/components/common/back-button";
 import { PageContainer } from "@/components/common/page-container";
 import { PageHeader } from "@/components/common/page-header";
 import { FormNavigation } from "@/components/common/form-navigation";
 import { formCardClass } from "@/components/ui/form-kit";
 import { PropertyForm, formatDateForInput, propertyFormSections } from "@/features/properties";
+import { canWriteProperty } from "@/features/properties/lib/property-scope";
 import { getProperty, getPropertyOptions } from "@/features/properties/queries/property.queries";
 import type { PropertyInput } from "@/features/properties/schemas/property.schema";
 import { requirePagePermission } from "@/lib/permissions/authorization";
 
 export default async function EditPropertyPage({ params }: { params: Promise<{ id: string }> }) {
-  await requirePagePermission("properties.update");
+  const context = await requirePagePermission("properties.update");
   const { id } = await params;
-  const [data, options] = await Promise.all([getProperty(id), getPropertyOptions()]);
+  const [data, options, canWrite] = await Promise.all([
+    getProperty(id),
+    getPropertyOptions(),
+    canWriteProperty(context, id),
+  ]);
   if (!data) notFound();
+  // Visible but outside the user's data scope: the save would be refused.
+  if (!canWrite) redirect("/forbidden");
   const r = data.record;
   const initial: Partial<PropertyInput> = {
     developmentId: r.developmentId,

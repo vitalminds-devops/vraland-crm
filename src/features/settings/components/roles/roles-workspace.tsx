@@ -32,9 +32,12 @@ function countDifference(a: Set<string>, b: Set<string>): number {
 export function RolesWorkspace({
   roles,
   permissions,
+  ownRoleIds,
 }: {
   roles: RoleRow[];
   permissions: { key: string; module: string }[];
+  /** Roles the caller holds; shown read-only because they can't change them. */
+  ownRoleIds: string[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -89,6 +92,7 @@ export function RolesWorkspace({
             permissions={permissions}
             checked={checked}
             changes={count}
+            readOnly={ownRoleIds.includes(role.id)}
             onChange={(next) => setEdits((current) => ({ ...current, [role.id]: next }))}
           />
         ))}

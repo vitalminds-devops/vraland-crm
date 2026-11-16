@@ -7,6 +7,7 @@ import { propertyAccessGrantTargets, propertyAccessGrants, users } from "@/db/sc
 import { AuthorizationError, requirePermission } from "@/lib/permissions/authorization";
 import { canGrantUnitAccess, hasPermission } from "@/lib/permissions/policy";
 import { grantableUserCondition } from "@/lib/permissions/property-access";
+import { accessPageMode } from "../lib/access-page-mode";
 
 async function requireAccessGranter() {
   const context = await requirePermission("properties.view");
@@ -102,7 +103,10 @@ export type PropertyGrantSummary = {
 };
 
 export async function listPropertyGrants(propertyId: string): Promise<PropertyGrantSummary[]> {
-  const context = await requireAccessGranter();
+  const context = await requirePermission("properties.view");
+  // Granters, and anyone who may see everyone's access (read-only Access page).
+  if (!accessPageMode(context))
+    throw new AuthorizationError("You do not have permission to see access to properties.");
 
   const grants = await db
     .select({

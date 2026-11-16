@@ -574,8 +574,3 @@ export async function getConversionReport(filters: ReportFilters) {
     })),
   };
 }
-
-export type SalesReport = Awaited<ReturnType<typeof getSalesReport>>;
-export type ForecastReport = Awaited<ReturnType<typeof getForecastReport>>;
-export type AgentReport = Awaited<ReturnType<typeof getAgentReport>>;
-export type ConversionReport = Awaited<ReturnType<typeof getConversionReport>>;

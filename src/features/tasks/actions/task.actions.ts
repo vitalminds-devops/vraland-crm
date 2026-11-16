@@ -13,18 +13,19 @@ import {
   ActionResult,
   success,
   failureFrom,
+  validationFailure,
   validationFailureFromZod,
   databaseFailure,
 } from "@/lib/types/action-result";
 import { ActionErrorCode } from "@/lib/errors";
 import { fromManilaDateTimeLocal } from "@/lib/utils/manila-time";
+import { canAssignTask, taskAssigneeError } from "../lib/task-assignee";
 
 export type TaskResult = ActionResult<{ id: string }>;
 
 async function validateRelations(
   context: AuthorizationContext,
   v: {
-    assignedUserId: string | null;
     contactId: string | null;
     propertyId: string | null;
     dealId: string | null;
@@ -32,13 +33,6 @@ async function validateRelations(
 ) {
   const org = context.organizationId;
   const checks = await Promise.all([
-    v.assignedUserId
-      ? db
-          .select({ id: users.id })
-          .from(users)
-          .where(and(eq(users.id, v.assignedUserId), eq(users.organizationId, org)))
-          .limit(1)
-      : [{ id: "" }],
     // Scope-aware, so an agent cannot link a task to another agent's client.
     v.contactId
       ? canAccessResource(context, { type: "contact", id: v.contactId }).then((ok) =>
@@ -66,11 +60,26 @@ async function validateRelations(
   ]);
   return checks.every((v) => v.length);
 }
+async function assigneeAllowed(context: AuthorizationContext, userId: string) {
+  const [user] = await db
+    .select({
+      id: users.id,
+      brokerId: users.brokerId,
+      status: users.status,
+      deletedAt: users.deletedAt,
+    })
+    .from(users)
+    .where(and(eq(users.id, userId), eq(users.organizationId, context.organizationId)))
+    .limit(1);
+  return canAssignTask(context, user);
+}
 export async function createTask(input: unknown): Promise<TaskResult> {
   const context = await requirePermission("tasks.create");
   const parsed = taskSchema.safeParse(input);
   if (!parsed.success) return validationFailureFromZod(parsed.error);
   const v = parsed.data;
+  if (v.assignedUserId && !(await assigneeAllowed(context, v.assignedUserId)))
+    return validationFailure(taskAssigneeError);
   if (!(await validateRelations(context, v)))
     return failureFrom(ActionErrorCode.NOT_FOUND, "One or more related records are unavailable.");
   try {
@@ -190,6 +199,18 @@ export async function updateTask(id: string, input: unknown): Promise<TaskResult
   const v = parsed.data;
   if (!z.uuid().safeParse(id).success || !(await canAccessResource(context, { type: "task", id })))
     return failureFrom(ActionErrorCode.NOT_FOUND, "Task not found.");
+  // Only a new assignee is checked, so tasks already assigned outside reach stay editable.
+  const [current] = await db
+    .select({ assignedUserId: tasks.assignedUserId })
+    .from(tasks)
+    .where(and(eq(tasks.id, id), eq(tasks.organizationId, context.organizationId)))
+    .limit(1);
+  if (
+    v.assignedUserId &&
+    v.assignedUserId !== current?.assignedUserId &&
+    !(await assigneeAllowed(context, v.assignedUserId))
+  )
+    return validationFailure(taskAssigneeError);
   if (!(await validateRelations(context, v)))
     return failureFrom(ActionErrorCode.NOT_FOUND, "One or more related records are unavailable.");
   const values = {

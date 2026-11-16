@@ -39,6 +39,10 @@ export default async function RolesPage() {
       .filter((row) => !catalogKeys.has(row.key))
       .map((row) => ({ key: row.key, module: row.module })),
   ];
+  // A Super Administrator may change any role, including their own.
+  const ownRoleIds = isSuperAdministrator
+    ? []
+    : roles.filter((role) => context.roles.includes(role.slug)).map((role) => role.id);
   const keyById = new Map(data.permissions.map((row) => [row.id, row.key]));
 
   return (
@@ -47,6 +51,7 @@ export default async function RolesPage() {
       <SettingsNav permissions={context.permissions} current="/settings/roles" />
       <RolesWorkspace
         permissions={permissionOptions}
+        ownRoleIds={ownRoleIds}
         roles={roles.map((role) => ({
           id: role.id,
           slug: role.slug,

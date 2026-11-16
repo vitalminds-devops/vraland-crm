@@ -25,6 +25,7 @@ import {
 import { StepForm } from "@/features/marketing/components/step-form";
 import { waitLabel } from "@/features/marketing/lib/automation-timing";
 import { triggerLabel } from "@/features/marketing/lib/marketing-meta";
+import { OUTSIDE_ACCESS_LABEL } from "@/features/marketing/lib/recipient-privacy";
 import { getMarketingOptions, getSequence } from "@/features/marketing/queries/marketing.queries";
 import { requirePagePermission } from "@/lib/permissions/authorization";
 
@@ -152,8 +153,10 @@ export default async function SequencePage({ params }: { params: Promise<{ id: s
                 <TableBody className="divide-y divide-border/40">
                   {data.enrollments.map((enrollment) => (
                     <TableRow key={enrollment.id} className="transition-colors hover:bg-muted/30">
-                      <RecordTd>
-                        {enrollment.contactName?.trim() || enrollment.dealTitle || "—"}
+                      <RecordTd className={enrollment.masked ? "text-muted-foreground" : undefined}>
+                        {enrollment.masked
+                          ? OUTSIDE_ACCESS_LABEL
+                          : enrollment.contactName?.trim() || enrollment.dealTitle || "—"}
                       </RecordTd>
                       <RecordTd>
                         <EnrollmentStatusBadge status={enrollment.status} />

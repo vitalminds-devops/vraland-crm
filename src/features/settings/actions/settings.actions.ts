@@ -1678,6 +1678,16 @@ export async function updateRolePermissions(input: unknown): Promise<SettingsRes
       permissionDenied("Only a Super Administrator can change the Administrator role."),
     );
   if (!isSuperAdministrator) {
+    // Editing a role you hold would let you change your own access.
+    const [held] = await db
+      .select({ roleId: userRoles.roleId })
+      .from(userRoles)
+      .where(and(eq(userRoles.userId, context.userId), eq(userRoles.roleId, role.id)))
+      .limit(1);
+    if (held)
+      return failure(
+        permissionDenied("You can't change a role you hold. Ask another administrator."),
+      );
     const unavailable = requested.filter((key) => !context.permissions.has(key));
     if (unavailable.length)
       return failure(permissionDenied("You cannot grant permissions you do not hold yourself."));

@@ -31,3 +31,5 @@ export const stageApprovalSchema = z.object({
   requestId: z.uuid(),
   note: z.string().trim().max(500).optional().default(""),
 });
+
+export const dealDeleteSchema = z.object({ dealId: z.uuid() });

@@ -26,8 +26,10 @@ import {
 import { listParkingSlots } from "@/features/properties/queries/parking.queries";
 import { getPropertyInventory } from "@/features/properties/queries/property-floor-unit.queries";
 import { getProperty } from "@/features/properties/queries/property.queries";
+import { accessPageMode } from "@/features/properties/lib/access-page-mode";
+import { propertyPageActions } from "@/features/properties/lib/property-page-actions";
+import { canWriteProperty } from "@/features/properties/lib/property-scope";
 import { requirePagePermission } from "@/lib/permissions/authorization";
-import { canGrantUnitAccess } from "@/lib/permissions/policy";
 import { cn } from "@/lib/utils/cn";
 
 export default async function PropertyDetailPage({
@@ -40,14 +42,15 @@ export default async function PropertyDetailPage({
   const context = await requirePagePermission("properties.view");
   const { id } = await params;
   const presenting = (await searchParams).presentation === "true";
-  const [data, inventory, parking] = await Promise.all([
+  const [data, inventory, parking, canWrite] = await Promise.all([
     getProperty(id),
     getPropertyInventory(context, id),
     listParkingSlots(context, id),
+    canWriteProperty(context, id),
   ]);
   if (!data || !inventory.property) notFound();
   const p = data.record;
-  const canEdit = context.permissions.has("properties.update");
+  const actions = propertyPageActions(context, canWrite);
 
   // Only show prices and details that have a real value.
   const prices = [
@@ -99,7 +102,7 @@ export default async function PropertyDetailPage({
             presentationAction
           )}
           <div className="flex flex-wrap items-center gap-2">
-            {!presenting && canGrantUnitAccess(context) ? (
+            {!presenting && accessPageMode(context) ? (
               <Link
                 href={`/properties/${id}/access`}
                 className={`${buttonVariants({ variant: "secondary" })} gap-2`}
@@ -108,7 +111,7 @@ export default async function PropertyDetailPage({
                 Access
               </Link>
             ) : undefined}
-            {!presenting && canEdit ? (
+            {!presenting && actions.canEdit ? (
               <Link
                 href={`/properties/${id}/edit`}
                 className={`${buttonVariants({ variant: "secondary" })} gap-2`}
@@ -117,7 +120,7 @@ export default async function PropertyDetailPage({
                 Edit
               </Link>
             ) : undefined}
-            {!presenting && context.permissions.has("properties.delete") ? (
+            {!presenting && actions.canArchive ? (
               <ArchivePropertyButton propertyId={id} title={p.title} />
             ) : undefined}
             {presenting ? (
@@ -185,10 +188,8 @@ export default async function PropertyDetailPage({
             <FloorsAndUnits
               propertyId={id}
               propertyTitle={p.title}
-              canManageUnits={!presenting && context.permissions.has("properties.manage_units")}
-              canManageUnitPictures={
-                !presenting && context.permissions.has("properties.manage_unit_pictures")
-              }
+              canManageUnits={!presenting && actions.canManageUnits}
+              canManageUnitPictures={!presenting && actions.canManageUnitPictures}
               floorCount={p.floorCount}
               unitsPerFloor={p.unitsPerFloor}
               floors={inventory.floors}
@@ -203,7 +204,7 @@ export default async function PropertyDetailPage({
                 propertyId={id}
                 slots={parking}
                 floors={inventory.floors}
-                canManage={!presenting && context.permissions.has("properties.manage_units")}
+                canManage={!presenting && actions.canManageUnits}
               />
             </Section>
           )}

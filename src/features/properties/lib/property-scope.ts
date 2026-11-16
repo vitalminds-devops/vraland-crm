@@ -1,4 +1,4 @@
-import { and, eq, isNotNull, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { properties } from "@/db/schema";
 import type { AuthorizationContext } from "@/lib/permissions/policy";
@@ -35,4 +35,24 @@ export async function canWriteProperty(
     )
     .limit(1);
   return Boolean(record);
+}
+
+/** The ids in `ids` that `canWriteProperty` would allow, in one query. */
+export async function writablePropertyIds(
+  context: AuthorizationContext,
+  ids: string[],
+): Promise<Set<string>> {
+  if (!ids.length) return new Set();
+  const rows = await db
+    .select({ id: properties.id })
+    .from(properties)
+    .where(
+      and(
+        inArray(properties.id, ids),
+        eq(properties.organizationId, context.organizationId),
+        isNull(properties.deletedAt),
+        propertyWriteScope(context),
+      ),
+    );
+  return new Set(rows.map((row) => row.id));
 }

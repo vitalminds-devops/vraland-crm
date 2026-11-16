@@ -5,6 +5,7 @@ import PropertyDetailPage from "../../../../app/(crm)/properties/[id]/page";
 
 const fixture = vi.hoisted(() => ({
   permissions: new Set<string>(),
+  canWrite: true,
   data: {
     record: {
       title: "QA Tower 1",
@@ -66,8 +67,11 @@ const fixture = vi.hoisted(() => ({
 vi.mock("@/lib/permissions/authorization", () => ({
   requirePagePermission: vi.fn(async () => ({ permissions: fixture.permissions })),
 }));
-vi.mock("@/lib/permissions/policy", () => ({
-  canGrantUnitAccess: () => fixture.permissions.has("properties.update"),
+vi.mock("@/features/properties/lib/access-page-mode", () => ({
+  accessPageMode: () => (fixture.permissions.has("properties.update") ? "edit" : null),
+}));
+vi.mock("@/features/properties/lib/property-scope", () => ({
+  canWriteProperty: vi.fn(async () => fixture.canWrite),
 }));
 vi.mock("@/features/properties/queries/property.queries", () => ({
   getProperty: vi.fn(async () => fixture.data),
@@ -112,6 +116,7 @@ async function render(presentation?: string | string[]) {
 describe("property presentation", () => {
   beforeEach(() => {
     fixture.data.record.parkingPrice = null;
+    fixture.canWrite = true;
     fixture.permissions.clear();
     fixture.permissions.add("properties.update");
     fixture.permissions.add("properties.manage_units");
@@ -158,6 +163,14 @@ describe("property presentation", () => {
     const html = await render("false");
     expect(html).not.toContain("/edit");
     expect(html).not.toContain("/access");
+    expect(html).toContain('data-manage-units="false"');
+    expect(html).toContain('data-manage-pictures="false"');
+  });
+
+  it("hides write controls for a property outside the user's reach", async () => {
+    fixture.canWrite = false;
+    const html = await render();
+    expect(html).not.toContain("/edit");
     expect(html).toContain('data-manage-units="false"');
     expect(html).toContain('data-manage-pictures="false"');
   });

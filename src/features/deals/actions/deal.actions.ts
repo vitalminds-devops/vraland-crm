@@ -231,7 +231,6 @@ export async function saveDealForContact(
     .select({
       id: deals.id,
       stageId: deals.stageId,
-      primaryAgentUserId: deals.primaryAgentUserId,
     })
     .from(deals)
     .innerJoin(
@@ -249,12 +248,8 @@ export async function saveDealForContact(
   const parsed = contactDealSchema.safeParse(input);
   if (!parsed.success) return validationFailureFromZod(parsed.error);
   const v = parsed.data;
-  if (
-    primaryAgentUserId &&
-    primaryAgentUserId !== existing.primaryAgentUserId &&
-    !context.permissions.has("deals.reassign_agent")
-  )
-    return failure(permissionDenied("You don't have permission to reassign this opportunity."));
+  // The contact form never changes the opportunity's agent: open ones follow the contact's agent
+  // (moveOpenDeals) and anything else goes through reassignDealAgent.
   const [contactRow] = await db
     .select({
       firstName: contacts.firstName,

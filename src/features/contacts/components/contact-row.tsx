@@ -53,7 +53,6 @@ type ContactRowProps = {
   canArchive?: boolean;
   canReassign?: boolean;
   onReassignBroker?: (contactId: string) => void;
-  isSuperAdmin?: boolean;
 };
 
 export function ContactRow({
@@ -64,7 +63,6 @@ export function ContactRow({
   canArchive = false,
   canReassign = false,
   onReassignBroker,
-  isSuperAdmin = false,
 }: ContactRowProps) {
   const router = useRouter();
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
@@ -141,7 +139,7 @@ export function ContactRow({
                 },
               ]
             : []),
-          ...(canReassign && isSuperAdmin
+          ...(canReassign
             ? [
                 {
                   label: "Reassign broker",

@@ -64,6 +64,7 @@ export function PropertyAccessEditor({
   parkingSlots,
   grant,
   canGrantEveryProperty,
+  readOnly = false,
 }: {
   propertyId: string;
   propertyTitle: string;
@@ -107,6 +108,8 @@ export function PropertyAccessEditor({
   grant: GrantTargets | null;
   /** Administrators only: a bulk grant is the one write no bounded granter can express. */
   canGrantEveryProperty: boolean;
+  /** "See everyone's property access" without granting: the roster only. */
+  readOnly?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -361,12 +364,23 @@ export function PropertyAccessEditor({
           carries a block of empty space inside its own border. A single card
           with a divider down the middle cannot do either — there is one bottom
           edge, and the space under a list that has ended is just the card. */}
-      <section className="overflow-hidden rounded-xl border border-border/60 bg-card lg:grid lg:grid-cols-[minmax(0,1fr)_21rem]">
+      <section
+        className={cn(
+          "overflow-hidden rounded-xl border border-border/60 bg-card",
+          !readOnly && "lg:grid lg:grid-cols-[minmax(0,1fr)_21rem]",
+        )}
+      >
         {/* The roster: the state of the property. */}
-        <div className="min-w-0 border-b border-border/60 lg:border-r lg:border-b-0">
+        <div
+          className={cn(
+            "min-w-0",
+            !readOnly && "border-b border-border/60 lg:border-r lg:border-b-0",
+          )}
+        >
           <div className="flex items-center justify-between gap-3 border-b border-border/40 px-4 py-2.5">
             <h2 className="text-[14px] font-semibold">People with access</h2>
             <span className="shrink-0 text-[12px] text-muted-foreground tabular-nums">
+              {readOnly && "View only · "}
               {grants.length} {grants.length === 1 ? "person" : "people"}
             </span>
           </div>
@@ -430,36 +444,38 @@ export function PropertyAccessEditor({
                         : ""}
                     </span>
                   </span>
-                  <span className="flex shrink-0 items-center gap-1.5">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      disabled={pending}
-                      onClick={() => selectUser(entry.userId)}
-                    >
-                      Change
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={pending}
-                      className="text-destructive hover:bg-destructive/10"
-                      onClick={() =>
-                        run(
-                          () =>
-                            clearPropertyGrant({
-                              propertyId,
-                              userId: entry.userId,
-                            }),
-                          "Access removed.",
-                        )
-                      }
-                    >
-                      Remove
-                    </Button>
-                  </span>
+                  {!readOnly && (
+                    <span className="flex shrink-0 items-center gap-1.5">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        disabled={pending}
+                        onClick={() => selectUser(entry.userId)}
+                      >
+                        Change
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={pending}
+                        className="text-destructive hover:bg-destructive/10"
+                        onClick={() =>
+                          run(
+                            () =>
+                              clearPropertyGrant({
+                                propertyId,
+                                userId: entry.userId,
+                              }),
+                            "Access removed.",
+                          )
+                        }
+                      >
+                        Remove
+                      </Button>
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>
@@ -476,100 +492,102 @@ export function PropertyAccessEditor({
           />
         </div>
 
-        <div className="p-4">
-          <h2 className="text-[14px] font-semibold">Give access</h2>
+        {!readOnly && (
+          <div className="p-4">
+            <h2 className="text-[14px] font-semibold">Give access</h2>
 
-          {!users.length ? (
-            <p className="mt-2 text-[12.5px] leading-snug text-muted-foreground">
-              No one you can give access to.
-            </p>
-          ) : (
-            <div className="mt-3 flex flex-col gap-3">
-              <label className="grid gap-1">
-                <span className="text-[12.5px] font-medium text-foreground">Person</span>
-                <NativeSelect
-                  id="grant-user"
-                  value={selectedUserId ?? ""}
-                  onChange={(event) => selectUser(event.target.value || null)}
-                  className="h-8 w-full rounded-lg border border-border/60 bg-background px-2.5 pr-8 text-[13px]"
-                >
-                  <NativeSelectOption value="">Choose a person</NativeSelectOption>
-                  {users.map((user) => (
-                    <NativeSelectOption key={user.id} value={user.id}>
-                      {user.firstName} {user.lastName}
-                      {grantedIds.has(user.id) ? " · has access" : ""}
-                    </NativeSelectOption>
-                  ))}
-                </NativeSelect>
-              </label>
-
-              <div>
-                <p className="mb-1.5 text-[12.5px] font-medium text-foreground">
-                  What can they see?
-                </p>
-                <div role="radiogroup" aria-label="What they may see" className="grid gap-2">
-                  {grantScopes.map((option) => {
-                    const active = scope === option;
-                    const { label, detail } = grantScopeOptions[option];
-                    return (
-                      <button
-                        key={option}
-                        type="button"
-                        role="radio"
-                        aria-checked={active}
-                        disabled={!selectedUser || pending}
-                        onClick={() => selectScope(option)}
-                        className={cn(
-                          "rounded-lg border p-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60",
-                          active
-                            ? "border-primary bg-primary/10 ring-1 ring-primary/40"
-                            : "border-primary/30 bg-primary/5 hover:border-primary/70 hover:bg-primary/10",
-                        )}
-                      >
-                        <span className="flex items-center gap-2.5">
-                          <span
-                            aria-hidden="true"
-                            className={cn(
-                              "grid size-4 shrink-0 place-content-center rounded-full border bg-background transition-colors",
-                              active ? "border-primary" : "border-primary/50",
-                            )}
-                          >
-                            {active && <span className="size-2 rounded-full bg-primary" />}
-                          </span>
-                          <span className="text-[13px] font-semibold">{label}</span>
-                        </span>
-                        <span className="mt-1 block pl-[1.625rem] text-[12px] leading-snug text-muted-foreground">
-                          {detail}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {selectedUser && canGrantEveryProperty && (
-                <div className="border-t border-border/60 pt-3">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={pending}
-                    onClick={() =>
-                      run(
-                        () => grantEveryProperty({ userId: selectedUser.id }),
-                        `Every property given to ${selectedUser.firstName}.`,
-                      )
-                    }
-                    className="gap-1.5"
+            {!users.length ? (
+              <p className="mt-2 text-[12.5px] leading-snug text-muted-foreground">
+                No one you can give access to.
+              </p>
+            ) : (
+              <div className="mt-3 flex flex-col gap-3">
+                <label className="grid gap-1">
+                  <span className="text-[12.5px] font-medium text-foreground">Person</span>
+                  <NativeSelect
+                    id="grant-user"
+                    value={selectedUserId ?? ""}
+                    onChange={(event) => selectUser(event.target.value || null)}
+                    className="h-8 w-full rounded-lg border border-border/60 bg-background px-2.5 pr-8 text-[13px]"
                   >
-                    <Users aria-hidden="true" className="size-3.5" />
-                    Give every property
-                  </Button>
+                    <NativeSelectOption value="">Choose a person</NativeSelectOption>
+                    {users.map((user) => (
+                      <NativeSelectOption key={user.id} value={user.id}>
+                        {user.firstName} {user.lastName}
+                        {grantedIds.has(user.id) ? " · has access" : ""}
+                      </NativeSelectOption>
+                    ))}
+                  </NativeSelect>
+                </label>
+
+                <div>
+                  <p className="mb-1.5 text-[12.5px] font-medium text-foreground">
+                    What can they see?
+                  </p>
+                  <div role="radiogroup" aria-label="What they may see" className="grid gap-2">
+                    {grantScopes.map((option) => {
+                      const active = scope === option;
+                      const { label, detail } = grantScopeOptions[option];
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          role="radio"
+                          aria-checked={active}
+                          disabled={!selectedUser || pending}
+                          onClick={() => selectScope(option)}
+                          className={cn(
+                            "rounded-lg border p-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+                            active
+                              ? "border-primary bg-primary/10 ring-1 ring-primary/40"
+                              : "border-primary/30 bg-primary/5 hover:border-primary/70 hover:bg-primary/10",
+                          )}
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <span
+                              aria-hidden="true"
+                              className={cn(
+                                "grid size-4 shrink-0 place-content-center rounded-full border bg-background transition-colors",
+                                active ? "border-primary" : "border-primary/50",
+                              )}
+                            >
+                              {active && <span className="size-2 rounded-full bg-primary" />}
+                            </span>
+                            <span className="text-[13px] font-semibold">{label}</span>
+                          </span>
+                          <span className="mt-1 block pl-[1.625rem] text-[12px] leading-snug text-muted-foreground">
+                            {detail}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              )}
-            </div>
-          )}
-        </div>
+
+                {selectedUser && canGrantEveryProperty && (
+                  <div className="border-t border-border/60 pt-3">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={pending}
+                      onClick={() =>
+                        run(
+                          () => grantEveryProperty({ userId: selectedUser.id }),
+                          `Every property given to ${selectedUser.firstName}.`,
+                        )
+                      }
+                      className="gap-1.5"
+                    >
+                      <Users aria-hidden="true" className="size-3.5" />
+                      Give every property
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </section>
 
       {selectedUser && (

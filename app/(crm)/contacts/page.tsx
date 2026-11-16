@@ -11,7 +11,7 @@ import {
   isContactSortKey,
 } from "@/features/contacts/queries/contact.queries";
 import { requirePagePermission } from "@/lib/permissions/authorization";
-import { hasPermission, hasOrganizationWideAccess } from "@/lib/permissions/policy";
+import { contactPageActions } from "@/features/contacts/lib/contact-page-actions";
 
 const PAGE_SIZES = [10, 25, 50, 100];
 
@@ -37,9 +37,7 @@ export default async function ContactsPage({
   const dir = q.dir === "asc" || q.dir === "desc" ? q.dir : undefined;
   const showAdditionalColumns = q.cols === "1";
   const context = await requirePagePermission("contacts.view");
-  const canEdit = hasPermission(context, "contacts.update");
-  const canArchive = hasPermission(context, "contacts.delete");
-  const isSuperAdmin = hasOrganizationWideAccess(context);
+  const actions = contactPageActions(context);
   const [data, brokers] = await Promise.all([
     listContacts({
       page,
@@ -70,22 +68,24 @@ export default async function ContactsPage({
           // Phones: Archived and Add contact span the row; Import/Export share one.
           <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:justify-end [&>*:first-child]:col-span-2 [&>*:last-child]:col-span-2">
             {/* The archive page needs contacts.delete; without it the link only leads to Access denied. */}
-            {canArchive && (
+            {actions.canArchive && (
               <ButtonLink href="/contacts/archive" variant="secondary">
                 Archived
               </ButtonLink>
             )}
-            {hasPermission(context, "contacts.import") && <ImportForm />}
-            {hasPermission(context, "contacts.export") && (
+            {actions.canImport && <ImportForm />}
+            {actions.canExport && (
               <a href="/api/contacts/export" className={buttonVariants({ variant: "secondary" })}>
                 <Download className="mr-2 h-4 w-4" />
                 Export
               </a>
             )}
-            <ButtonLink href="/contacts/new" variant="primary">
-              <Plus className="mr-2 h-4 w-4" />
-              Add contact
-            </ButtonLink>
+            {actions.canCreate && (
+              <ButtonLink href="/contacts/new" variant="primary">
+                <Plus className="mr-2 h-4 w-4" />
+                Add contact
+              </ButtonLink>
+            )}
           </div>
         }
       />
@@ -93,10 +93,12 @@ export default async function ContactsPage({
         <ContactsPageWrapper
           data={data}
           brokers={brokers}
-          canEdit={canEdit}
-          canViewDocuments={hasPermission(context, "requirements.view")}
-          canArchive={canArchive}
-          isSuperAdmin={isSuperAdmin}
+          canCreate={actions.canCreate}
+          canEdit={actions.canEdit}
+          canViewDocuments={actions.canViewDocuments}
+          canArchive={actions.canArchive}
+          canReassign={actions.canReassign}
+          isSuperAdmin={actions.canOverrideWonLock}
           search={q.search}
           lifecycle={q.lifecycle}
           employment={q.employment}

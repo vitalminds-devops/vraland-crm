@@ -8,13 +8,6 @@ export const sequenceTriggers = [
   "viewing_completed",
   "manual",
 ] as const;
-export const sequenceStepActions = [
-  "send_email",
-  "send_sms",
-  "create_task",
-  "wait",
-  "assign_user",
-] as const;
 
 export type CampaignStatus = (typeof campaignStatuses)[number];
 export type CampaignChannel = (typeof campaignChannels)[number];

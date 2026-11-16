@@ -5,6 +5,30 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- "Delete developments" now works: an empty development can be deleted from its page.
+- "Delete opportunities" now works: an opportunity entered by mistake can be deleted from its page, unless it is Won, has payments, holds units or parking, or is the contact's only opportunity.
+- "Reassign agent" on an opportunity's page moves it to another agent, with a reason. On a Won opportunity the commission moves too.
+
+### Changed
+
+- Tasks can only be assigned to active users within the assigner's data access.
+- Marketing recipient and follow-up lists hide the name, email and mobile number of contacts outside the viewer's data access.
+- "See everyone's property access" opens a property's Access page view-only, so Sales Managers can use it.
+- Nobody except the Super Administrator can change a role they hold. It shows as "Your role", read-only.
+- The contact form no longer changes an opportunity's agent; use "Reassign agent" on the opportunity.
+- A scheduled campaign that can't send (a social campaign, or no email or SMS provider set up) goes back to draft instead of blocking newer campaigns. The reason is in the logs.
+- Each permission's info button, on the Roles page and a user's Permissions, now explains what it allows and every condition that limits it. Permissions no feature uses yet say "Not used yet". The filter searches these details too.
+
+### Removed
+
+- The "Approve contacts" and "Manage settings" permissions. Neither ever did anything: contacts are approved automatically, and there are no organization settings to manage.
+
+### Fixed
+
+- Buttons for actions a user can't complete are hidden: Add contact, Edit, notes and Add details on contacts; Reassign broker without "Reassign a contact's broker"; Edit, Archive and unit controls on properties outside the user's reach. Only Super Administrators see the option to override the won-sale lock.
+
 ## [0.3.0] - 2026-11-16
 
 ### Added

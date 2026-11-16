@@ -16,7 +16,6 @@ export const permissionCatalog = {
     "contacts.create",
     "contacts.update",
     "contacts.delete",
-    "contacts.approve",
     "contacts.import",
     "contacts.export",
     "contacts.reassign_broker",
@@ -62,7 +61,6 @@ export const permissionCatalog = {
   billing: ["billing.view", "billing.manage"],
   settings: [
     "settings.view",
-    "settings.manage",
     "settings.system",
     "users.manage",
     "users.delete",
@@ -142,10 +140,6 @@ export const permissionMetadata = {
   "contacts.delete": {
     label: "Delete contacts",
     description: "Remove a contact from the CRM.",
-  },
-  "contacts.approve": {
-    label: "Approve contacts",
-    description: "Approve or reject pending contacts.",
   },
   "contacts.import": {
     label: "Import contacts",
@@ -326,10 +320,6 @@ export const permissionMetadata = {
     label: "View settings",
     description: "Open Settings (read-only).",
   },
-  "settings.manage": {
-    label: "Manage settings",
-    description: "Change organization settings.",
-  },
   "settings.system": {
     label: "View system performance",
     description: "See server CPU, memory, disk and uptime.",
@@ -485,7 +475,6 @@ export const rolePermissionDefaults = {
       !key.startsWith("settings.") &&
       !key.startsWith("users.") &&
       key !== "roles.manage" &&
-      key !== "contacts.approve" &&
       key !== "properties.grant_unit_access" &&
       key !== "deals.move_back",
   ),
@@ -570,18 +559,6 @@ export function roleDescription(slug: string, fallbackDescription: string | null
 
 export const dataScopes = ["own", "broker_team", "organization"] as const;
 export type DataScope = (typeof dataScopes)[number];
-
-const dataScopeRank: Record<DataScope, number> = {
-  own: 0,
-  broker_team: 1,
-  organization: 2,
-};
-
-export function isDataScope(value: string | null | undefined): value is DataScope {
-  return !!value && (dataScopes as readonly string[]).includes(value);
-}
-
-export const dataScopeRanking = dataScopeRank;
 
 export const dataScopeLabels: Record<DataScope, string> = {
   own: "Only records I own",

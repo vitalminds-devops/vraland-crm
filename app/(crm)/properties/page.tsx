@@ -19,9 +19,11 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { DotBadge, type DotBadgeTone } from "@/components/ui/dot-badge";
 import { label, propertyStatuses, propertyTypes, fieldClass } from "@/features/properties";
+import { propertyPageActions } from "@/features/properties/lib/property-page-actions";
+import { writablePropertyIds } from "@/features/properties/lib/property-scope";
 import { listProperties } from "@/features/properties/queries/property.queries";
 import { requirePagePermission } from "@/lib/permissions/authorization";
-import { canGrantUnitAccess } from "@/lib/permissions/policy";
+import { accessPageMode } from "@/features/properties/lib/access-page-mode";
 import { cn } from "@/lib/utils/cn";
 
 export default async function PropertiesPage({
@@ -36,10 +38,15 @@ export default async function PropertiesPage({
   const status = typeof params.status === "string" ? params.status : undefined;
   const type = typeof params.type === "string" ? params.type : undefined;
   const data = await listProperties({ page, search, status, type });
-  const canUpdate = context.permissions.has("properties.update");
-  const canGrantAccess = canGrantUnitAccess(context);
+  // The list shows granted properties; writes also need the data scope.
+  const writable = await writablePropertyIds(
+    context,
+    data.rows.map((row) => row.id),
+  );
+  // Same rule as the Access page: granters edit it, "See everyone's property access" views it.
+  const canOpenAccess = accessPageMode(context) !== null;
   // The header's Actions column lines up with the row buttons.
-  const actionsWidth = canGrantAccess ? "sm:w-72" : "sm:w-32";
+  const actionsWidth = canOpenAccess ? "sm:w-72" : "sm:w-32";
 
   const query = (next: number) => {
     const params = new URLSearchParams();
@@ -152,6 +159,7 @@ export default async function PropertiesPage({
             <ul className="divide-y divide-border/40">
               {data.rows.map((row) => {
                 const location = [row.city, row.province].filter(Boolean).join(", ");
+                const rowActions = propertyPageActions(context, writable.has(row.id));
                 return (
                   <li
                     key={row.id}
@@ -196,7 +204,7 @@ export default async function PropertiesPage({
                             <MapPin aria-hidden="true" className="size-3 shrink-0" />
                             <span className="truncate">{location}</span>
                           </span>
-                        ) : canUpdate ? (
+                        ) : rowActions.canEdit ? (
                           <Link
                             href={`/properties/${row.id}/edit`}
                             className="relative z-10 font-medium text-amber-600 hover:underline dark:text-amber-400"
@@ -232,7 +240,7 @@ export default async function PropertiesPage({
                         actionsWidth,
                       )}
                     >
-                      {canGrantAccess && (
+                      {canOpenAccess && (
                         <ButtonLink
                           href={`/properties/${row.id}/access`}
                           variant="secondary"
@@ -246,7 +254,7 @@ export default async function PropertiesPage({
                       )}
                       {row.granted.visible ? (
                         <RowAction href={`/properties/${row.id}`}>View property</RowAction>
-                      ) : canUpdate ? (
+                      ) : rowActions.canManageUnits ? (
                         <RowAction href={`/properties/${row.id}`}>Add units</RowAction>
                       ) : null}
                     </span>

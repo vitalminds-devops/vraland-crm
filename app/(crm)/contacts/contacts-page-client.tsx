@@ -33,9 +33,12 @@ type ContactsPageClientProps = {
     pages: number;
   };
   brokers: { id: string; firstName: string; lastName: string }[];
+  canCreate: boolean;
   canEdit: boolean;
   canViewDocuments: boolean;
   canArchive: boolean;
+  canReassign: boolean;
+  /** Super administrators may override the lock on won sales. */
   isSuperAdmin: boolean;
   viewMode?: "table" | "grouped";
 };
@@ -43,9 +46,11 @@ type ContactsPageClientProps = {
 export function ContactsPageClient({
   data,
   brokers,
+  canCreate,
   canEdit,
   canViewDocuments,
   canArchive,
+  canReassign,
   isSuperAdmin,
   viewMode = "table",
 }: ContactsPageClientProps) {
@@ -66,12 +71,12 @@ export function ContactsPageClient({
           page={data.page}
           pages={data.pages}
           pageSize={20}
+          canCreate={canCreate}
           canEdit={canEdit}
           canViewDocuments={canViewDocuments}
           canArchive={canArchive}
-          canReassign={isSuperAdmin}
+          canReassign={canReassign}
           onReassignBroker={handleSingleContactReassign}
-          isSuperAdmin={isSuperAdmin}
         />
       ) : (
         <ContactsGroupedByBroker contacts={data.rows} />

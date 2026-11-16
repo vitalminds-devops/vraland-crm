@@ -35,9 +35,12 @@ type ContactsPageWrapperProps = {
     pages: number;
   };
   brokers: { id: string; firstName: string; lastName: string }[];
+  canCreate: boolean;
   canEdit: boolean;
   canViewDocuments: boolean;
   canArchive: boolean;
+  canReassign: boolean;
+  /** Super administrators may override the lock on won sales. */
   isSuperAdmin: boolean;
   search?: string;
   lifecycle?: string;
@@ -49,9 +52,11 @@ type ContactsPageWrapperProps = {
 export function ContactsPageWrapper({
   data,
   brokers,
+  canCreate,
   canEdit,
   canViewDocuments,
   canArchive,
+  canReassign,
   isSuperAdmin,
   search,
   lifecycle,
@@ -79,9 +84,11 @@ export function ContactsPageWrapper({
         <ContactsPageClient
           data={data}
           brokers={brokers}
+          canCreate={canCreate}
           canEdit={canEdit}
           canViewDocuments={canViewDocuments}
           canArchive={canArchive}
+          canReassign={canReassign}
           isSuperAdmin={isSuperAdmin}
           viewMode={viewMode}
         />

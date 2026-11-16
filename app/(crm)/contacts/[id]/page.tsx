@@ -34,7 +34,9 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
   const canViewRequirements = context.permissions.has("requirements.view");
   const requirements = canViewRequirements ? await listContactRequirements(id) : [];
   const c = data.record;
-  const editHref = `/contacts/${id}/edit`;
+  // updateContact and addContactNote both need contacts.update.
+  const canUpdate = context.permissions.has("contacts.update");
+  const editHref = canUpdate ? `/contacts/${id}/edit` : undefined;
   return (
     <PageContainer>
       <PageHeader
@@ -43,10 +45,12 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
         actions={
           <>
             <BackButton fallbackHref="/contacts" label="Back to contacts" />
-            <ButtonLink href={editHref} variant="primary" className="gap-2">
-              <Edit3 aria-hidden="true" className="size-4" />
-              Edit
-            </ButtonLink>
+            {editHref && (
+              <ButtonLink href={editHref} variant="primary" className="gap-2">
+                <Edit3 aria-hidden="true" className="size-4" />
+                Edit
+              </ButtonLink>
+            )}
           </>
         }
       />
@@ -68,9 +72,11 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
             <h2 className="border-b border-border/60 pb-3 text-[16px] font-semibold leading-none">
               Notes
             </h2>
-            <div className="pt-4">
-              <NoteForm contactId={id} />
-            </div>
+            {canUpdate && (
+              <div className="pt-4">
+                <NoteForm contactId={id} />
+              </div>
+            )}
             <div className="mt-5 space-y-3">
               {c.notes && <p className="whitespace-pre-wrap text-sm text-foreground">{c.notes}</p>}
               {data.notes.map((n) => (

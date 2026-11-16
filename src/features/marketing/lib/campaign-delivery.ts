@@ -9,6 +9,7 @@ import {
   smsTemplates,
 } from "@/db/schema";
 import { getUserFacingMessage } from "@/lib/error-handler";
+import { logError } from "@/lib/logger";
 import { getEmailProvider, getSmsProvider } from "@/lib/messaging/providers";
 import { conflict, ActionErrorCode } from "@/lib/errors";
 import { type ActionResult, failure, failureFrom, success } from "@/lib/types/action-result";
@@ -218,6 +219,54 @@ export async function recoverStalledCampaigns(now = new Date()): Promise<number>
   return stalled.length;
 }
 
+const UNSENDABLE_REASON: Record<string, string> = {
+  social: "No social publishing provider.",
+  email: "Email provider not set up.",
+  sms: "SMS provider not set up.",
+};
+
+/**
+ * Due campaigns whose channel cannot send move back to draft with an audited reason. Left
+ * scheduled, they would be retried forever and, being oldest, fill every slot ahead of newer ones.
+ */
+async function unscheduleUnsendable(now: Date): Promise<void> {
+  const channels = [
+    "social",
+    ...(getEmailProvider() ? [] : ["email"]),
+    ...(getSmsProvider() ? [] : ["sms"]),
+  ];
+  const stopped = await db
+    .update(campaigns)
+    .set({ status: "draft", updatedAt: now })
+    .where(
+      and(
+        eq(campaigns.status, "scheduled"),
+        lte(campaigns.scheduledAt, now),
+        inArray(campaigns.channel, channels),
+      ),
+    )
+    .returning({
+      id: campaigns.id,
+      organizationId: campaigns.organizationId,
+      channel: campaigns.channel,
+    });
+  if (stopped.length)
+    await db.insert(auditLogs).values(
+      stopped.map((campaign) => ({
+        organizationId: campaign.organizationId,
+        action: "update",
+        entityType: "campaign",
+        entityId: campaign.id,
+        oldValues: { status: "scheduled" },
+        newValues: {
+          status: "draft",
+          trigger: "schedule",
+          reason: `Not sent: ${UNSENDABLE_REASON[campaign.channel] ?? "channel cannot send."}`,
+        },
+      })),
+    );
+}
+
 /** Campaigns this process is sending now; each tick starts others beside them. */
 const sending = new Set<string>();
 const MAX_PARALLEL_SENDS = 4;
@@ -228,11 +277,14 @@ const MAX_PARALLEL_SENDS = 4;
  */
 export async function sendDueCampaigns(now = new Date()): Promise<number> {
   await recoverStalledCampaigns(now);
+  await unscheduleUnsendable(now);
   const due = await db
     .select({ id: campaigns.id, organizationId: campaigns.organizationId })
     .from(campaigns)
     .where(and(eq(campaigns.status, "scheduled"), lte(campaigns.scheduledAt, now)))
-    .orderBy(asc(campaigns.scheduledAt));
+    .orderBy(asc(campaigns.scheduledAt))
+    // Bounded: only the slots free in this process, plus the ones it is already sending.
+    .limit(MAX_PARALLEL_SENDS + sending.size);
   const batch = due
     .filter((campaign) => !sending.has(campaign.id))
     .slice(0, Math.max(0, MAX_PARALLEL_SENDS - sending.size));
@@ -242,8 +294,10 @@ export async function sendDueCampaigns(now = new Date()): Promise<number> {
       try {
         const result = await deliverCampaign(campaign.organizationId, campaign.id);
         if (!result.success) {
-          // Left scheduled (e.g. no provider configured yet), so the next run tries again.
-          console.error(`Scheduled campaign ${campaign.id} not sent: ${result.error.message}`);
+          // E.g. another server claimed it first; channels that cannot send were unscheduled above.
+          logError("Scheduled campaign not sent", result.error.message, {
+            campaignId: campaign.id,
+          });
           return false;
         }
         await db.insert(auditLogs).values({
@@ -266,18 +320,18 @@ export async function sendDueCampaigns(now = new Date()): Promise<number> {
   return results.filter(Boolean).length;
 }
 
-/** Checks for due campaigns every minute; called once from instrumentation. */
+/**
+ * Checks for due campaigns every minute, so a send starts within a minute of its scheduled time;
+ * called once from instrumentation. Two servers cannot send the same campaign: deliverCampaign
+ * claims it with one conditional update (scheduled -> running) before sending anything.
+ */
 export function startScheduledCampaigns(): void {
   const store = globalThis as typeof globalThis & { vraScheduledCampaigns?: boolean };
   if (store.vraScheduledCampaigns) return;
   store.vraScheduledCampaigns = true;
   // No overlap guard: campaigns already sending are skipped, so a long send doesn't block new ones.
   const run = () =>
-    sendDueCampaigns()
-      .then((count) => {
-        if (count) console.info(`Scheduled campaigns: ${count} sent.`);
-      })
-      .catch((error) => console.error("Scheduled campaigns failed", error));
+    sendDueCampaigns().catch((error) => logError("Scheduled campaigns failed", error));
   void run();
   setInterval(run, 60_000).unref?.();
 }

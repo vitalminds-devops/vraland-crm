@@ -17,6 +17,7 @@ export function RoleCard({
   checked,
   changes,
   onChange,
+  readOnly,
 }: {
   roleId: string;
   slug: string;
@@ -29,6 +30,8 @@ export function RoleCard({
   /** Unsaved adds and removals. */
   changes: number;
   onChange: (next: Set<string>) => void;
+  /** The caller holds this role, so they can't change it. */
+  readOnly: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const panelId = `role-permissions-${roleId}`;
@@ -51,6 +54,11 @@ export function RoleCard({
               <span className="rounded-full border border-border/60 bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                 {isSystem ? "System role" : "Custom role"}
               </span>
+              {readOnly && (
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                  Your role
+                </span>
+              )}
             </span>
             <span className="mt-1.5 block max-w-2xl text-[13px] leading-relaxed text-muted-foreground">
               {roleDescription(slug, description)}
@@ -84,6 +92,7 @@ export function RoleCard({
           permissions={permissions}
           checked={checked}
           onChange={onChange}
+          disabled={readOnly}
         />
       </div>
     </section>

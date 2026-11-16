@@ -72,7 +72,6 @@ export const bankOptions = [
   "United Coconut Planters Bank (UCPB)",
 ] as const;
 export const mobilePhoneFields = ["mobilePhone1", "mobilePhone2", "mobilePhone3"] as const;
-export type MobilePhoneField = (typeof mobilePhoneFields)[number];
 export const agentRoleSlugs = ["agent", ...brokerAccessRoleSlugs, "master-broker"] as const;
 export const agentRoleNames = ["agent", "agent / broker", "master broker"] as const;
 
@@ -202,7 +201,6 @@ export const requiredDocumentTypes = [
     label: "Client appointment form",
   },
 ] as const;
-export type RequiredDocumentType = (typeof requiredDocumentTypes)[number]["documentType"];
 /** Requirement types an extra upload can be filed under; the ID and appointment form have their own fields. */
 export const extraDocumentTypes = requiredDocumentTypes.filter(
   (item) => item.documentType !== "valid_id" && item.documentType !== "client_appointment_form",

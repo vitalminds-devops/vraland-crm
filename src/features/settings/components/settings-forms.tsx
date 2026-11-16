@@ -7,7 +7,7 @@ import {
 import { ExecutivePicker } from "./users/executive-picker";
 import type { UserRow } from "./users/user-types";
 
-import { Check, Eye, EyeOff, Info, Search, Upload, Wand2 } from "lucide-react";
+import { Check, Eye, EyeOff, Search, Upload, Wand2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { notify } from "@/components/ui/toast";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   isAdministratorRoleSlug,
   masterBrokerRoleSlug,
@@ -27,7 +26,9 @@ import {
   permissionMetadata,
   type PermissionKey,
 } from "@/lib/permissions/catalog";
+import { permissionDetails, type PermissionDetail } from "@/lib/permissions/permission-details";
 import type { ActionResult } from "@/lib/types/action-result";
+import { PermissionDetailTooltip } from "./permission-detail-tooltip";
 import type { RoleRef } from "./users/user-types";
 import { createAgentAccount, createUser } from "../actions/settings.actions";
 
@@ -446,18 +447,24 @@ function permissionCopy(key: string): { label: string; description: string } {
   return permissionMetadata[key as PermissionKey] ?? { label: key, description: "" };
 }
 
+function permissionDetail(key: string): PermissionDetail | undefined {
+  return permissionDetails[key as PermissionKey];
+}
+
 /** The permission checkboxes for one role; the Roles page holds the edits and saves every role at once. */
 export function RolePermissionsPicker({
   roleId,
   permissions,
   checked,
   onChange,
+  disabled = false,
 }: {
   roleId: string;
   permissions: { key: string; module: string }[];
   /** The keys ticked now, saved or not. */
   checked: Set<string>;
   onChange: (next: Set<string>) => void;
+  disabled?: boolean;
 }) {
   const [query, setQuery] = useState("");
 
@@ -472,7 +479,8 @@ export function RolePermissionsPicker({
             return (
               row.key.toLowerCase().includes(needle) ||
               copy.label.toLowerCase().includes(needle) ||
-              copy.description.toLowerCase().includes(needle)
+              copy.description.toLowerCase().includes(needle) ||
+              permissionDetail(row.key)?.conditions.some((c) => c.toLowerCase().includes(needle))
             );
           }),
         }))
@@ -539,8 +547,9 @@ export function RolePermissionsPicker({
                   </span>
                   <button
                     type="button"
+                    disabled={disabled}
                     onClick={() => setGroup(keys, !allOn)}
-                    className="rounded text-[11px] font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
+                    className="rounded text-[11px] font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25 disabled:hidden"
                   >
                     {allOn ? "Clear all" : "Select all"}
                   </button>
@@ -548,6 +557,7 @@ export function RolePermissionsPicker({
                 <ul className="mt-2 space-y-2">
                   {group.rows.map((row) => {
                     const copy = permissionCopy(row.key);
+                    const detail = permissionDetail(row.key);
                     const id = `perm-${roleId}-${row.key}`;
                     return (
                       <li
@@ -561,6 +571,7 @@ export function RolePermissionsPicker({
                           <Checkbox
                             id={id}
                             checked={checked.has(row.key)}
+                            disabled={disabled}
                             onCheckedChange={() => toggle(row.key)}
                             className="mt-0.5 size-4 shrink-0 accent-primary"
                           />
@@ -568,23 +579,17 @@ export function RolePermissionsPicker({
                             <span className="text-[13px] font-medium text-foreground">
                               {copy.label}
                             </span>
+                            {detail?.unused && (
+                              <span className="text-[11px] text-muted-foreground">
+                                Not used yet
+                              </span>
+                            )}
                             <code className="font-mono text-[10px] text-muted-foreground/70">
                               {row.key}
                             </code>
                           </span>
                         </label>
-                        {copy.description && (
-                          <Tooltip>
-                            <TooltipTrigger
-                              type="button"
-                              aria-label={`About ${copy.label}`}
-                              className="mt-1 mr-1 inline-flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
-                            >
-                              <Info aria-hidden="true" className="size-3.5" />
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">{copy.description}</TooltipContent>
-                          </Tooltip>
-                        )}
+                        {detail && <PermissionDetailTooltip label={copy.label} detail={detail} />}
                       </li>
                     );
                   })}

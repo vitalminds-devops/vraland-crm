@@ -58,11 +58,11 @@ type ContactsTableProps = {
   isLoading?: boolean;
   hasActiveFilters?: boolean;
   canArchive: boolean;
+  canCreate?: boolean;
   canEdit?: boolean;
   canViewDocuments?: boolean;
   canReassign?: boolean;
   onReassignBroker?: (contactId: string) => void;
-  isSuperAdmin?: boolean;
 };
 
 export function ContactsTable({
@@ -76,11 +76,11 @@ export function ContactsTable({
   isLoading = false,
   hasActiveFilters = false,
   canArchive = false,
+  canCreate = false,
   canEdit = false,
   canViewDocuments = false,
   canReassign = false,
   onReassignBroker,
-  isSuperAdmin = false,
 }: ContactsTableProps) {
   const router = useRouter();
   const activeSort = (sort as SortKey | undefined) ?? null;
@@ -187,11 +187,11 @@ export function ContactsTable({
               <ButtonLink href="/contacts" variant="secondary">
                 Clear filters
               </ButtonLink>
-            ) : (
+            ) : canCreate ? (
               <ButtonLink href="/contacts/new" variant="primary">
                 Add contact
               </ButtonLink>
-            )
+            ) : undefined
           }
         />
       </div>
@@ -281,7 +281,6 @@ export function ContactsTable({
                   canArchive={canArchive}
                   canReassign={canReassign}
                   onReassignBroker={onReassignBroker}
-                  isSuperAdmin={isSuperAdmin}
                 />
               </TableRow>
             ))}

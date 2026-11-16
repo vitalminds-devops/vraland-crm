@@ -57,18 +57,6 @@ async function readDiskUsage(): Promise<SystemPerformance["disk"]> {
   }
 }
 
-export type SystemHealthStatus = "healthy" | "attention" | "critical";
-
-export type SystemHealth = {
-  status: SystemHealthStatus;
-  /** Short verdict, e.g. "Running smoothly". */
-  headline: string;
-  /** One sentence that says what to do about it, if anything. */
-  detail: string;
-  /** Readings at or above the 80% line, named in `detail`. */
-  pressures: { label: "CPU" | "Memory" | "Disk"; percent: number }[];
-};
-
 export async function getSystemPerformance(): Promise<SystemPerformance> {
   const cpus = os.cpus();
   const cores = cpus.length;

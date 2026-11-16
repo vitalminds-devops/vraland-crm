@@ -4,6 +4,7 @@ import { BackButton } from "@/components/common/back-button";
 import { PageContainer } from "@/components/common/page-container";
 import { PageHeader } from "@/components/common/page-header";
 import { PropertyAccessEditor } from "@/features/properties";
+import { accessPageMode } from "@/features/properties/lib/access-page-mode";
 import {
   getPropertyInventory,
   getPropertyInventoryForGrants,
@@ -15,7 +16,7 @@ import {
 } from "@/features/properties/queries/property-access.queries";
 import { listParkingSlots } from "@/features/properties/queries/parking.queries";
 import { requirePagePermission } from "@/lib/permissions/authorization";
-import { canGrantUnitAccess, hasUnrestrictedInventoryAccess } from "@/lib/permissions/policy";
+import { hasUnrestrictedInventoryAccess } from "@/lib/permissions/policy";
 
 /** "Who can see this property": which brokers and agents see it, and which floors and units. */
 export default async function PropertyAccessPage({
@@ -27,17 +28,21 @@ export default async function PropertyAccessPage({
 }) {
   const context = await requirePagePermission("properties.view");
   const [{ id }, query] = await Promise.all([params, searchParams]);
-  // Only people who can grant access manage it; everyone else reads the units on the property page.
-  if (!canGrantUnitAccess(context)) redirect(`/properties/${id}#floors-units`);
+  // Granters manage access, "See everyone's property access" reads it; everyone else reads the units.
+  const mode = accessPageMode(context);
+  if (!mode) redirect(`/properties/${id}#floors-units`);
 
   const inventory = await getPropertyInventory(context, id);
   if (!inventory.property) notFound();
   const property = inventory.property;
 
-  const editor = await loadEditor(context, id, query.user ?? null, {
-    floorIds: inventory.floors.map((floor) => floor.id),
-    unitIds: inventory.units.map((unit) => unit.id),
-  });
+  const editor =
+    mode === "edit"
+      ? await loadEditor(context, id, query.user ?? null, {
+          floorIds: inventory.floors.map((floor) => floor.id),
+          unitIds: inventory.units.map((unit) => unit.id),
+        })
+      : await loadViewer(id);
 
   return (
     <PageContainer>
@@ -59,9 +64,24 @@ export default async function PropertyAccessPage({
         parkingSlots={editor.parkingSlots}
         grant={editor.grant}
         canGrantEveryProperty={editor.canGrantEveryProperty}
+        readOnly={mode === "view"}
       />
     </PageContainer>
   );
+}
+
+/** View only: who has access and how much; none of the grant tools. */
+async function loadViewer(propertyId: string) {
+  return {
+    users: [],
+    grants: await listPropertyGrants(propertyId),
+    selectedUserId: null,
+    floors: [],
+    units: [],
+    parkingSlots: [],
+    grant: null,
+    canGrantEveryProperty: false,
+  };
 }
 
 async function loadEditor(
