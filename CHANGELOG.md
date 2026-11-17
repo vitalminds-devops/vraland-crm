@@ -45,6 +45,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - Buttons for actions a user can't complete are hidden: Add contact, Edit, notes and Add details on contacts; Reassign broker without "Reassign a contact's broker"; Edit, Archive and unit controls on properties outside the user's reach. Only Super Administrators see the option to override the won-sale lock.
 
+### Security
+- Updated Next.js from 16.4.2 to 16.4.6 to fix a published security advisory.
+
 ## [0.3.0] - 2026-11-16
 
 ### Added

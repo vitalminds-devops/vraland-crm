@@ -44,6 +44,7 @@ const nextConfig: NextConfig = {
     root: path.join(__dirname),
   },
   experimental: {
+    agentUpgrade: "security",
     serverActions: {
       // Agent onboarding sends up to 5 files of 15MB in one action.
       bodySizeLimit: "80mb",
