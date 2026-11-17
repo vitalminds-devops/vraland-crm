@@ -44,7 +44,7 @@ export function DeletedUsersTable({ users }: { users: DeletedUser[] }) {
       const result = await setUserDeleted({ id: user.id, deleted: false });
       setRestoringId(null);
       if (result.success) {
-        notify(`${nameOf(user)} restored.`, "success");
+        notify(`${nameOf(user)} restored. Activate them to let them sign in.`, "success");
         router.refresh();
       } else {
         notify(result.error.message || "Couldn't restore the user.", "error");

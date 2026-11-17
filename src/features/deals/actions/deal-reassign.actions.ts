@@ -8,6 +8,7 @@ import { activities, auditLogs, dealAgents, deals, users } from "@/db/schema";
 import { eligibleAgent } from "@/features/contacts/lib/assignment";
 import { ActionErrorCode, outOfScope } from "@/lib/errors";
 import { logError } from "@/lib/logger";
+import { InactiveAssigneeError, lockActiveAssignees } from "@/lib/permissions/active-assignees";
 import { canAccessResource, requirePermission } from "@/lib/permissions/authorization";
 import { scopedAgentCondition } from "@/lib/permissions/scope";
 import {
@@ -16,6 +17,7 @@ import {
   failureFrom,
   notFoundFailure,
   success,
+  validationFailure,
   validationFailureFromZod,
   type ActionResult,
 } from "@/lib/types/action-result";
@@ -71,6 +73,7 @@ export async function reassignDealAgent(input: unknown): Promise<ActionResult<{ 
         .for("update");
       if (!deal) return "missing" as const;
       if (deal.primaryAgentUserId === agentUserId) return "same" as const;
+      await lockActiveAssignees(tx, context.organizationId, [agentUserId]);
 
       await tx
         .update(deals)
@@ -116,6 +119,7 @@ export async function reassignDealAgent(input: unknown): Promise<ActionResult<{ 
     if (outcome === "same")
       return failureFrom(ActionErrorCode.INVALID_INPUT, "That agent already has it.");
   } catch (error) {
+    if (error instanceof InactiveAssigneeError) return validationFailure(error.message);
     logError("Deal agent reassignment failed", error, { operation: "deal_reassign_agent" });
     return databaseFailure("The opportunity could not be reassigned because of a database error.");
   }

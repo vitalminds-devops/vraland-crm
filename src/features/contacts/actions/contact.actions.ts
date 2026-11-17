@@ -18,6 +18,7 @@ import {
   type ImportRowResult,
 } from "../lib/contact-duplicates";
 import { findDuplicateMatch } from "../lib/contact-duplicate-lookup";
+import { restoredOwner } from "../lib/restore-owner";
 import { parse } from "csv-parse/sync";
 import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -49,6 +50,7 @@ import { brokerRoleSlugs } from "@/lib/permissions/catalog";
 import { hasOrganizationWideAccess } from "@/lib/permissions/policy";
 import type { AuthorizationContext } from "@/lib/permissions/policy";
 import { dataScopeCondition, scopedAgentCondition } from "@/lib/permissions/scope";
+import { InactiveAssigneeError, lockActiveAssignees } from "@/lib/permissions/active-assignees";
 import { moveOpenDeals } from "@/features/deals/lib/move-open-deals";
 import { enrollByTrigger } from "@/features/marketing/lib/auto-enroll";
 import { openDealForApprovedContact } from "@/features/deals/lib/open-deal";
@@ -73,6 +75,8 @@ export type ContactActionResult = ActionResult<{ id: string }>;
 export interface ContactErrorDetails {
   duplicate?: VisibleDuplicateMatch;
   lockedContacts?: string[];
+  /** Restore needs a new agent: the contact's agent is no longer active. */
+  needsAgent?: boolean;
 }
 
 /** A duplicate as shown to the caller; `contact` is null when it is outside their access. */
@@ -315,6 +319,7 @@ async function insertContact(
     });
     return success({ id });
   } catch (error) {
+    if (error instanceof InactiveAssigneeError) return validationFailure(error.message);
     return contactWriteError(error);
   }
 }
@@ -341,6 +346,7 @@ async function inSavepoint<T>(
     });
   } catch (error) {
     if (error === rowFailed && failed) return failed;
+    if (error instanceof InactiveAssigneeError) return validationFailure(error.message);
     throw error;
   }
 }
@@ -359,12 +365,15 @@ async function insertContactRow(
   try {
     let brokerUserId: string | null = null;
     if (value.assignedAgentId) {
+      await lockActiveAssignees(tx, context.organizationId, [value.assignedAgentId]);
       const [agent] = await tx
         .select({ brokerId: users.brokerId })
         .from(users)
         .where(eq(users.id, value.assignedAgentId))
         .limit(1);
       brokerUserId = agent?.brokerId ?? value.assignedAgentId;
+      // The agent's lock keeps their broker from changing; now hold the broker too.
+      await lockActiveAssignees(tx, context.organizationId, [brokerUserId]);
     }
 
     const [record] = await tx
@@ -467,6 +476,7 @@ async function insertContactRow(
     });
     return success({ id: record.id, contactCode: record.contactCode });
   } catch (error) {
+    if (error instanceof InactiveAssigneeError) throw error;
     return databaseFailure(describeWriteError(error));
   }
 }
@@ -650,12 +660,15 @@ export async function updateContact(id: string, input: ContactInput): Promise<Co
 
       let brokerUserId = before.brokerUserId;
       if (value.assignedAgentId && value.assignedAgentId !== before.assignedUserId) {
+        await lockActiveAssignees(tx, context.organizationId, [value.assignedAgentId]);
         const [agent] = await tx
           .select({ brokerId: users.brokerId })
           .from(users)
           .where(eq(users.id, value.assignedAgentId))
           .limit(1);
         brokerUserId = agent?.brokerId ?? value.assignedAgentId;
+        if (brokerUserId !== before.brokerUserId)
+          await lockActiveAssignees(tx, context.organizationId, [brokerUserId]);
       }
 
       await tx
@@ -759,6 +772,7 @@ export async function updateContact(id: string, input: ContactInput): Promise<Co
     revalidatePath("/contacts");
     return success({ id });
   } catch (error) {
+    if (error instanceof InactiveAssigneeError) return validationFailure(error.message);
     return contactWriteError(error);
   }
 }
@@ -868,13 +882,26 @@ export async function archiveContact(id: string): Promise<ContactActionResult> {
   }
 }
 
-/** Reverse `archiveContact` by clearing `deleted_at` and logging the change. */
-export async function restoreContact(id: string): Promise<ContactActionResult> {
+/**
+ * Reverse `archiveContact` by clearing `deleted_at` and logging the change. When its agent is no
+ * longer active, `newAgentId` names who takes it over.
+ */
+export async function restoreContact(
+  id: string,
+  newAgentId?: string,
+): Promise<ContactActionResult> {
   let context: AuthorizationContext;
   try {
     context = await requirePermission("contacts.delete");
   } catch {
     return failure(permissionDenied("You can't restore contacts."));
+  }
+  if (newAgentId !== undefined) {
+    if (!z.uuid().safeParse(newAgentId).success) return validationFailure("Select an agent.");
+    if (!context.permissions.has("contacts.reassign_broker"))
+      return failure(permissionDenied("You don't have permission to reassign this contact."));
+    if (!(await validateAssignee(context, newAgentId)))
+      return validationFailure("Select an active agent or broker.");
   }
   const scope = hasOrganizationWideAccess(context)
     ? undefined
@@ -897,6 +924,8 @@ export async function restoreContact(id: string): Promise<ContactActionResult> {
           mobilePhone1: contacts.mobilePhone1,
           mobilePhone2: contacts.mobilePhone2,
           mobilePhone3: contacts.mobilePhone3,
+          assignedUserId: contacts.assignedUserId,
+          brokerUserId: contacts.brokerUserId,
         })
         .from(contacts)
         .where(and(eq(contacts.id, id), eq(contacts.organizationId, context.organizationId), scope))
@@ -908,9 +937,18 @@ export async function restoreContact(id: string): Promise<ContactActionResult> {
         excludeContactId: id,
       });
       if (duplicate?.kind === "exact") return duplicate;
+      const owner = await restoredOwner(tx, {
+        organizationId: context.organizationId,
+        actorUserId: context.userId,
+        contactId: id,
+        assignedUserId: before.assignedUserId,
+        brokerUserId: before.brokerUserId,
+        newAgentId,
+      });
+      if (!owner) return "needs_agent" as const;
       await tx
         .update(contacts)
-        .set({ deletedAt: null, updatedAt: new Date() })
+        .set({ deletedAt: null, ...owner, updatedAt: new Date() })
         .where(
           and(
             eq(contacts.id, id),
@@ -931,13 +969,23 @@ export async function restoreContact(id: string): Promise<ContactActionResult> {
         action: "update",
         entityType: "contact",
         entityId: id,
-        oldValues: { deletedAt: before.deletedAt.toISOString() },
-        newValues: { deletedAt: null },
+        ...buildChangeSet(
+          {
+            deletedAt: before.deletedAt.toISOString(),
+            assignedUserId: before.assignedUserId,
+            brokerUserId: before.brokerUserId,
+          },
+          { deletedAt: null, ...owner },
+        ),
       });
       return true;
     });
     if (!restored) return failure(conflict("Contact is not archived."));
     if (restored === "expired") return failure(conflict("Expired lead. Add it as a new contact."));
+    if (restored === "needs_agent")
+      return validationFailure("Its agent is no longer active. Choose who takes it over.", {
+        needsAgent: true,
+      } satisfies ContactErrorDetails);
     if (restored !== true)
       return failureFrom(
         ActionErrorCode.DUPLICATE,
@@ -951,6 +999,7 @@ export async function restoreContact(id: string): Promise<ContactActionResult> {
     revalidatePath(`/contacts/${id}`);
     return success({ id });
   } catch (error) {
+    if (error instanceof InactiveAssigneeError) return validationFailure(error.message);
     return contactWriteError(error);
   }
 }
@@ -1284,6 +1333,7 @@ export async function reassignContactBroker(input: unknown): Promise<ReassignCon
   let result: { reassignedCount: number; skippedCount: number; lockedContacts: string[] };
   try {
     result = await db.transaction(async (tx) => {
+      await lockActiveAssignees(tx, context.organizationId, [toBrokerUserId]);
       // Lock the contacts' deals first, so none can be won between the check and the move.
       const dealRows = await tx
         .select({ contactId: dealContacts.contactId, status: deals.status })
@@ -1357,6 +1407,7 @@ export async function reassignContactBroker(input: unknown): Promise<ReassignCon
       return { reassignedCount, skippedCount, lockedContacts };
     });
   } catch (error) {
+    if (error instanceof InactiveAssigneeError) return validationFailure(error.message);
     if (!(error instanceof WonSalesLocked)) throw error;
     return failureFrom(
       ActionErrorCode.CONFLICT,

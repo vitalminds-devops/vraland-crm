@@ -13,6 +13,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - "Reassign agent" on an opportunity's page moves it to another agent, with a reason. On a Won opportunity the commission moves too.
 
 ### Changed
+- A restored user comes back inactive; activate them to let them sign in.
 - Deploying no longer runs database migrations; run them by hand before deploying.
 
 - Tasks can only be assigned to active users within the assigner's data access.
@@ -31,6 +32,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - The "Approve contacts" and "Manage settings" permissions. Neither ever did anything: contacts are approved automatically, and there are no organization settings to manage.
 
 ### Fixed
+- When a user is deactivated or archived, only an active agent or broker can take over their work, and records they only broker can only go to someone who can be a broker.
+- Handing over a user's work now also moves the opportunities they are a co-agent on, and every moved contact, opportunity, task and viewing appears in the audit log.
+- A contact, opportunity, task or viewing can no longer be assigned to a user at the same moment they are deactivated or archived.
+- A restored or reactivated user no longer reports to a broker who has since left; that link is cleared.
+- Restoring an archived contact whose agent has left asks for a new agent, and its open opportunities move with it.
 - Pipeline cards show the agent's initials instead of repeating the contact's.
 - Pipeline cards in Won, Lost or Cancelled no longer show the close date as overdue; overdue now follows Manila time.
 - A lead moved back from Opportunity can be moved to Opportunity again with the units and parking it still holds.

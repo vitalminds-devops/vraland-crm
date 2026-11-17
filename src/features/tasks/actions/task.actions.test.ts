@@ -5,11 +5,16 @@ const mocks = vi.hoisted(() => ({
   set: vi.fn(),
   returned: [] as unknown[],
   rows: [] as unknown[][],
+  // Rows the assignee lock finds: none means they are no longer active.
+  locked: [{ id: "user" }] as unknown[],
+  inserted: vi.fn(),
   permissions: ["records.view_own"],
 }));
 vi.mock("@/db", () => {
   const chain: Record<string, unknown> = {};
-  for (const name of ["from", "where", "values"]) chain[name] = () => chain;
+  for (const name of ["from", "where", "orderBy"]) chain[name] = () => chain;
+  chain.values = (values: unknown) => (mocks.inserted(values), chain);
+  chain.for = async () => mocks.locked;
   chain.limit = async () => mocks.rows.shift() ?? [{ id: "user", title: "Old" }];
   chain.set = (values: unknown) => (mocks.set(values), chain);
   chain.returning = async () => mocks.returned;
@@ -44,6 +49,8 @@ beforeEach(() => {
   mocks.reachable = true;
   mocks.set.mockReset();
   mocks.rows = [];
+  mocks.locked = [{ id: "user" }];
+  mocks.inserted.mockReset();
   mocks.permissions = ["records.view_own"];
   mocks.returned = [{ title: "Call Ana", contactId: null, dealId: null }];
 });
@@ -82,7 +89,9 @@ it("refuses to assign a task outside the user's data access", async () => {
 });
 
 it("keeps an existing out-of-reach assignee editable when it is unchanged", async () => {
-  mocks.rows = [[{ assignedUserId: outsider }]];
+  // Unchanged, so the assignee is not re-checked even if they are no longer active.
+  mocks.rows = [[{ assignedUserId: outsider }], [{ assignedUserId: outsider, title: "Old" }]];
+  mocks.locked = [];
   expect(await updateTask(id, { ...input, assignedUserId: outsider })).toMatchObject({
     success: true,
   });
@@ -92,4 +101,16 @@ it("keeps an existing out-of-reach assignee editable when it is unchanged", asyn
 it("creates an unassigned task without an assignee check", async () => {
   mocks.returned = [{ id: "new" }];
   expect(await createTask(input)).toMatchObject({ success: true });
+});
+
+it("refuses an assignee who stopped being active before the task was written", async () => {
+  // Allowed when checked, but a handover deactivated them before the lock.
+  mocks.rows = [[outsiderRow]];
+  mocks.locked = [];
+  mocks.permissions = ["records.view_all"];
+  expect(await createTask({ ...input, assignedUserId: outsider })).toMatchObject({
+    success: false,
+    error: { code: "VALIDATION_ERROR", message: "Select an active agent." },
+  });
+  expect(mocks.inserted).not.toHaveBeenCalled();
 });

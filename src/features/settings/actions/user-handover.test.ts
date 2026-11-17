@@ -5,10 +5,11 @@ const mocks = vi.hoisted(() => ({
   reads: [] as unknown[][],
   txReads: [] as unknown[][],
   updates: [] as { table: unknown; values: Record<string, unknown> }[],
+  inserts: [] as unknown[],
 }));
 function query(rows: unknown) {
   const chain: Record<string, unknown> = {};
-  for (const name of ["from", "where", "innerJoin", "limit"]) chain[name] = () => chain;
+  for (const name of ["from", "where", "innerJoin", "limit", "for"]) chain[name] = () => chain;
   chain.then = (resolve: (value: unknown) => unknown) => Promise.resolve(rows).then(resolve);
   return chain;
 }
@@ -26,9 +27,14 @@ vi.mock("@/db", () => ({
           },
         }),
         insert: () => ({
-          values: () => Object.assign(Promise.resolve([]), { onConflictDoNothing: async () => [] }),
+          values: (values: unknown) => {
+            mocks.inserts.push(values);
+            return Object.assign(Promise.resolve([]), { onConflictDoNothing: async () => [] });
+          },
         }),
-        delete: () => ({ where: async () => [] }),
+        delete: () => ({
+          where: () => Object.assign(Promise.resolve([]), { returning: async () => [] }),
+        }),
       }),
   },
 }));
@@ -51,12 +57,14 @@ const receiver = "00000000-0000-4000-8000-000000000002";
 
 beforeEach(() => {
   mocks.updates = [];
+  mocks.inserts = [];
+  mocks.txReads = [];
   // The user being changed, then "not a Super Administrator".
   mocks.reads = [[{ id: leaving, status: "active", deletedAt: null }], []];
 });
 
 it("refuses to deactivate someone with open work when nobody takes it over", async () => {
-  mocks.txReads = [[{ n: 3 }], [{ n: 1 }], [{ n: 0 }], [{ n: 0 }], [{ n: 0 }]];
+  mocks.txReads = [[{ id: leaving }], [{ n: 3 }], [{ n: 1 }], [{ n: 0 }], [{ n: 0 }], [{ n: 0 }]];
   expect(await setUserStatus({ id: leaving, status: "inactive", handoverToUserId: "" })).toEqual(
     expect.objectContaining({
       success: false,
@@ -70,12 +78,14 @@ it("refuses to deactivate someone with open work when nobody takes it over", asy
 
 it("hands contacts, deals and team to the chosen user, then deactivates", async () => {
   mocks.txReads = [
+    [{ id: leaving }],
     [{ n: 2 }],
     [{ n: 1 }],
     [{ n: 0 }],
     [{ n: 0 }],
     [{ n: 0 }],
     [{ id: receiver }],
+    [],
     [{ id: "deal", brokerUserId: null }],
   ];
   expect(
@@ -90,7 +100,7 @@ it("hands contacts, deals and team to the chosen user, then deactivates", async 
 });
 
 it("archives someone with no open work without asking for a handover", async () => {
-  mocks.txReads = [[{ n: 0 }], [{ n: 0 }], [{ n: 0 }], [{ n: 0 }], [{ n: 0 }]];
+  mocks.txReads = [[{ id: leaving }], [{ n: 0 }], [{ n: 0 }], [{ n: 0 }], [{ n: 0 }], [{ n: 0 }]];
   expect((await setUserDeleted({ id: leaving, deleted: true })).success).toBe(true);
   expect(mocks.updates.map((u) => u.table)).toEqual([users]);
 });
@@ -100,11 +110,50 @@ it("restores an archived user without a handover", async () => {
   expect((await setUserDeleted({ id: leaving, deleted: false })).success).toBe(true);
 });
 
+const oldBroker = "00000000-0000-4000-8000-000000000008";
+const userWrite = () => mocks.updates.find((u) => u.table === users)?.values;
+const auditRow = () => mocks.inserts.at(-1) as Record<string, Record<string, unknown>>;
+
+it("restores as inactive and drops a broker who is no longer active", async () => {
+  mocks.reads = [[{ id: leaving, status: "active", deletedAt: new Date() }], []];
+  mocks.txReads = [[{ brokerId: oldBroker, brokerActive: false }]];
+  expect((await setUserDeleted({ id: leaving, deleted: false })).success).toBe(true);
+  expect(userWrite()).toMatchObject({ deletedAt: null, status: "inactive", brokerId: null });
+  expect(auditRow().oldValues).toMatchObject({ status: "active", brokerId: oldBroker });
+  expect(auditRow().newValues).toMatchObject({ status: "inactive", brokerId: null });
+});
+
+it("restores and keeps an active broker", async () => {
+  mocks.reads = [[{ id: leaving, status: "active", deletedAt: new Date() }], []];
+  mocks.txReads = [[{ brokerId: oldBroker, brokerActive: true }]];
+  expect((await setUserDeleted({ id: leaving, deleted: false })).success).toBe(true);
+  expect(userWrite()).toMatchObject({ status: "inactive" });
+  expect(userWrite()).not.toHaveProperty("brokerId");
+  expect(auditRow().newValues).not.toHaveProperty("brokerId");
+});
+
+it("reactivates and drops an archived broker", async () => {
+  mocks.reads = [[{ id: leaving, status: "inactive", deletedAt: null }], []];
+  mocks.txReads = [[{ brokerId: oldBroker, brokerActive: false }]];
+  expect((await setUserStatus({ id: leaving, status: "active" })).success).toBe(true);
+  expect(userWrite()).toMatchObject({ status: "active", brokerId: null });
+  expect(auditRow().oldValues).toEqual({ status: "inactive", brokerId: oldBroker });
+});
+
+it("reactivates and keeps a valid broker", async () => {
+  mocks.reads = [[{ id: leaving, status: "inactive", deletedAt: null }], []];
+  mocks.txReads = [[{ brokerId: oldBroker, brokerActive: true }]];
+  expect((await setUserStatus({ id: leaving, status: "active" })).success).toBe(true);
+  expect(userWrite()).not.toHaveProperty("brokerId");
+  expect(auditRow().oldValues).toEqual({ status: "inactive" });
+});
+
 const lead = leaving;
 const member = "00000000-0000-4000-8000-000000000003";
 
 it("refuses to hand a team to someone their roles can't report to", async () => {
   mocks.txReads = [
+    [{ id: leaving }],
     [{ n: 0 }],
     [{ n: 0 }],
     [{ n: 1 }],
@@ -135,6 +184,7 @@ it("refuses to hand a team to someone their roles can't report to", async () => 
 
 it("lets a team member take over: they lead the team and report to nobody", async () => {
   mocks.txReads = [
+    [{ id: leaving }],
     [{ n: 0 }],
     [{ n: 0 }],
     [{ n: 2 }],
@@ -163,12 +213,14 @@ it("lets a team member take over: they lead the team and report to nobody", asyn
 it("gives handed-over records the receiver's own broker", async () => {
   const receiversBroker = "00000000-0000-4000-8000-000000000009";
   mocks.txReads = [
+    [{ id: leaving }],
     [{ n: 1 }],
     [{ n: 1 }],
     [{ n: 0 }],
     [{ n: 0 }],
     [{ n: 0 }],
     [{ id: receiver, brokerId: receiversBroker }],
+    [],
     [{ id: "deal", brokerUserId: "old-broker" }],
   ];
   expect(
@@ -187,7 +239,7 @@ it("gives handed-over records the receiver's own broker", async () => {
 });
 
 it("names open tasks and upcoming viewings in the handover prompt", async () => {
-  mocks.txReads = [[{ n: 0 }], [{ n: 0 }], [{ n: 0 }], [{ n: 2 }], [{ n: 1 }]];
+  mocks.txReads = [[{ id: leaving }], [{ n: 0 }], [{ n: 0 }], [{ n: 0 }], [{ n: 2 }], [{ n: 1 }]];
   expect(await setUserStatus({ id: leaving, status: "inactive", handoverToUserId: "" })).toEqual(
     expect.objectContaining({
       error: expect.objectContaining({
@@ -199,16 +251,83 @@ it("names open tasks and upcoming viewings in the handover prompt", async () => 
 
 it("moves open tasks and the deal's primary agent row to the receiver", async () => {
   mocks.txReads = [
+    [{ id: leaving }],
     [{ n: 0 }],
     [{ n: 1 }],
     [{ n: 0 }],
     [{ n: 1 }],
     [{ n: 0 }],
     [{ id: receiver, brokerId: null }],
+    [],
     [{ id: "deal", brokerUserId: null }],
   ];
   expect(
     (await setUserStatus({ id: leaving, status: "inactive", handoverToUserId: receiver })).success,
   ).toBe(true);
   expect(mocks.updates.find((u) => u.table === tasks)?.values.assignedUserId).toBe(receiver);
+});
+
+it("refuses a receiver who isn't an active agent or broker", async () => {
+  // The receiver query finds nobody: an admin or finance user fails the agent rule.
+  mocks.txReads = [
+    [{ id: leaving }],
+    [{ n: 1 }],
+    [{ n: 0 }],
+    [{ n: 0 }],
+    [{ n: 0 }],
+    [{ n: 0 }],
+    [],
+  ];
+  expect(
+    await setUserStatus({ id: leaving, status: "inactive", handoverToUserId: receiver }),
+  ).toEqual(
+    expect.objectContaining({
+      error: expect.objectContaining({
+        message: "The person taking over must be an active agent or broker.",
+      }),
+    }),
+  );
+  expect(mocks.updates).toEqual([]);
+});
+
+it("refuses to hand brokered records to someone who can't broker", async () => {
+  mocks.txReads = [
+    [{ id: leaving }],
+    [{ n: 1 }],
+    [{ n: 1 }],
+    [{ n: 0 }],
+    [{ n: 0 }],
+    [{ n: 0 }],
+    [{ id: receiver, brokerId: null, canBroker: false }],
+    [{ id: leaving }],
+  ];
+  expect(
+    await setUserStatus({ id: leaving, status: "inactive", handoverToUserId: receiver }),
+  ).toEqual(
+    expect.objectContaining({
+      error: expect.objectContaining({
+        message: "The person taking over can't be a broker for their records. Choose a broker.",
+      }),
+    }),
+  );
+  expect(mocks.updates).toEqual([]);
+});
+
+it("hands brokered records to a broker", async () => {
+  mocks.txReads = [
+    [{ id: leaving }],
+    [{ n: 1 }],
+    [{ n: 1 }],
+    [{ n: 0 }],
+    [{ n: 0 }],
+    [{ n: 0 }],
+    [{ id: receiver, brokerId: null, canBroker: true }],
+    [],
+  ];
+  expect(
+    (await setUserStatus({ id: leaving, status: "inactive", handoverToUserId: receiver })).success,
+  ).toBe(true);
+  expect(
+    mocks.updates.filter((u) => u.table === contacts).map((u) => u.values.brokerUserId),
+  ).toContain(receiver);
 });

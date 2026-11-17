@@ -4,6 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { activities, auditLogs, properties, tasks, users } from "@/db/schema";
+import { InactiveAssigneeError, lockActiveAssignees } from "@/lib/permissions/active-assignees";
 import { canAccessResource, requirePermission } from "@/lib/permissions/authorization";
 import { taskSchema, taskStatusSchema } from "../schemas/task.schema";
 import { grantedPropertyCondition } from "@/lib/permissions/property-access";
@@ -84,6 +85,7 @@ export async function createTask(input: unknown): Promise<TaskResult> {
     return failureFrom(ActionErrorCode.NOT_FOUND, "One or more related records are unavailable.");
   try {
     const id = await db.transaction(async (tx) => {
+      await lockActiveAssignees(tx, context.organizationId, [v.assignedUserId || context.userId]);
       const [row] = await tx
         .insert(tasks)
         .values({
@@ -131,6 +133,7 @@ export async function createTask(input: unknown): Promise<TaskResult> {
     revalidatePath("/dashboard");
     return success({ id });
   } catch (error) {
+    if (error instanceof InactiveAssigneeError) return validationFailure(error.message);
     logError("Task creation failed", error, { operation: "task_create" });
     return databaseFailure("The task could not be saved.");
   }
@@ -234,6 +237,8 @@ export async function updateTask(id: string, input: unknown): Promise<TaskResult
         .where(and(eq(tasks.id, id), eq(tasks.organizationId, context.organizationId)))
         .limit(1);
       if (!before) throw new Error("Task not found");
+      if (values.assignedUserId !== before.assignedUserId)
+        await lockActiveAssignees(tx, context.organizationId, [values.assignedUserId]);
       await tx
         .update(tasks)
         .set({ ...values, updatedAt: new Date() })
@@ -263,6 +268,7 @@ export async function updateTask(id: string, input: unknown): Promise<TaskResult
     refreshTasks();
     return success({ id });
   } catch (error) {
+    if (error instanceof InactiveAssigneeError) return validationFailure(error.message);
     logError("Task update failed", error, { operation: "task_update" });
     return databaseFailure("The task could not be saved.");
   }

@@ -1,9 +1,10 @@
 "use server";
-import { and, count, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
-import { activeLead } from "@/features/contacts/lib/contact-stage-sql";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
+import { HandoverError, handOverWork } from "../lib/user-handover";
+import { staleBrokerChange } from "../lib/user-restore";
 import {
   allowsTeamMember,
   assignedBrokerRoles,
@@ -16,17 +17,11 @@ import {
   authSession,
   authUser,
   auditLogs,
-  calendarEventUsers,
   commissionLinks,
-  contacts,
-  dealAgents,
-  deals,
   documents,
   permissions,
-  propertyViewings,
   rolePermissions,
   roles,
-  tasks,
   userRoles,
   users,
 } from "@/db/schema";
@@ -89,290 +84,6 @@ async function revokeUserSessions(
     );
 }
 
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
-
-/** What a user still carries: contacts they own or broker, open deals they work, agents under them. */
-/** Open tasks: the ones still to do. */
-const openTask = and(inArray(tasks.status, ["todo", "in_progress"]), isNull(tasks.deletedAt));
-/** Viewings still ahead, by their event's start. */
-const upcomingViewing = (now: Date) =>
-  and(
-    inArray(propertyViewings.status, ["scheduled", "confirmed"]),
-    sql`exists (select 1 from "calendar_events" e where e."id" = ${propertyViewings.eventId} and e."start_at" >= ${now})`,
-  );
-
-/**
- * What a user still carries: open leads they own or broker (converted and inactive contacts stay
- * with them, as history), open deals, agents under them, open tasks and upcoming viewings.
- */
-async function openWork(tx: Tx, organizationId: string, userId: string) {
-  // One query at a time: a transaction is a single connection.
-  const [owned] = await tx
-    .select({ n: count() })
-    .from(contacts)
-    .where(
-      and(
-        eq(contacts.organizationId, organizationId),
-        isNull(contacts.deletedAt),
-        activeLead,
-        or(eq(contacts.assignedUserId, userId), eq(contacts.brokerUserId, userId)),
-      ),
-    );
-  const [working] = await tx
-    .select({ n: count() })
-    .from(deals)
-    .where(
-      and(
-        eq(deals.organizationId, organizationId),
-        isNull(deals.deletedAt),
-        eq(deals.status, "open"),
-        or(eq(deals.primaryAgentUserId, userId), eq(deals.brokerUserId, userId)),
-      ),
-    );
-  const [team] = await tx
-    .select({ n: count() })
-    .from(users)
-    .where(
-      and(
-        eq(users.organizationId, organizationId),
-        isNull(users.deletedAt),
-        eq(users.brokerId, userId),
-        ne(users.id, userId),
-      ),
-    );
-  const [todo] = await tx
-    .select({ n: count() })
-    .from(tasks)
-    .where(
-      and(eq(tasks.organizationId, organizationId), eq(tasks.assignedUserId, userId), openTask),
-    );
-  const [ahead] = await tx
-    .select({ n: count() })
-    .from(propertyViewings)
-    .where(and(eq(propertyViewings.agentUserId, userId), upcomingViewing(new Date())));
-  return {
-    contacts: owned.n,
-    deals: working.n,
-    team: team.n,
-    tasks: todo.n,
-    viewings: ahead.n,
-  };
-}
-
-function openWorkMessage(work: Awaited<ReturnType<typeof openWork>>) {
-  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
-  const parts = [
-    work.contacts && plural(work.contacts, "contact"),
-    work.deals && plural(work.deals, "open deal"),
-    work.team && plural(work.team, "team member"),
-    work.tasks && plural(work.tasks, "open task"),
-    work.viewings && plural(work.viewings, "upcoming viewing"),
-  ].filter(Boolean);
-  return parts.length ? `Choose who takes over their ${parts.join(", ")}.` : null;
-}
-
-/** Thrown inside a transaction to roll it back with a message for the person. */
-class HandoverError extends Error {}
-
-/**
- * Whether the leaver's team may report to the receiver: each member's role must suit the receiver's
- * (the same rules as editing a team), and the receiver must not report up to one of them.
- */
-async function checkTeamHandover(
-  tx: Tx,
-  organizationId: string,
-  fromUserId: string,
-  toUserId: string,
-) {
-  const people = await tx
-    .select({ id: users.id, brokerId: users.brokerId })
-    .from(users)
-    .where(eq(users.organizationId, organizationId));
-  const members = people
-    .filter(
-      (person) =>
-        person.brokerId === fromUserId && person.id !== fromUserId && person.id !== toUserId,
-    )
-    .map((person) => person.id);
-  const roleRows = await tx
-    .select({ userId: userRoles.userId, slug: roles.slug })
-    .from(userRoles)
-    .innerJoin(roles, eq(userRoles.roleId, roles.id))
-    .where(inArray(userRoles.userId, [toUserId, ...members]));
-  const slugsOf = (id: string) =>
-    roleRows.filter((row) => row.userId === id).map((row) => row.slug.toLowerCase());
-  const receiverSlugs = slugsOf(toUserId);
-  const fits = (member: string) =>
-    receiverSlugs.includes(masterBrokerRoleSlug)
-      ? reportsToMasterBroker(slugsOf(member))
-      : receiverSlugs.some((slug) =>
-          (brokerIdTargetRoleSlugs as readonly string[]).includes(slug),
-        ) && allowsTeamMember(receiverSlugs, slugsOf(member));
-  if (!members.every(fits))
-    throw new HandoverError(
-      "Some of their team can't report to the person taking over. Reassign them first, or choose someone else.",
-    );
-  // Walk up from the receiver: reaching one of the members would make a reporting loop.
-  const brokerOf = new Map(people.map((person) => [person.id, person.brokerId]));
-  const seen = new Set<string>();
-  let next = brokerOf.get(toUserId) ?? null;
-  while (next && next !== fromUserId && !seen.has(next)) {
-    if (members.includes(next))
-      throw new HandoverError(
-        "The person taking over reports to someone in their team. Choose someone else.",
-      );
-    seen.add(next);
-    next = brokerOf.get(next) ?? null;
-  }
-}
-
-/**
- * Before a user is deactivated or archived: refuse while they still own work, unless `toUserId`
- * is given, in which case that work moves to them.
- */
-async function handOverWork(
-  tx: Tx,
-  organizationId: string,
-  actorUserId: string,
-  fromUserId: string,
-  toUserId: string | null | undefined,
-) {
-  const work = await openWork(tx, organizationId, fromUserId);
-  const pending = openWorkMessage(work);
-  if (!pending) return null;
-  if (!toUserId) throw new HandoverError(pending);
-  if (toUserId === fromUserId) throw new HandoverError("Choose someone else to take over.");
-  const [receiver] = await tx
-    .select({ id: users.id, brokerId: users.brokerId })
-    .from(users)
-    .where(
-      and(
-        eq(users.id, toUserId),
-        eq(users.organizationId, organizationId),
-        eq(users.status, "active"),
-        isNull(users.deletedAt),
-      ),
-    )
-    .limit(1);
-  if (!receiver) throw new HandoverError("The person taking over must be an active user.");
-  // A team member taking over stops reporting to the person leaving; nobody is their own broker.
-  const receiverBrokerId = receiver.brokerId === fromUserId ? null : receiver.brokerId;
-  if (work.team) await checkTeamHandover(tx, organizationId, fromUserId, toUserId);
-
-  const now = new Date();
-  // Records follow the receiver, with the receiver's broker, as when an agent is assigned anywhere else.
-  const brokerForReceiver = receiverBrokerId ?? toUserId;
-  await tx
-    .update(contacts)
-    .set({ assignedUserId: toUserId, brokerUserId: brokerForReceiver, updatedAt: now })
-    .where(
-      and(
-        eq(contacts.organizationId, organizationId),
-        isNull(contacts.deletedAt),
-        activeLead,
-        eq(contacts.assignedUserId, fromUserId),
-      ),
-    );
-  // Records where the leaver was only the broker go to the receiver, who now leads that team.
-  await tx
-    .update(contacts)
-    .set({ brokerUserId: toUserId, updatedAt: now })
-    .where(
-      and(
-        eq(contacts.organizationId, organizationId),
-        isNull(contacts.deletedAt),
-        activeLead,
-        eq(contacts.brokerUserId, fromUserId),
-      ),
-    );
-  const openDeal = and(
-    eq(deals.organizationId, organizationId),
-    isNull(deals.deletedAt),
-    eq(deals.status, "open"),
-  );
-  const worked = await tx
-    .select({ id: deals.id, brokerUserId: deals.brokerUserId })
-    .from(deals)
-    .where(and(openDeal, eq(deals.primaryAgentUserId, fromUserId)));
-  if (worked.length) {
-    const ids = worked.map((deal) => deal.id);
-    await tx
-      .update(deals)
-      .set({
-        primaryAgentUserId: toUserId,
-        brokerUserId: brokerForReceiver,
-        updatedBy: actorUserId,
-        updatedAt: now,
-      })
-      .where(inArray(deals.id, ids));
-    // The deal's agent list names the primary agent too; the same swap as moveOpenDeals.
-    await tx
-      .delete(dealAgents)
-      .where(and(inArray(dealAgents.dealId, ids), eq(dealAgents.role, "primary")));
-    await tx
-      .insert(dealAgents)
-      .values(ids.map((dealId) => ({ dealId, userId: toUserId, role: "primary" })))
-      .onConflictDoNothing();
-    await tx.insert(auditLogs).values(
-      worked.map((deal) => ({
-        organizationId,
-        actorUserId,
-        action: "update",
-        entityType: "deal",
-        entityId: deal.id,
-        oldValues: { primaryAgentUserId: fromUserId, brokerUserId: deal.brokerUserId },
-        newValues: { primaryAgentUserId: toUserId, brokerUserId: brokerForReceiver },
-      })),
-    );
-  }
-  await tx
-    .update(deals)
-    .set({ brokerUserId: toUserId, updatedAt: now })
-    .where(and(openDeal, eq(deals.brokerUserId, fromUserId)));
-  await tx
-    .update(users)
-    .set({ brokerId: toUserId, updatedAt: now })
-    .where(
-      and(
-        eq(users.organizationId, organizationId),
-        eq(users.brokerId, fromUserId),
-        ne(users.id, fromUserId),
-        ne(users.id, toUserId),
-      ),
-    );
-  if (receiver.brokerId === fromUserId)
-    await tx.update(users).set({ brokerId: null, updatedAt: now }).where(eq(users.id, toUserId));
-  await tx
-    .update(tasks)
-    .set({ assignedUserId: toUserId, updatedAt: now })
-    .where(
-      and(eq(tasks.organizationId, organizationId), eq(tasks.assignedUserId, fromUserId), openTask),
-    );
-  const viewings = await tx
-    .update(propertyViewings)
-    .set({ agentUserId: toUserId, updatedAt: now })
-    .where(and(eq(propertyViewings.agentUserId, fromUserId), upcomingViewing(now)))
-    .returning({ eventId: propertyViewings.eventId });
-  if (viewings.length) {
-    const eventIds = viewings.map((viewing) => viewing.eventId);
-    // The agent is also the event's attendee, which is how it shows on their calendar.
-    await tx
-      .delete(calendarEventUsers)
-      .where(
-        and(
-          inArray(calendarEventUsers.eventId, eventIds),
-          eq(calendarEventUsers.userId, fromUserId),
-        ),
-      );
-    await tx
-      .insert(calendarEventUsers)
-      .values(
-        eventIds.map((eventId) => ({ eventId, userId: toUserId, attendeeStatus: "accepted" })),
-      )
-      .onConflictDoNothing();
-  }
-  return { ...work, toUserId };
-}
 
 async function isSuperAdministratorUser(userId: string) {
   const [row] = await db
@@ -1049,9 +760,13 @@ export async function setUserStatus(input: unknown): Promise<SettingsResult> {
         status !== "active"
           ? await handOverWork(tx, context.organizationId, context.userId, id, handoverToUserId)
           : null;
+      const broker =
+        status === "active"
+          ? await staleBrokerChange(tx, context.organizationId, id)
+          : { oldValues: {}, newValues: {} };
       await tx
         .update(users)
-        .set({ status, updatedAt: new Date() })
+        .set({ status, ...broker.newValues, updatedAt: new Date() })
         .where(and(eq(users.id, id), eq(users.organizationId, context.organizationId)));
       if (status !== "active") await revokeUserSessions(tx, id);
       await tx.insert(auditLogs).values({
@@ -1060,8 +775,8 @@ export async function setUserStatus(input: unknown): Promise<SettingsResult> {
         action: "update",
         entityType: "user",
         entityId: id,
-        oldValues: { status: target.status },
-        newValues: { status, handover },
+        oldValues: { status: target.status, ...broker.oldValues },
+        newValues: { status, handover, ...broker.newValues },
       });
     });
     refresh("/settings/users");
@@ -1235,7 +950,7 @@ export async function setUserDeleted(input: unknown): Promise<SettingsResult> {
     return failure(permissionDenied("You don't have permission to manage users."));
   if (id === context.userId) return validationFailure("You cannot archive your own account.");
   const [target] = await db
-    .select({ id: users.id, deletedAt: users.deletedAt })
+    .select({ id: users.id, status: users.status, deletedAt: users.deletedAt })
     .from(users)
     .where(and(eq(users.id, id), eq(users.organizationId, context.organizationId)))
     .limit(1);
@@ -1251,9 +966,19 @@ export async function setUserDeleted(input: unknown): Promise<SettingsResult> {
       const handover = deleted
         ? await handOverWork(tx, context.organizationId, context.userId, id, handoverToUserId)
         : null;
+      const broker = deleted
+        ? { oldValues: {}, newValues: {} }
+        : await staleBrokerChange(tx, context.organizationId, id);
+      // A restored user comes back inactive; an admin activates them deliberately.
+      const restored = deleted ? {} : { status: "inactive" };
       await tx
         .update(users)
-        .set({ deletedAt: deleted ? new Date() : null, updatedAt: new Date() })
+        .set({
+          deletedAt: deleted ? new Date() : null,
+          ...restored,
+          ...broker.newValues,
+          updatedAt: new Date(),
+        })
         .where(and(eq(users.id, id), eq(users.organizationId, context.organizationId)));
       if (deleted) await revokeUserSessions(tx, id);
       await tx.insert(auditLogs).values({
@@ -1262,8 +987,12 @@ export async function setUserDeleted(input: unknown): Promise<SettingsResult> {
         action: deleted ? "delete" : "restore",
         entityType: "user",
         entityId: id,
-        oldValues: { deletedAt: target.deletedAt },
-        newValues: { deletedAt: deleted ? "now" : null, handover },
+        oldValues: {
+          deletedAt: target.deletedAt,
+          ...(deleted ? {} : { status: target.status }),
+          ...broker.oldValues,
+        },
+        newValues: { deletedAt: deleted ? "now" : null, handover, ...restored, ...broker.newValues },
       });
     });
     refresh("/settings/users");

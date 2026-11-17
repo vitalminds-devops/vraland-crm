@@ -28,6 +28,7 @@ import {
 import { canAccessResource, requirePermission } from "@/lib/permissions/authorization";
 import { eligibleAgent } from "@/features/contacts/lib/assignment";
 import { formatContactName } from "@/features/contacts/lib/helpers";
+import { InactiveAssigneeError, lockActiveAssignees } from "@/lib/permissions/active-assignees";
 import { scopedAgentCondition } from "@/lib/permissions/scope";
 import { dealTitleFor } from "../lib/deal-label";
 import { recordDealCommissions } from "../lib/record-commissions";
@@ -153,6 +154,10 @@ export async function createDealForContact(
   }
   try {
     const id = await db.transaction(async (tx) => {
+      await lockActiveAssignees(tx, context.organizationId, [
+        primaryAgentUserId,
+        contact.brokerUserId,
+      ]);
       const [row] = await tx
         .insert(deals)
         .values({
@@ -216,6 +221,7 @@ export async function createDealForContact(
     revalidatePath(`/contacts/${contactId}`);
     return success({ id });
   } catch (error) {
+    if (error instanceof InactiveAssigneeError) return validationFailure(error.message);
     logError("Deal creation failed", error, { operation: "deal_create_for_contact" });
     return databaseFailure("The opportunity could not be created because of a database error.");
   }

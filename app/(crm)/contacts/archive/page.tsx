@@ -21,7 +21,10 @@ import {
   formatContactName,
   formatDate,
 } from "@/features/contacts";
-import { listArchivedContacts } from "@/features/contacts/queries/contact.queries";
+import {
+  listArchivedContacts,
+  listRestoreAgents,
+} from "@/features/contacts/queries/contact.queries";
 import { requirePagePermission } from "@/lib/permissions/authorization";
 
 const PAGE_SIZES = [10, 25, 50, 100];
@@ -39,11 +42,10 @@ export default async function ArchivedContactsPage({
   const q = await searchParams;
   const page = Math.max(1, Math.floor(Number(q.page) || 1));
   const pageSize = PAGE_SIZES.includes(Number(q.pageSize)) ? Number(q.pageSize) : 25;
-  const data = await listArchivedContacts({
-    page,
-    search: q.search,
-    pageSize,
-  });
+  const [data, agents] = await Promise.all([
+    listArchivedContacts({ page, search: q.search, pageSize }),
+    listRestoreAgents(),
+  ]);
 
   const pageHref = (target: number) =>
     `/contacts/archive?${new URLSearchParams({
@@ -129,7 +131,7 @@ export default async function ArchivedContactsPage({
                             Expired
                           </span>
                         ) : (
-                          <RestoreContactButton contactId={row.id} />
+                          <RestoreContactButton contactId={row.id} agents={agents} />
                         )}
                       </div>
                     </TableCell>

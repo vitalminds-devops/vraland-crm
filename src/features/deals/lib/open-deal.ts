@@ -12,6 +12,7 @@ import {
   pipelineStages,
 } from "@/db/schema";
 import { dealTitleFor } from "./deal-label";
+import { lockActiveAssignees } from "@/lib/permissions/active-assignees";
 import type { AuthorizationContext } from "@/lib/permissions/policy";
 import { failure, success, type ActionResult } from "@/lib/types/action-result";
 import { conflict, outOfScope } from "@/lib/errors";
@@ -102,6 +103,10 @@ export async function openDealForApprovedContact(
   const title = input.title?.trim()
     ? input.title.trim()
     : dealTitleFor(input.contactName, development?.name ?? null);
+  await lockActiveAssignees(tx, context.organizationId, [
+    input.primaryAgentUserId,
+    contact.brokerUserId,
+  ]);
 
   const [row] = await tx
     .insert(deals)

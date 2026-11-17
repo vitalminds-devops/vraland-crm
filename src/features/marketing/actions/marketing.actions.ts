@@ -17,6 +17,7 @@ import {
   smsTemplates,
   tasks,
 } from "@/db/schema";
+import { lockActiveAssignees } from "@/lib/permissions/active-assignees";
 import { requirePermission } from "@/lib/permissions/authorization";
 import { dataScopeCondition } from "@/lib/permissions/scope";
 import { getEmailProvider, getSmsProvider } from "@/lib/messaging/providers";
@@ -753,15 +754,19 @@ export async function executeNextStep(enrollmentId: string): Promise<MarketingRe
               .where(eq(deals.id, enrollment.dealId))
               .limit(1)
           : [];
-      await db.insert(tasks).values({
-        organizationId: c.organizationId,
-        title: step.taskTitle || "Automated follow-up",
-        taskType: "follow_up",
-        priority: "medium",
-        assignedUserId: owner?.userId ?? deal?.userId ?? c.userId,
-        createdBy: c.userId,
-        contactId: enrollment.contactId,
-        dealId: enrollment.dealId,
+      const assignedUserId = owner?.userId ?? deal?.userId ?? c.userId;
+      await db.transaction(async (tx) => {
+        await lockActiveAssignees(tx, c.organizationId, [assignedUserId]);
+        await tx.insert(tasks).values({
+          organizationId: c.organizationId,
+          title: step.taskTitle || "Automated follow-up",
+          taskType: "follow_up",
+          priority: "medium",
+          assignedUserId,
+          createdBy: c.userId,
+          contactId: enrollment.contactId,
+          dealId: enrollment.dealId,
+        });
       });
     } else if (step.actionType === "send_email" || step.actionType === "send_sms") {
       const provider = step.actionType === "send_email" ? getEmailProvider() : getSmsProvider();

@@ -238,6 +238,18 @@ function contactAssigneeCondition(context: Awaited<ReturnType<typeof requirePerm
   return and(eligibleAgent(context.organizationId), scopedAgentCondition(context))!;
 }
 
+/** Agents who can take over a restored contact; empty when the caller can't reassign. */
+export async function listRestoreAgents() {
+  const context = await requirePermission("contacts.delete");
+  if (!context.permissions.has("contacts.reassign_broker")) return [];
+  return db
+    .select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+    .from(users)
+    .where(contactAssigneeCondition(context))
+    .orderBy(asc(users.firstName))
+    .limit(500);
+}
+
 export async function getContactOptions() {
   const context = await requirePermission("contacts.view");
   await ensurePipelineStages(context.organizationId);

@@ -18,6 +18,7 @@ import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, CardContent, CardToolbar } from "@/components/ui/card";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { notify } from "@/components/ui/toast";
+import { agentRoleNames, agentRoleSlugs } from "@/features/contacts/lib/contact-options";
 import { agentRoleSlug, roleLabel, superAdministratorRoleSlug } from "@/lib/permissions/catalog";
 
 import { setUserDeleted, setUserStatus } from "../actions/settings.actions";
@@ -224,8 +225,18 @@ export function UsersWorkspace({
       router.refresh();
     });
   };
+  // Only people normal assignment accepts (the rule `eligibleAgent` applies on the server).
   const handoverOptions = statusChange
-    ? users.filter((user) => user.status === "active" && user.id !== statusChange.user.id)
+    ? users.filter(
+        (user) =>
+          user.status === "active" &&
+          user.id !== statusChange.user.id &&
+          user.roles.some(
+            (role) =>
+              (agentRoleSlugs as readonly string[]).includes(role.slug.toLowerCase()) ||
+              (agentRoleNames as readonly string[]).includes(role.name.trim().toLowerCase()),
+          ),
+      )
     : [];
 
   const statusCopy = statusChange

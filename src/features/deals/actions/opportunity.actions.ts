@@ -39,6 +39,7 @@ import {
 } from "@/lib/types/action-result";
 import { conflict, permissionDenied } from "@/lib/errors";
 import { grantedUnitsCondition } from "@/lib/permissions/property-access";
+import { InactiveAssigneeError } from "@/lib/permissions/active-assignees";
 import type { AuthorizationContext } from "@/lib/permissions/policy";
 import { getPropertiesForDevelopment } from "@/features/properties/queries/property-floor-unit.queries";
 import { listParkingSlots } from "@/features/properties/queries/parking.queries";
@@ -768,6 +769,7 @@ export async function addOpportunityForContact(dealId: string): Promise<DealActi
     revalidatePath(`/contacts/${source.contactId}`);
     return { success: true, data: { id: opened.data.id } } as DealActionResult;
   } catch (error) {
+    if (error instanceof InactiveAssigneeError) return validationFailure(error.message);
     logError("Another opportunity failed", error, { operation: "opportunity_add_another" });
     return databaseFailure("The opportunity could not be opened.");
   }

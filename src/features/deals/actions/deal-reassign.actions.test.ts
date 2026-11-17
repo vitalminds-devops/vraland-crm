@@ -17,6 +17,7 @@ function query(rows: () => unknown[]) {
     from: () => q,
     where: () => q,
     limit: () => q,
+    orderBy: () => q,
     for: async () => rows(),
     then: (resolve: (rows: unknown[]) => unknown) => Promise.resolve(rows()).then(resolve),
   };

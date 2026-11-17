@@ -12,6 +12,7 @@ import {
   users,
 } from "@/db/schema";
 import { dealAgents as dealAgentsTable } from "@/db/schema/deals";
+import { InactiveAssigneeError, lockActiveAssignees } from "@/lib/permissions/active-assignees";
 import { canAccessResource, requirePermission } from "@/lib/permissions/authorization";
 import { hasOrganizationWideAccess } from "@/lib/permissions/policy";
 import { canEditViewing, type ViewingReference } from "@/lib/permissions/viewings";
@@ -294,6 +295,7 @@ export async function createViewing(input: unknown): Promise<CalendarResult> {
   const endAt = fromManilaDateTimeLocal(v.endAt);
   try {
     const id = await db.transaction(async (tx) => {
+      await lockActiveAssignees(tx, context.organizationId, [viewingAgentId]);
       if (await viewingClash(tx, viewingAgentId, startAt, endAt)) return null;
       const [event] = await tx
         .insert(calendarEvents)
@@ -371,6 +373,7 @@ export async function createViewing(input: unknown): Promise<CalendarResult> {
     refresh();
     return success({ id });
   } catch (error) {
+    if (error instanceof InactiveAssigneeError) return validationFailure(error.message);
     logError("Viewing creation failed", error, { operation: "viewing_create" });
     return databaseFailure("The viewing could not be scheduled.");
   }

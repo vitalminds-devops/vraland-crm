@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/db", () => {
   const query = (rows: unknown) => {
     const chain: Record<string, unknown> = {};
-    for (const name of ["from", "where", "innerJoin", "limit"]) chain[name] = () => chain;
+    for (const name of ["from", "where", "innerJoin", "limit", "orderBy"]) chain[name] = () => chain;
     chain.for = async (mode: string) => (mocks.locks.push(mode), rows);
     chain.then = (resolve: (value: unknown) => unknown) => Promise.resolve(rows).then(resolve);
     return chain;
@@ -52,16 +52,17 @@ beforeEach(() => {
 });
 
 it("refuses inside the transaction when a contact's deal is won, before touching any contact", async () => {
-  // The target broker, then the locked deals: one already won.
-  mocks.reads = [[{ id: broker }], [{ contactId: ids[0], status: "won" }]];
+  // The target broker, its lock, then the locked deals: one already won.
+  mocks.reads = [[{ id: broker }], [{ id: broker }], [{ contactId: ids[0], status: "won" }]];
   const result = await reassignContactBroker(input);
   expect(result.success).toBe(false);
-  expect(mocks.locks).toEqual(["share"]);
+  expect(mocks.locks).toEqual(["share", "share"]);
   expect(mocks.inserts).toEqual([]);
 });
 
 it("locks the contacts and moves each one not already on the broker", async () => {
   mocks.reads = [
+    [{ id: broker }],
     [{ id: broker }],
     [{ contactId: ids[0], status: "open" }],
     [
@@ -71,6 +72,6 @@ it("locks the contacts and moves each one not already on the broker", async () =
   ];
   const result = await reassignContactBroker(input);
   expect(result).toMatchObject({ success: true, data: { reassignedCount: 1, skippedCount: 1 } });
-  expect(mocks.locks).toEqual(["share", "update"]);
+  expect(mocks.locks).toEqual(["share", "share", "update"]);
   expect(mocks.inserts).toEqual([contactBrokerHistory]);
 });
