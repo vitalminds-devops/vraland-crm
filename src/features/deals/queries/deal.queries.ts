@@ -13,7 +13,6 @@ import {
   dealStageHistory,
   developments,
   floors,
-  leadSources,
   lostReasons,
   offers,
   pipelineStages,
@@ -403,7 +402,6 @@ export async function getDeal(id: string) {
       brokerFirstName: brokerUser.firstName,
       brokerLastName: brokerUser.lastName,
       lostReasonName: lostReasons.name,
-      sourceName: leadSources.name,
       reservationPaid: dealReservationPaid,
       firstMonthPaid: dealFirstMonthPaid,
     })
@@ -414,7 +412,6 @@ export async function getDeal(id: string) {
     .leftJoin(users, eq(deals.primaryAgentUserId, users.id))
     .leftJoin(brokerUser, eq(deals.brokerUserId, brokerUser.id))
     .leftJoin(lostReasons, eq(deals.lostReasonId, lostReasons.id))
-    .leftJoin(leadSources, eq(deals.sourceId, leadSources.id))
     .where(eq(deals.id, id))
     .limit(1);
   if (!record) return null;

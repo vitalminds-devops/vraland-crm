@@ -49,7 +49,6 @@ export default async function AgentReportPage({
       active="/reports/agents"
       filters={filters}
       options={options}
-      showSource={false}
     >
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard

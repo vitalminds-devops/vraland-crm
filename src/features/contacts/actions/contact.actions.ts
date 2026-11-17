@@ -36,7 +36,6 @@ import {
   dealContacts,
   deals,
   developments,
-  leadSources,
   properties,
   propertyViewings,
   roles,
@@ -56,6 +55,7 @@ import { openDealForApprovedContact } from "@/features/deals/lib/open-deal";
 import { buildChangeSet, isEmptyChangeSet } from "@/lib/audit/redact";
 import { contactSchema, noteSchema, type ContactInput } from "../schemas/contact.schema";
 import { logError } from "@/lib/logger";
+import { writeErrorMessage } from "../lib/contact-write-error";
 import {
   databaseFailure,
   failure,
@@ -98,16 +98,19 @@ function describeWriteError(error: unknown): string {
   const databaseError = cause as {
     code?: string;
     constraint?: string;
+    column?: string;
     detail?: string;
     message?: string;
   };
+  const specific = writeErrorMessage(databaseError ?? {});
+  if (specific) return specific;
   const diagnostic = [
     databaseError?.code && `PostgreSQL ${databaseError.code}`,
     databaseError?.constraint && `constraint: ${databaseError.constraint}`,
     databaseError?.detail || databaseError?.message,
   ]
     .filter(Boolean)
-    .join(" â€” ");
+    .join(" — ");
   return process.env.NODE_ENV === "development" && diagnostic
     ? `Contact could not be saved: ${diagnostic}`
     : "Couldn't save contact. Try again.";
@@ -141,24 +144,11 @@ async function checkContactReferences(
   context: AuthorizationContext,
   value: Pick<
     ContactInput,
-    "assignedAgentId" | "leadSourceId" | "preferredDevelopmentId" | "preferredUnitIds"
+    "assignedAgentId" | "preferredDevelopmentId" | "preferredUnitIds"
   >,
 ): Promise<string | null> {
   if (!(await validateAssignee(context, value.assignedAgentId || null)))
     return "Select an active agent or broker.";
-  if (value.leadSourceId) {
-    const [source] = await db
-      .select({ id: leadSources.id })
-      .from(leadSources)
-      .where(
-        and(
-          eq(leadSources.id, value.leadSourceId),
-          eq(leadSources.organizationId, context.organizationId),
-        ),
-      )
-      .limit(1);
-    if (!source) return "Select a lead source from your organization.";
-  }
   const developmentId = value.preferredDevelopmentId || null;
   const unitIds = value.preferredUnitIds ?? [];
   if (developmentId) {
@@ -415,24 +405,12 @@ async function insertContactRow(
         assignedUserId: value.assignedAgentId || null,
         brokerUserId,
         purchaseType: value.purchaseType,
-        commercialPartyRole: value.purchaseType === "commercial" ? value.commercialPartyRole : null,
-        businessOwnerName:
-          value.purchaseType === "commercial" &&
-          ["business_owner", "both"].includes(value.commercialPartyRole ?? "")
-            ? value.businessOwnerName
-            : null,
-        authorizedRepresentativeName:
-          value.purchaseType === "commercial" &&
-          ["authorized_representative", "both"].includes(value.commercialPartyRole ?? "")
-            ? value.authorizedRepresentativeName
-            : null,
         financingPreference: value.financingPreference,
         financingPreferenceOther:
           value.financingPreference === "other" ? value.financingPreferenceOther : null,
         bankName: value.financingPreference === "bank_financing" ? value.bankName : null,
         budgetMin: value.budgetMin === null ? null : String(value.budgetMin),
         budgetMax: value.budgetMax === null ? null : String(value.budgetMax),
-        leadSourceId: value.leadSourceId,
         preferredDevelopmentId: value.preferredDevelopmentId || null,
         preferredUnitIds: value.preferredUnitIds,
         notes: value.notes,
@@ -537,15 +515,11 @@ function contactAuditRow(stored: Record<string, unknown>): Record<string, unknow
     assignedUserId: stored.assignedUserId ?? null,
     brokerUserId: stored.brokerUserId ?? null,
     purchaseType: stored.purchaseType ?? null,
-    commercialPartyRole: stored.commercialPartyRole ?? null,
-    businessOwnerName: stored.businessOwnerName ?? null,
-    authorizedRepresentativeName: stored.authorizedRepresentativeName ?? null,
     financingPreference: stored.financingPreference ?? null,
     financingPreferenceOther: stored.financingPreferenceOther ?? null,
     bankName: stored.bankName ?? null,
     budgetMin: auditMoney(stored.budgetMin),
     budgetMax: auditMoney(stored.budgetMax),
-    leadSourceId: stored.leadSourceId ?? null,
     preferredDevelopmentId: stored.preferredDevelopmentId ?? null,
     preferredUnitIds: sortMethods(stored.preferredUnitIds),
     notes: stored.notes ?? null,
@@ -569,7 +543,6 @@ function contactAuditInput(
   value: ContactInput,
   brokerUserId: string | null,
 ): Record<string, unknown> {
-  const commercial = value.purchaseType === "commercial";
   return {
     firstName: value.firstName,
     middleName: value.middleName ?? null,
@@ -602,22 +575,12 @@ function contactAuditInput(
     assignedUserId: value.assignedAgentId,
     brokerUserId,
     purchaseType: value.purchaseType ?? null,
-    commercialPartyRole: commercial ? (value.commercialPartyRole ?? null) : null,
-    businessOwnerName:
-      commercial && ["business_owner", "both"].includes(value.commercialPartyRole ?? "")
-        ? (value.businessOwnerName ?? null)
-        : null,
-    authorizedRepresentativeName:
-      commercial && ["authorized_representative", "both"].includes(value.commercialPartyRole ?? "")
-        ? (value.authorizedRepresentativeName ?? null)
-        : null,
     financingPreference: value.financingPreference ?? null,
     financingPreferenceOther:
       value.financingPreference === "other" ? (value.financingPreferenceOther ?? null) : null,
     bankName: value.financingPreference === "bank_financing" ? (value.bankName ?? null) : null,
     budgetMin: auditMoney(value.budgetMin),
     budgetMax: auditMoney(value.budgetMax),
-    leadSourceId: value.leadSourceId ?? null,
     preferredDevelopmentId: value.preferredDevelopmentId ?? null,
     preferredUnitIds: sortMethods(value.preferredUnitIds),
     notes: value.notes ?? null,
@@ -672,7 +635,6 @@ export async function updateContact(id: string, input: ContactInput): Promise<Co
   const referenceError = await checkContactReferences(context, {
     // An unchanged agent is kept even if they no longer qualify as a new pick.
     assignedAgentId: existing.assignedUserId === value.assignedAgentId ? "" : value.assignedAgentId,
-    leadSourceId: value.leadSourceId,
     preferredDevelopmentId: value.preferredDevelopmentId,
     preferredUnitIds: value.preferredUnitIds,
   });
@@ -731,25 +693,12 @@ export async function updateContact(id: string, input: ContactInput): Promise<Co
           assignedUserId: value.assignedAgentId,
           brokerUserId,
           purchaseType: value.purchaseType,
-          commercialPartyRole:
-            value.purchaseType === "commercial" ? value.commercialPartyRole : null,
-          businessOwnerName:
-            value.purchaseType === "commercial" &&
-            ["business_owner", "both"].includes(value.commercialPartyRole ?? "")
-              ? value.businessOwnerName
-              : null,
-          authorizedRepresentativeName:
-            value.purchaseType === "commercial" &&
-            ["authorized_representative", "both"].includes(value.commercialPartyRole ?? "")
-              ? value.authorizedRepresentativeName
-              : null,
           financingPreference: value.financingPreference,
           financingPreferenceOther:
             value.financingPreference === "other" ? value.financingPreferenceOther : null,
           bankName: value.financingPreference === "bank_financing" ? value.bankName : null,
           budgetMin: value.budgetMin === null ? null : String(value.budgetMin),
           budgetMax: value.budgetMax === null ? null : String(value.budgetMax),
-          leadSourceId: value.leadSourceId,
           preferredDevelopmentId: value.preferredDevelopmentId,
           preferredUnitIds: value.preferredUnitIds,
           notes: value.notes,

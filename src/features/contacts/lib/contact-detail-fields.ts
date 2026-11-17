@@ -38,9 +38,6 @@ export type ContactDetailView = {
   currentPostalCode: string | null;
   currentCountry: string | null;
   purchaseType: string | null;
-  commercialPartyRole: string | null;
-  businessOwnerName: string | null;
-  authorizedRepresentativeName: string | null;
   budgetMin: string | null;
   budgetMax: string | null;
   employmentType: string | null;
@@ -194,22 +191,6 @@ export function buildPurchasePreferenceGroups(c: ContactDetailView): InfoFieldGr
         },
       ],
     },
-    ...(c.purchaseType === "commercial"
-      ? [
-          {
-            heading: "Business details",
-            fields: [
-              { label: "Who is buying?", value: titleize(c.commercialPartyRole) },
-              ...(["business_owner", "both"].includes(c.commercialPartyRole ?? "")
-                ? [{ label: "Owner name", value: c.businessOwnerName }]
-                : []),
-              ...(["authorized_representative", "both"].includes(c.commercialPartyRole ?? "")
-                ? [{ label: "Representative", value: c.authorizedRepresentativeName }]
-                : []),
-            ],
-          },
-        ]
-      : []),
   ];
 }
 

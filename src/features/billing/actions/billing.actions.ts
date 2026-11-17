@@ -11,7 +11,7 @@ import {
   NO_RESERVATION_MESSAGE,
 } from "@/features/deals/lib/stage-transitions";
 import { lockDealForInventory, syncBillingInventory } from "../lib/billing-inventory";
-import { dealFirstMonthPaid, dealReservationPaid } from "../lib/deal-payment";
+import { dealFirstMonthPaid, dealReservationFee, dealReservationPaid } from "../lib/deal-payment";
 import { stagesAfterPayment } from "../lib/payment-stage";
 import { changeDealStage } from "@/features/deals/actions/deal.actions";
 import { logError } from "@/lib/logger";
@@ -232,14 +232,28 @@ export async function recordPayment(
         .where(and(eq(bills.id, value.billId), eq(bills.organizationId, context.organizationId)))
         .for("update");
       if (!bill) return { kind: "missing" as const };
-      const [{ paid }] = await tx
-        .select({ paid: paidSum(bill.id) })
+      const [{ paid, reservationFee, reservationPaid }] = await tx
+        .select({
+          paid: paidSum(bill.id),
+          reservationFee: dealReservationFee,
+          reservationPaid: sql<string>`coalesce((select sum(${payments.amount}) from ${payments}
+            where ${payments.billId} = ${bill.id} and ${payments.deletedAt} is null
+              and ${payments.classification} = 'reservation'), 0)`,
+        })
         .from(bills)
+        .innerJoin(deals, eq(deals.id, bills.dealId))
         .where(eq(bills.id, bill.id));
       const balance = Number(bill.total) - Number(paid);
       if (value.amount > balance + 0.004) return { kind: "over" as const, balance };
       if (value.classification === "full_payment" && value.amount < balance - 0.004)
         return { kind: "short" as const, balance };
+      // A Reservation may go above the fee but must cover what is left of it (or the balance, if smaller).
+      const reservationDue = Math.min(
+        Number(reservationFee ?? 0) - Number(reservationPaid ?? 0),
+        balance,
+      );
+      if (value.classification === "reservation" && value.amount < reservationDue - 0.004)
+        return { kind: "reservation-short" as const, due: reservationDue };
 
       const [payment] = await tx
         .insert(payments)
@@ -303,6 +317,10 @@ export async function recordPayment(
     if (outcome.kind === "short")
       return validationFailure(
         `A full payment must cover the whole ₱${outcome.balance.toLocaleString("en-PH", { minimumFractionDigits: 2 })} balance. Use Monthly for part of it.`,
+      );
+    if (outcome.kind === "reservation-short")
+      return validationFailure(
+        `A reservation must be at least the ₱${outcome.due.toLocaleString("en-PH", { minimumFractionDigits: 2 })} reservation fee.`,
       );
     if (outcome.kind === "over")
       return validationFailure(

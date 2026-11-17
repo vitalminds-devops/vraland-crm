@@ -60,7 +60,6 @@ import {
   civilStatusOptions,
   channelInputMeta,
   channelValueFields,
-  commercialPartyRoles,
   employmentTypes,
   genderOptions,
   mobilePhoneFields,
@@ -145,7 +144,6 @@ type ContactFormProps = {
     dealStages: MoveStage[];
     /** Developments offered as the contact's "Preferred development". */
     developments: { id: string; name: string }[];
-    leadSources: { id: string; name: string }[];
   };
 };
 
@@ -222,11 +220,6 @@ export function ContactForm({
   });
   const canEditDeal = initialDeal ? canUpdateDeal : canCreateDeal;
   const showDealFields = canEditDeal && hasUsableStage;
-  const purchaseType = useWatch({ control, name: "purchaseType" });
-  const commercialPartyRole = useWatch({
-    control,
-    name: "commercialPartyRole",
-  });
   const assignedAgentId = useWatch({ control, name: "assignedAgentId" });
   const birthDate = useWatch({ control, name: "birthDate" });
   const [today] = useState(manilaToday);
@@ -743,49 +736,6 @@ export function ContactForm({
               </FormSelect>
             </FormField>
           </FormRow>
-          {purchaseType === "commercial" && (
-            <>
-              <FormField label="Who is buying?" error={errors.commercialPartyRole?.message}>
-                <FormSelect {...register("commercialPartyRole")}>
-                  <option value="">Select a role</option>
-                  {commercialPartyRoles.map((role) => (
-                    <option key={role} value={role}>
-                      {role === "business_owner"
-                        ? "Business owner"
-                        : role === "authorized_representative"
-                          ? "Authorized representative"
-                          : "Both"}
-                    </option>
-                  ))}
-                </FormSelect>
-              </FormField>
-              <FormRow>
-                {(commercialPartyRole === "business_owner" || commercialPartyRole === "both") && (
-                  <FormField label="Owner name" required error={errors.businessOwnerName?.message}>
-                    <Input
-                      {...register("businessOwnerName")}
-                      className={`${formInputClass} uppercase placeholder:normal-case`}
-                      autoCapitalize="characters"
-                    />
-                  </FormField>
-                )}
-                {(commercialPartyRole === "authorized_representative" ||
-                  commercialPartyRole === "both") && (
-                  <FormField
-                    label="Representative"
-                    required
-                    error={errors.authorizedRepresentativeName?.message}
-                  >
-                    <Input
-                      {...register("authorizedRepresentativeName")}
-                      className={`${formInputClass} uppercase placeholder:normal-case`}
-                      autoCapitalize="characters"
-                    />
-                  </FormField>
-                )}
-              </FormRow>
-            </>
-          )}
           <FormRow>
             <FormField label="Employment" error={errors.employmentType?.message}>
               <FormSelect {...register("employmentType")}>
@@ -860,20 +810,6 @@ export function ContactForm({
               </FormField>
             )}
           </FormRow>
-          <FormField label="Lead source" error={errors.leadSourceId?.message}>
-            <FormSelect {...register("leadSourceId")}>
-              <option value="">Not specified</option>
-              {initial?.leadSourceId &&
-                !options.leadSources.some((source) => source.id === initial.leadSourceId) && (
-                  <option value={initial.leadSourceId}>Current source</option>
-                )}
-              {options.leadSources.map((source) => (
-                <option key={source.id} value={source.id}>
-                  {source.name}
-                </option>
-              ))}
-            </FormSelect>
-          </FormField>
           {dealError && (
             <p role="alert" className="text-[13px] text-[var(--danger)]">
               {dealError}

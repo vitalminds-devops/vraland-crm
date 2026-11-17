@@ -29,9 +29,6 @@ const contact: ContactDetailView = {
   currentPostalCode: null,
   currentCountry: null,
   purchaseType: "residential",
-  commercialPartyRole: null,
-  businessOwnerName: null,
-  authorizedRepresentativeName: null,
   budgetMin: null,
   budgetMax: "2300000",
   employmentType: "Private Company Employee",
@@ -66,32 +63,11 @@ it("shows selected channels and retains saved numbers from other channels", () =
   expect(fields.find((field) => field.label === "Mobile phone 3")!.value).toBe("+63 917 123 4567");
 });
 
-it("shows budget and purchase type without stale commercial fields for residential buyers", () => {
-  const fields = buildPurchasePreferenceGroups({
-    ...contact,
-    commercialPartyRole: "both",
-    businessOwnerName: "OLD OWNER",
-  }).flatMap((group) => group.fields);
+it("shows budget and purchase type", () => {
+  const fields = buildPurchasePreferenceGroups(contact).flatMap((group) => group.fields);
   expect(fields.map((field) => field.label)).toEqual(["Budget range", "Property type"]);
   expect(fields[0].value).toBeTruthy();
   expect(fields[1].value).toBe("Residential");
-});
-
-it.each([
-  ["business_owner", ["Who is buying?", "Owner name"]],
-  ["authorized_representative", ["Who is buying?", "Representative"]],
-  ["both", ["Who is buying?", "Owner name", "Representative"]],
-])("shows the current form's business fields for %s", (commercialPartyRole, labels) => {
-  const groups = buildPurchasePreferenceGroups({
-    ...contact,
-    purchaseType: "commercial",
-    commercialPartyRole: commercialPartyRole as string,
-  });
-  expect(
-    groups
-      .find((group) => group.heading === "Business details")!
-      .fields.map((field) => field.label),
-  ).toEqual(labels);
 });
 
 it("keeps employment and zero income visible using the current form labels", () => {

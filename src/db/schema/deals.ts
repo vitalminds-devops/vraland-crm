@@ -13,7 +13,7 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
-import { contacts, leadSources } from "./contacts";
+import { contacts } from "./contacts";
 import { organizations, users } from "./organization";
 import { developments, properties, units } from "./properties";
 import { createdAt, updatedAt } from "./shared";
@@ -106,9 +106,6 @@ export const deals = pgTable(
       onDelete: "set null",
     }),
     lostNotes: text("lost_notes"),
-    sourceId: uuid("source_id").references(() => leadSources.id, {
-      onDelete: "set null",
-    }),
     financingType: varchar("financing_type", { length: 20 }),
     cancellationReason: text("cancellation_reason"),
     // The deal's own reservation fee, overriding its units' fees as the total due. Whether it is paid

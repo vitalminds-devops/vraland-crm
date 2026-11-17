@@ -31,11 +31,6 @@ export const purchaseTypeLabels: Record<(typeof purchaseTypes)[number], string> 
   farm: "Farm",
   other: "Other",
 };
-export const commercialPartyRoles = [
-  "business_owner",
-  "authorized_representative",
-  "both",
-] as const;
 export const financingPreferences = [
   "cash",
   "bank_financing",

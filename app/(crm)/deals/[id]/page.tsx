@@ -135,7 +135,6 @@ export default async function DealPage({ params }: { params: Promise<{ id: strin
               <Info label="Expected close" value={date(d.expectedCloseDate)} />
               <Info label="Actual close" value={date(d.actualCloseDate)} />
               <Info label="Type" value={label(d.dealType)} />
-              <Info label="Lead source" value={data.sourceName} />
               <Info label="Primary agent" value={person(data.agentFirstName, data.agentLastName)} />
               <Info label="Broker" value={person(data.brokerFirstName, data.brokerLastName)} />
               {data.lostReasonName && <Info label="Loss reason" value={data.lostReasonName} />}

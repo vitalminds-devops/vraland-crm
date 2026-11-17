@@ -58,7 +58,6 @@ const csvRowSchema = z.object({
   preferred_contact_method: z.string().optional(),
   employment_type: z.string().optional(),
   lifecycle_stage: z.string().optional(),
-  lead_source_id: z.string().uuid().optional(),
   preferred_development_id: z.string().uuid().optional(),
   preferred_unit_id: z.string().uuid().optional(),
   assigned_agent_id: z.string().uuid().optional(),
@@ -76,9 +75,6 @@ const csvRowSchema = z.object({
   current_country: z.string().optional(),
   // Purchase/Property fields
   purchase_type: z.string().optional(),
-  commercial_party_role: z.string().optional(),
-  business_owner_name: z.string().optional(),
-  authorized_representative_name: z.string().optional(),
   financing_preference: z.string().optional(),
   financing_preference_other: z.string().optional(),
   // Additional fields from CSV
@@ -167,10 +163,6 @@ export function parseContactCsvRow(row: Record<string, string>) {
       currentCountry: data.current_country || null,
       // Purchase/Property fields
       purchaseType: (data.purchase_type || null) as ContactInput["purchaseType"],
-      commercialPartyRole: (data.commercial_party_role || null) as
-        "business_owner" | "authorized_representative" | "both" | null,
-      businessOwnerName: data.business_owner_name || null,
-      authorizedRepresentativeName: data.authorized_representative_name || null,
       financingPreference: (data.financing_preference || null) as
         "cash" | "bank_financing" | "pag_ibig" | "in_house_financing" | "other" | null,
       financingPreferenceOther: data.financing_preference_other || null,
@@ -187,7 +179,6 @@ export function parseContactCsvRow(row: Record<string, string>) {
       budgetMin: data.budget_min || null,
       budgetMax: data.budget_max || null,
       // Required fields with defaults for CSV import
-      leadSourceId: null,
       preferredDevelopmentId: data.preferred_development_id || "",
       preferredUnitIds: data.preferred_unit_id ? [data.preferred_unit_id] : [],
       // Approval status
@@ -228,9 +219,6 @@ export function serializeContactsCsv(
     currentPostalCode?: string | null;
     currentCountry?: string | null;
     purchaseType?: string | null;
-    commercialPartyRole?: string | null;
-    businessOwnerName?: string | null;
-    authorizedRepresentativeName?: string | null;
     financingPreference?: string | null;
     financingPreferenceOther?: string | null;
     annualIncome?: string | null;
@@ -272,9 +260,6 @@ export function serializeContactsCsv(
     "current_postal_code",
     "current_country",
     "purchase_type",
-    "commercial_party_role",
-    "business_owner_name",
-    "authorized_representative_name",
     "financing_preference",
     "financing_preference_other",
     "annual_income",
@@ -314,9 +299,6 @@ export function serializeContactsCsv(
     contact.currentPostalCode || "",
     contact.currentCountry || "",
     contact.purchaseType || "",
-    contact.commercialPartyRole || "",
-    contact.businessOwnerName || "",
-    contact.authorizedRepresentativeName || "",
     contact.financingPreference || "",
     contact.financingPreferenceOther || "",
     contact.annualIncome || "",

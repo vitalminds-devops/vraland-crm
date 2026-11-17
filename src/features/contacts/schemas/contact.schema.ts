@@ -3,7 +3,6 @@ import {
   channelRequirementMessages,
   channelValueFields,
   civilStatusOptions,
-  commercialPartyRoles,
   employmentTypes,
   financingPreferences,
   genderOptions,
@@ -96,12 +95,6 @@ export const contactSchema = z
       .union([z.enum(purchaseTypes), z.literal(""), z.null()])
       .optional()
       .transform((v) => v || null),
-    commercialPartyRole: z
-      .union([z.enum(commercialPartyRoles), z.literal(""), z.null()])
-      .optional()
-      .transform((v) => v || null),
-    businessOwnerName: optionalName(180),
-    authorizedRepresentativeName: optionalName(180),
     annualIncome: optionalMoney,
     financingPreference: z
       .union([z.enum(financingPreferences), z.literal(""), z.null()])
@@ -112,10 +105,6 @@ export const contactSchema = z
     assignedAgentId: requiredUuid("Select an agent to assign this contact."),
     budgetMin: optionalMoney,
     budgetMax: optionalMoney,
-    leadSourceId: z
-      .union([z.uuid(), z.literal(""), z.null()])
-      .optional()
-      .transform((value) => value || null),
     // Chosen when the lead becomes an opportunity.
     preferredDevelopmentId: z
       .union([z.uuid(), z.literal(""), z.null()])
@@ -161,29 +150,6 @@ export const contactSchema = z
         path: ["budgetMax"],
         message: "Select a budget range.",
       });
-    }
-    if (v.purchaseType === "commercial") {
-      if (!v.commercialPartyRole)
-        ctx.addIssue({
-          code: "custom",
-          path: ["commercialPartyRole"],
-          message: "Select who is transacting for the business.",
-        });
-      if (["business_owner", "both"].includes(v.commercialPartyRole ?? "") && !v.businessOwnerName)
-        ctx.addIssue({
-          code: "custom",
-          path: ["businessOwnerName"],
-          message: "Enter the business owner's name.",
-        });
-      if (
-        ["authorized_representative", "both"].includes(v.commercialPartyRole ?? "") &&
-        !v.authorizedRepresentativeName
-      )
-        ctx.addIssue({
-          code: "custom",
-          path: ["authorizedRepresentativeName"],
-          message: "Enter the authorized representative's name.",
-        });
     }
     if (v.financingPreference === "other" && !v.financingPreferenceOther)
       ctx.addIssue({

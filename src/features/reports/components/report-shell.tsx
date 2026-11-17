@@ -18,7 +18,7 @@ const tabs = [
 ];
 
 /** The filters every report understands, in a stable order. */
-const filterKeys = ["agent", "source", "development", "propertyType"] as const;
+const filterKeys = ["agent", "development", "propertyType"] as const;
 
 export function ReportShell({
   title,
@@ -28,7 +28,6 @@ export function ReportShell({
   options,
   children,
   extendedFilters = false,
-  showSource = true,
 }: {
   title: string;
   description: string;
@@ -37,7 +36,6 @@ export function ReportShell({
   options: Options;
   children: ReactNode;
   extendedFilters?: boolean;
-  showSource?: boolean;
 }) {
   const query = new URLSearchParams({ from: filters.from, to: filters.to });
   for (const key of filterKeys) {
@@ -109,20 +107,6 @@ export function ReportShell({
         </Field>
         {extendedFilters && (
           <>
-            <Field label="Lead source">
-              <NativeSelect
-                name="source"
-                defaultValue={filters.source ?? ""}
-                className={`${control} pr-9`}
-              >
-                <NativeSelectOption value="">All sources</NativeSelectOption>
-                {options.sources.map((option) => (
-                  <NativeSelectOption key={option.id} value={option.id}>
-                    {option.name}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
-            </Field>
             <Field label="Development">
               <NativeSelect
                 name="development"
@@ -152,22 +136,6 @@ export function ReportShell({
               </NativeSelect>
             </Field>
           </>
-        )}
-        {!extendedFilters && showSource && (
-          <Field label="Lead source">
-            <NativeSelect
-              name="source"
-              defaultValue={filters.source ?? ""}
-              className={`${control} pr-9`}
-            >
-              <NativeSelectOption value="">All sources</NativeSelectOption>
-              {options.sources.map((option) => (
-                <NativeSelectOption key={option.id} value={option.id}>
-                  {option.name}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          </Field>
         )}
         <div className="flex items-end gap-2">
           <Button type="submit" variant="primary" className="h-10">

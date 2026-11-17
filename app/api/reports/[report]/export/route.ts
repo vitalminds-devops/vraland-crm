@@ -69,9 +69,6 @@ const exporters: Record<string, (filters: ReportFilters) => Promise<CsvCell[][]>
     return [
       ["Stage", "Contacts"],
       ...data.funnel.map((stage) => [stage.label, stage.value]),
-      [],
-      ["Source", "Leads", "Won", "Conversion %"],
-      ...data.sources.map((source) => [source.name, source.leads, source.closed, source.rate]),
     ];
   },
 };

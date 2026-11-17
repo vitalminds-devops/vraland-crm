@@ -24,7 +24,6 @@ import {
   contacts,
   deals,
   developments,
-  leadSources,
   organizations,
   pipelineStages,
   properties,
@@ -73,7 +72,7 @@ function excludeSuperAdministrators() {
 export async function getReportOptions() {
   const { context, organizationWide } = await reportContext();
   const userScope = organizationWide ? undefined : scopedAgentCondition(context);
-  const [agentRows, sourceRows, developmentRows, propertyTypeRows] = await Promise.all([
+  const [agentRows, developmentRows, propertyTypeRows] = await Promise.all([
     db
       .select({
         id: users.id,
@@ -92,13 +91,6 @@ export async function getReportOptions() {
         ),
       )
       .orderBy(asc(users.firstName), asc(users.lastName)),
-    db
-      .select({ id: leadSources.id, name: leadSources.name })
-      .from(leadSources)
-      .where(
-        and(eq(leadSources.organizationId, context.organizationId), eq(leadSources.isActive, true)),
-      )
-      .orderBy(asc(leadSources.name)),
     db
       .select({ id: developments.id, name: developments.name })
       .from(developments)
@@ -126,7 +118,6 @@ export async function getReportOptions() {
       id: row.id,
       name: `${row.firstName} ${row.lastName}${row.current ? "" : " (inactive)"}`,
     })),
-    sources: sourceRows,
     developments: developmentRows,
     propertyTypes: propertyTypeRows.map((row) => row.value),
   };
@@ -163,7 +154,6 @@ export async function getSalesReport(filters: ReportFilters, closedLimit = 25) {
     leadNotArchived,
     dealScope,
     filters.agent ? eq(deals.primaryAgentUserId, filters.agent) : undefined,
-    filters.source ? eq(deals.sourceId, filters.source) : undefined,
     propertyFilters,
   );
   const closed = and(
@@ -261,7 +251,6 @@ export async function getForecastReport(filters: ReportFilters) {
     leadNotArchived,
     organizationWide ? undefined : dealScopeFor(context),
     filters.agent ? eq(deals.primaryAgentUserId, filters.agent) : undefined,
-    filters.source ? eq(deals.sourceId, filters.source) : undefined,
     filters.development ? dealInDevelopment(filters.development) : undefined,
     filters.propertyType
       ? sql`exists (select 1 from properties p where p.id = ${deals.propertyId} and p.organization_id = ${context.organizationId} and p.property_type = ${filters.propertyType})`
@@ -519,10 +508,9 @@ export async function getConversionReport(filters: ReportFilters) {
     lt(contacts.createdAt, manilaMidnight(endExclusive(filters.to))),
     contactScope,
     filters.agent ? eq(contacts.assignedUserId, filters.agent) : undefined,
-    filters.source ? eq(contacts.leadSourceId, filters.source) : undefined,
     sql`true ${propertyFilter}`,
   );
-  const [rows, sourceRows, stageRows] = await Promise.all([
+  const [rows, stageRows] = await Promise.all([
     db
       .select({
         leads: countDistinct(contacts.id),
@@ -532,17 +520,6 @@ export async function getConversionReport(filters: ReportFilters) {
       })
       .from(contacts)
       .where(base),
-    db
-      .select({
-        name: sql<string>`coalesce(${leadSources.name}, 'Not specified')`,
-        leads: countDistinct(contacts.id),
-        closed: sql<number>`count(distinct ${contacts.id}) filter (where exists (select 1 from deal_contacts dc join deals d on d.id = dc.deal_id where dc.contact_id = ${contacts.id} and d.status = 'won' and d.deleted_at is null and d.organization_id = ${context.organizationId}))`,
-      })
-      .from(contacts)
-      .leftJoin(leadSources, eq(contacts.leadSourceId, leadSources.id))
-      .where(base)
-      .groupBy(leadSources.name)
-      .orderBy(desc(countDistinct(contacts.id))),
     db
       .select({ slug: pipelineStages.slug, name: pipelineStages.name })
       .from(pipelineStages)
@@ -566,11 +543,5 @@ export async function getConversionReport(filters: ReportFilters) {
     funnel,
     wonLabel,
     overallRate: safeRate(row.closed, row.leads),
-    sources: sourceRows.map((source) => ({
-      name: source.name,
-      leads: source.leads,
-      closed: source.closed,
-      rate: safeRate(source.closed, source.leads),
-    })),
   };
 }

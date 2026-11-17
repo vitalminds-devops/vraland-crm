@@ -15,7 +15,6 @@ import {
   dealStageHistory,
   developments,
   floors,
-  leadSources,
   lostReasons,
   pipelineStages,
   properties,
@@ -246,34 +245,6 @@ await db.transaction(async (tx) => {
       });
   }
   await seedPipelineStages(tx, organization.id);
-  const sourceSeeds = [
-    { name: "Website", channel: "website" },
-    { name: "Facebook Ads", channel: "facebook" },
-    { name: "Instagram", channel: "instagram" },
-    { name: "Google Ads", channel: "website" },
-    { name: "MLS", channel: "mls" },
-    { name: "Property Portal", channel: "property_portal" },
-    { name: "Client Referral", channel: "referral" },
-    { name: "Others", channel: "other" },
-    { name: "Walk-in", channel: "walk_in" },
-    { name: "Phone Inquiry", channel: "call" },
-    { name: "Open House", channel: "event" },
-    { name: "Email Campaign", channel: "email" },
-    { name: "Manually Created", channel: "other" },
-  ];
-  await tx
-    .insert(leadSources)
-    .values(
-      sourceSeeds.map((source) => ({
-        organizationId: organization.id,
-        ...source,
-      })),
-    )
-    .onConflictDoUpdate({
-      target: [leadSources.organizationId, leadSources.name],
-      set: { isActive: true },
-    });
-
   const lostReasonSeeds = [
     {
       name: "Price too high",

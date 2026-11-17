@@ -289,6 +289,26 @@ it.each([
   expect(changeDealStage).toHaveBeenCalledWith({ dealId: input.dealId, stageId });
 });
 
+it.each([
+  [400, "0", false],
+  [500, "0", true],
+  [600, "0", true],
+  [300, "200", true],
+])("needs a ₱%s reservation to cover the fee (₱%s already paid)", async (amount, prior, ok) => {
+  mock.reads = [
+    [{ dealId: input.dealId }],
+    [{ id: "bill", dealId: input.dealId, total: "1000" }],
+    [{ paid: prior, reservationFee: "500", reservationPaid: prior }],
+    stages,
+  ];
+  const result = await recordPayment({ ...paymentInput, amount, classification: "reservation" });
+  expect(result.success).toBe(ok);
+  if (!ok)
+    expect(result).toMatchObject({
+      error: { message: "A reservation must be at least the ₱500.00 reservation fee." },
+    });
+});
+
 const fullPayment = { ...paymentInput, amount: 1000, classification: "full_payment" };
 const fullPaymentReads = () => [
   [{ dealId: input.dealId }],

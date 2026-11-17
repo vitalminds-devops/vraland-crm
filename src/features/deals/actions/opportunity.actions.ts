@@ -323,7 +323,11 @@ export async function openOpportunity(formData: FormData): Promise<DealActionRes
   if (!context.permissions.has("contacts.update"))
     return failure(permissionDenied("You cannot update this client's details."));
   const contactId = row.contactId;
-  const estimate = await estimateSelection(context, v);
+  // A lead moved back from Opportunity can still hold its units while it has payments.
+  const estimate = await estimateSelection(context, v, {
+    dealId: row.dealId,
+    parkingSlotIds: row.parkingSlotIds,
+  });
   if (!estimate.success) return validationFailure(estimate.message);
 
   const onFile = await documentsOnFile(db, contactId);

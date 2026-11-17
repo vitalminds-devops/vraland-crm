@@ -14,7 +14,6 @@ const reportFilterSchema = z.object({
   from: optionalDate,
   to: optionalDate,
   agent: optionalId,
-  source: optionalId,
   development: optionalId,
   propertyType: z.string().trim().max(50).optional().catch(undefined),
 });

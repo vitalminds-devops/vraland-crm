@@ -19,20 +19,6 @@ import { documents } from "./documents";
 import { developments } from "./properties";
 import { citext, createdAt, updatedAt } from "./shared";
 
-export const leadSources = pgTable(
-  "lead_sources",
-  {
-    id: uuid().defaultRandom().primaryKey(),
-    organizationId: uuid("organization_id")
-      .notNull()
-      .references(() => organizations.id, { onDelete: "cascade" }),
-    name: varchar({ length: 120 }).notNull(),
-    channel: varchar({ length: 50 }).default("other").notNull(),
-    isActive: boolean("is_active").default(true).notNull(),
-    createdAt,
-  },
-  (t) => [unique().on(t.organizationId, t.name)],
-);
 
 export const contacts = pgTable(
   "contacts",
@@ -76,9 +62,6 @@ export const contacts = pgTable(
       .default(sql`'{}'::text[]`)
       .notNull(),
     lifecycleStage: varchar("lifecycle_stage", { length: 30 }),
-    leadSourceId: uuid("lead_source_id").references(() => leadSources.id, {
-      onDelete: "set null",
-    }),
     assignedUserId: uuid("assigned_user_id").references(() => users.id, {
       onDelete: "set null",
     }),
@@ -86,11 +69,6 @@ export const contacts = pgTable(
       onDelete: "restrict",
     }),
     purchaseType: varchar("purchase_type", { length: 20 }),
-    commercialPartyRole: varchar("commercial_party_role", { length: 35 }),
-    businessOwnerName: varchar("business_owner_name", { length: 180 }),
-    authorizedRepresentativeName: varchar("authorized_representative_name", {
-      length: 180,
-    }),
     employmentType: varchar("employment_type", { length: 80 }),
     annualIncome: numeric("annual_income", { precision: 18, scale: 2 }),
     financingPreference: varchar("financing_preference", { length: 40 }),

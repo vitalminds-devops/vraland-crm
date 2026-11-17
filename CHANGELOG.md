@@ -24,12 +24,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Each permission's info button, on the Roles page and a user's Permissions, now explains what it allows and every condition that limits it. Permissions no feature uses yet say "Not used yet". The filter searches these details too.
 
 ### Removed
+- Lead source is no longer asked for or shown: it's gone from the contact form, the opportunity page and the report filters, along with the "Conversion by lead source" table and its export.
+- Commercial contacts no longer ask "Who is buying?", Owner name or Representative, and the contact page no longer shows Business details. Contact CSV import and export drop those columns.
+- Migration 0052 deletes the stored lead sources and the commercial buyer fields from the database.
 
 - The "Approve contacts" and "Manage settings" permissions. Neither ever did anything: contacts are approved automatically, and there are no organization settings to manage.
 
 ### Fixed
 - Pipeline cards show the agent's initials instead of repeating the contact's.
 - Pipeline cards in Won, Lost or Cancelled no longer show the close date as overdue; overdue now follows Manila time.
+- A lead moved back from Opportunity can be moved to Opportunity again with the units and parking it still holds.
+- When a contact can't be saved, the message now says why (email already used, a field too long, a missing field, the database needing migrations) instead of "Couldn't save contact".
+- A Reservation payment below the reservation fee is refused instead of leaving the opportunity stuck; paying more is still allowed.
 
 - Buttons for actions a user can't complete are hidden: Add contact, Edit, notes and Add details on contacts; Reassign broker without "Reassign a contact's broker"; Edit, Archive and unit controls on properties outside the user's reach. Only Super Administrators see the option to override the won-sale lock.
 

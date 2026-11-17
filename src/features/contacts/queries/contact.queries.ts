@@ -21,7 +21,6 @@ import {
   dealContacts,
   deals,
   developments,
-  leadSources,
   pipelineStages,
   properties,
   roles,
@@ -244,7 +243,7 @@ export async function getContactOptions() {
   await ensurePipelineStages(context.organizationId);
   const canCreateDeal = context.permissions.has("deals.create");
   const brokerUser = alias(users, "broker_user");
-  const [assignees, dealStages, developmentOptions, propertyOptions, sourceOptions] =
+  const [assignees, dealStages, developmentOptions, propertyOptions] =
     await Promise.all([
       db
         .select({
@@ -304,22 +303,11 @@ export async function getContactOptions() {
         )
         .orderBy(asc(properties.title))
         .limit(500),
-      db
-        .select({ id: leadSources.id, name: leadSources.name })
-        .from(leadSources)
-        .where(
-          and(
-            eq(leadSources.organizationId, context.organizationId),
-            eq(leadSources.isActive, true),
-          ),
-        )
-        .orderBy(asc(leadSources.name)),
     ]);
   return {
     assignees,
     dealStages,
     developments: developmentOptions,
-    leadSources: sourceOptions,
     properties: propertyOptions,
     canCreateDeal,
   };
@@ -438,9 +426,6 @@ export async function exportContacts() {
         currentPostalCode: contacts.currentPostalCode,
         currentCountry: contacts.currentCountry,
         purchaseType: contacts.purchaseType,
-        commercialPartyRole: contacts.commercialPartyRole,
-        businessOwnerName: contacts.businessOwnerName,
-        authorizedRepresentativeName: contacts.authorizedRepresentativeName,
         financingPreference: contacts.financingPreference,
         financingPreferenceOther: contacts.financingPreferenceOther,
         bankName: contacts.bankName,
@@ -452,7 +437,6 @@ export async function exportContacts() {
         annualIncome: contacts.annualIncome,
         budgetMin: contacts.budgetMin,
         budgetMax: contacts.budgetMax,
-        leadSourceId: contacts.leadSourceId,
         preferredDevelopmentId: contacts.preferredDevelopmentId,
         preferredUnitIds: contacts.preferredUnitIds,
         marketingConsent: contacts.marketingConsent,

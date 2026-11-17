@@ -62,7 +62,6 @@ it("keeps training organization-, owner-, currency- and filter-scoped and exclud
   await getForecastReport({
     from: "2026-01-01",
     to: "2026-11-09",
-    source: "source-1",
     development: "development-1",
     propertyType: "condominium",
   });
@@ -72,7 +71,6 @@ it("keeps training organization-, owner-, currency- and filter-scoped and exclud
       "organization-1",
       "user-1",
       "PHP",
-      "source-1",
       "development-1",
       "condominium",
       "won",

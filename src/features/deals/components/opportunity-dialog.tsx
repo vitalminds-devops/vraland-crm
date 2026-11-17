@@ -246,7 +246,7 @@ export function OpportunityDialog({
   useEffect(() => {
     if (step !== 2 || !buildingId || !unitIds.length) return;
     let live = true;
-    getOpportunityEstimate({ developmentId, buildingId, unitIds, parkingSlotIds })
+    getOpportunityEstimate({ developmentId, buildingId, unitIds, parkingSlotIds }, dealId)
       .then((result) => {
         if (live) setEstimate({ key: selectionKey, result });
       })
@@ -263,7 +263,7 @@ export function OpportunityDialog({
     return () => {
       live = false;
     };
-  }, [step, developmentId, buildingId, unitIds, parkingSlotIds, selectionKey]);
+  }, [step, developmentId, buildingId, unitIds, parkingSlotIds, selectionKey, dealId]);
 
   const documentsReady =
     Boolean(draft) &&
@@ -534,6 +534,7 @@ export function OpportunityDialog({
                           developmentId={developmentId}
                           buildingId={buildingId}
                           selectedIds={parkingSlotIds}
+                          heldIds={draft.parkingSlotIds ?? []}
                           onChange={(ids) => setParkingSelection({ buildingId, ids })}
                           disabled={pending}
                         />
