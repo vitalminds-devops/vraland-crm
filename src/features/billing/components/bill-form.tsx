@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MoneyInput } from "@/components/ui/money-input";
 import { Textarea } from "@/components/ui/textarea";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { notify } from "@/components/ui/toast";
 import { groupDigits } from "@/lib/utils/group-digits";
 import { manilaDate } from "@/lib/utils/manila-time";
@@ -16,12 +15,7 @@ import { peso } from "../lib/format";
 import { Modal } from "./payment-dialogs";
 import type { BillLine } from "../queries/billing.queries";
 import { billApplicantSchema, type BillApplicant } from "../schemas/bill-applicant.schema";
-import {
-  applicantAge,
-  applicantSections,
-  applicantSectionApplies,
-  applicantTypeLabels,
-} from "../lib/bill-applicant";
+import { applicantAge, applicantFields } from "../lib/bill-applicant";
 
 const emptyLine: BillLine = { unitLabel: "", unitPrice: "", miscellaneousFee: "" };
 
@@ -108,7 +102,11 @@ export function BillForm({
 
   return (
     <form
-      className="grid gap-4"
+      className="@container grid min-w-0 gap-4"
+      onInvalidCapture={(event) => {
+        const details = (event.target as HTMLElement).closest("details");
+        if (details) details.open = true;
+      }}
       onSubmit={(event) => {
         event.preventDefault();
         setError(undefined);
@@ -133,89 +131,13 @@ export function BillForm({
         });
       }}
     >
-      <section className="space-y-4" aria-label="Bill applicant details">
-        <div>
-          <h3 className="font-semibold">Applicant details</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Prefilled from the client. Review and complete the details for this bill.
-          </p>
-        </div>
-        <label className="grid gap-1.5 text-sm font-medium">
-          Applicant type
-          <NativeSelect
-            aria-label="Applicant type"
-            value={applicant.applicantType}
-            onChange={(event) =>
-              setApplicant({
-                ...applicant,
-                applicantType: event.target.value as BillApplicant["applicantType"],
-              })
-            }
-          >
-            {Object.entries(applicantTypeLabels).map(([value, label]) => (
-              <NativeSelectOption key={value} value={value}>
-                {label}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-        </label>
-        {applicantSections.map(
-          (section, index) =>
-            applicantSectionApplies(index, applicant.applicantType) && (
-              <fieldset key={section.title} className="rounded-xl border p-4">
-                <legend className="px-1 text-sm font-semibold">{section.title}</legend>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {section.fields.map((field) => (
-                    <label
-                      key={field.key}
-                      className={`grid content-start gap-1.5 text-sm ${field.wide ? "sm:col-span-2 lg:col-span-3" : ""}`}
-                    >
-                      <span className="font-medium">{field.label}</span>
-                      {field.wide ? (
-                        <Textarea
-                          rows={2}
-                          maxLength={1000}
-                          value={applicant[field.key]}
-                          onChange={(event) =>
-                            setApplicant({ ...applicant, [field.key]: event.target.value })
-                          }
-                        />
-                      ) : (
-                        <Input
-                          type={field.type ?? "text"}
-                          maxLength={255}
-                          inputMode={field.grouped ? "numeric" : undefined}
-                          value={
-                            field.grouped ? groupDigits(applicant[field.key]) : applicant[field.key]
-                          }
-                          onChange={(event) =>
-                            setApplicant({
-                              ...applicant,
-                              [field.key]: field.grouped
-                                ? groupDigits(event.target.value)
-                                : event.target.value,
-                            })
-                          }
-                        />
-                      )}
-                    </label>
-                  ))}
-                  {index === 0 && (
-                    <label className="grid content-start gap-1.5 text-sm">
-                      <span className="font-medium">Age</span>
-                      <Input
-                        readOnly
-                        value={applicantAge(applicant.birthDate, asOf)}
-                        placeholder="Calculated from birth date"
-                      />
-                    </label>
-                  )}
-                </div>
-              </fieldset>
-            ),
-        )}
-      </section>
-      <h3 className="mt-2 font-semibold">Bill items</h3>
+      <div>
+        <h3 className="font-semibold">Bill items</h3>
+        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+          Enter the price and miscellaneous fee for each unit in pesos. Leave the fee blank if there
+          is none.
+        </p>
+      </div>
       {lines.map((line, index) => (
         <fieldset
           key={index}
@@ -247,7 +169,7 @@ export function BillForm({
               </Button>
             )}
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 @min-[32rem]:grid-cols-2">
             <label className="grid gap-1.5">
               <span className="text-sm font-medium">Unit price (₱)</span>
               <MoneyInput
@@ -291,10 +213,68 @@ export function BillForm({
           placeholder="0"
         />
       </label>
-      <div className="flex items-center justify-between rounded-md bg-muted/60 px-3 py-2 text-sm">
-        <span className="font-medium">Total net selling price</span>
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-muted/60 px-3 py-3 text-sm">
+        <span className="font-medium">Bill total</span>
         <span className="font-semibold tabular-nums">{peso(total)}</span>
       </div>
+      <p className="-mt-2 text-xs text-muted-foreground">
+        Unit prices − reservation discount + miscellaneous fees.
+      </p>
+      <details className="border-t pt-4" aria-label="Bill applicant details">
+        <summary className="cursor-pointer rounded-sm text-sm marker:text-primary focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring">
+          <span className="font-semibold">Review applicant details</span>
+          <span className="mt-1 block leading-relaxed text-muted-foreground">
+            Prefilled from the contact. Expand to review or update the details for this bill.
+          </span>
+        </summary>
+        <fieldset className="mt-4 min-w-0 rounded-xl border p-4 @min-[32rem]:p-5">
+          <legend className="px-2 text-sm font-semibold">Applicant Information</legend>
+          <div className="grid gap-5 @min-[32rem]:grid-cols-2 @min-[48rem]:grid-cols-3">
+            {applicantFields.map((field) => (
+              <label
+                key={field.key}
+                className={`flex min-w-0 flex-col gap-2 text-sm ${field.wide ? "col-span-full" : ""}`}
+              >
+                <span className="flex-1 font-medium leading-5">{field.label}</span>
+                {field.wide ? (
+                  <Textarea
+                    rows={2}
+                    maxLength={1000}
+                    value={applicant[field.key]}
+                    onChange={(event) =>
+                      setApplicant({ ...applicant, [field.key]: event.target.value })
+                    }
+                  />
+                ) : (
+                  <Input
+                    type={field.type ?? "text"}
+                    maxLength={255}
+                    inputMode={field.grouped ? "numeric" : undefined}
+                    value={field.grouped ? groupDigits(applicant[field.key]) : applicant[field.key]}
+                    onChange={(event) =>
+                      setApplicant({
+                        ...applicant,
+                        [field.key]: field.grouped
+                          ? groupDigits(event.target.value)
+                          : event.target.value,
+                      })
+                    }
+                  />
+                )}
+              </label>
+            ))}
+            <label className="flex min-w-0 flex-col gap-2 text-sm">
+              <span className="flex-1 font-medium leading-5">Age</span>
+              <Input
+                readOnly
+                className="bg-muted/50 text-muted-foreground shadow-none tabular-nums"
+                value={applicantAge(applicant.birthDate, asOf)}
+                placeholder="Calculated from birth date"
+              />
+            </label>
+          </div>
+        </fieldset>
+      </details>
       <label className="grid gap-1.5">
         <span className="text-sm font-medium">Notes</span>
         <Textarea
@@ -311,7 +291,7 @@ export function BillForm({
         </p>
       )}
       <div className="flex justify-end">
-        <Button type="submit" disabled={pending}>
+        <Button type="submit" disabled={pending} className="w-full @min-[32rem]:w-auto">
           {pending ? "Saving…" : "Save bill"}
         </Button>
       </div>

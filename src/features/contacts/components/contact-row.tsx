@@ -180,10 +180,16 @@ export function ContactRow({
           <div className="min-w-0">
             <Link
               href={`/contacts/${contact.id}`}
-              className="block truncate font-medium text-foreground transition-colors hover:text-primary hover:underline focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+              className="block font-medium break-words text-foreground transition-colors hover:text-primary hover:underline focus-visible:rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
             >
               {displayName}
             </Link>
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground md:hidden">
+              Agent: {assignedAgent || "Unassigned"}
+            </p>
+            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground lg:hidden">
+              {broker ? `Broker: ${broker}` : "No broker"}
+            </p>
             <div className="mt-1.5 sm:hidden" aria-label="Pipeline stage">
               <PipelineStageBadge
                 stage={contact.pipelineStage}
@@ -194,11 +200,11 @@ export function ContactRow({
         </div>
       </TableCell>
 
-      <TableCell className="hidden px-4 py-3 text-sm text-foreground lg:table-cell">
+      <TableCell className="hidden px-4 py-3 text-sm text-foreground md:table-cell">
         {assignedAgent || <span className="text-muted-foreground">Unassigned</span>}
       </TableCell>
 
-      <TableCell className="hidden px-4 py-3 text-sm text-foreground xl:table-cell">
+      <TableCell className="hidden px-4 py-3 text-sm text-foreground lg:table-cell">
         {broker || <span className="text-muted-foreground">No broker</span>}
       </TableCell>
 
@@ -227,7 +233,7 @@ export function ContactRow({
         </>
       )}
 
-      <TableCell className="w-28 px-4 py-3 text-right">
+      <TableCell className="w-16 px-4 py-3 text-right">
         <RowActionsMenu
           ariaLabel={`Actions for ${displayName}`}
           sections={buildContactMenuSections()}

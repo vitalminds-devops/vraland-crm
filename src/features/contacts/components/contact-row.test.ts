@@ -52,3 +52,21 @@ it.each([true, false])(
     expect(html).not.toContain("Copy contact code");
   },
 );
+
+it("keeps an agent without a broker visible in the table and mobile contact details", () => {
+  const html = renderToStaticMarkup(
+    createElement(ContactRow, {
+      contact: { ...contact, assignedFirstName: "Ana", assignedLastName: "Santos" },
+    }),
+  );
+  expect(html).toContain("Agent: Ana Santos");
+  expect(html).toMatch(/md:table-cell[^>]*>Ana Santos/);
+  expect(html).toContain("No broker");
+  expect(html).not.toContain("Unassigned");
+});
+
+it("distinguishes an unassigned contact from an agent without a broker", () => {
+  const html = renderToStaticMarkup(createElement(ContactRow, { contact }));
+  expect(html).toContain("Agent: Unassigned");
+  expect(html).toContain("No broker");
+});

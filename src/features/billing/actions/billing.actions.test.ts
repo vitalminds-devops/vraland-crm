@@ -115,11 +115,11 @@ beforeEach(() => {
 it("saves validated applicant details on the bill without editing the contact", async () => {
   const result = await saveBill({
     ...input,
-    applicantDetails: { firstName: " Ana ", applicantType: "corporation", companyName: "Example" },
+    applicantDetails: { firstName: " Ana ", emailAddress: "ana@example.com" },
   });
   expect(result.success).toBe(true);
   expect(mock.writes.find((write) => write.table === bills)?.values.applicantDetails).toMatchObject(
-    { firstName: "Ana", companyName: "Example", applicantType: "corporation" },
+    { firstName: "Ana", emailAddress: "ana@example.com" },
   );
 });
 
@@ -132,8 +132,7 @@ it("preserves saved applicant details when an older caller omits them", async ()
 
 it("rejects invalid applicant data before writing", async () => {
   expect(
-    (await saveBill({ ...input, applicantDetails: { representativeEmailAddress: "invalid" } }))
-      .success,
+    (await saveBill({ ...input, applicantDetails: { emailAddress: "invalid" } })).success,
   ).toBe(false);
   expect(mock.transaction).not.toHaveBeenCalled();
 });

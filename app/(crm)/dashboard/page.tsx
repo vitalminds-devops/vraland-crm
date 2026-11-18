@@ -16,8 +16,7 @@ import { requirePagePermission } from "@/lib/permissions/authorization";
 import type { DataScope } from "@/lib/permissions/catalog";
 import { cn } from "@/lib/utils/cn";
 
-const cardClass =
-  "min-w-0 rounded-xl border border-border/40 bg-card p-4 sm:p-5 shadow-xs dark:shadow-none";
+const cardClass = "min-w-0 rounded-xl border border-border bg-card p-4 sm:p-5";
 
 const kpiColumns: Record<number, string> = {
   1: "",
@@ -42,7 +41,6 @@ type KpiCard = {
   value: string;
   detail: string;
   icon: ComponentType<{ className?: string }>;
-  trend?: number | null;
   href?: string;
 };
 
@@ -71,7 +69,6 @@ export default async function DashboardPage() {
       value: data.kpis.activeLeads.toLocaleString(),
       detail: "Not yet converted",
       icon: UsersRound,
-      trend: data.kpis.leadChange,
       href: "/contacts",
     },
     sections.kpis.properties && {
@@ -84,7 +81,7 @@ export default async function DashboardPage() {
     },
     sections.kpis.pipeline && {
       key: "pipeline",
-      label: "Open in pipeline",
+      label: "Open opportunities",
       value: data.kpis.pipelineDeals.toLocaleString(),
       detail: `${compactCurrency(data.kpis.pipelineValue, data.currency)} total value`,
       icon: Handshake,
@@ -104,25 +101,25 @@ export default async function DashboardPage() {
   const showPriorities = sections.tasks || sections.viewings;
   const priorityTitle =
     sections.tasks && sections.viewings
-      ? "Tasks & viewings to action"
+      ? "Upcoming tasks & viewings"
       : sections.viewings
-        ? "Viewings to action"
-        : "Tasks to action";
+        ? "Upcoming viewings"
+        : "Upcoming tasks";
 
   // Each entry is `false` when its permission is missing, which the filter drops.
   const listCandidates: (ListPanel | false)[] = [
-    data.readings.length > 0 && {
-      key: "readings",
-      title: "Summary",
-      description: "This month and the next 7 days.",
-      body: <ReadingList items={data.readings} />,
-    },
     showPriorities && {
       key: "priorities",
       title: priorityTitle,
-      description: "Overdue first.",
+      description: "Overdue items first, then the next 7 days.",
       scrollLabel: priorityTitle,
       body: <PriorityList items={data.priorities} />,
+    },
+    data.readings.length > 0 && {
+      key: "readings",
+      title: "At a glance",
+      description: "Results and upcoming work.",
+      body: <ReadingList items={data.readings} />,
     },
     sections.closings && {
       key: "closings",
@@ -132,14 +129,12 @@ export default async function DashboardPage() {
     },
     sections.taskLoad && {
       key: "taskLoad",
-      title: "Task load",
-      description: "Open tasks by due date.",
+      title: "Open tasks by due date",
       body: <TaskLoad data={data.taskLoad} />,
     },
     sections.inventory && {
       key: "inventory",
       title: "Properties by status",
-      description: "By property status.",
       body: <InventoryStatus items={data.inventoryStatus} />,
     },
     sections.activity && {
@@ -151,9 +146,8 @@ export default async function DashboardPage() {
   ];
   const listPanels = listCandidates.filter((panel): panel is ListPanel => Boolean(panel));
 
-  const distributionCount = Number(sections.pipeline);
   const panelCount =
-    Number(sections.revenue) + distributionCount + kpiCards.length + listPanels.length;
+    Number(sections.revenue) + Number(sections.pipeline) + kpiCards.length + listPanels.length;
 
   return (
     <PageContainer>
@@ -185,29 +179,9 @@ export default async function DashboardPage() {
                   value={card.value}
                   detail={card.detail}
                   icon={card.icon}
-                  trend={card.trend}
                   href={card.href}
                 />
               ))}
-            </div>
-          )}
-
-          {sections.revenue && (
-            <Section
-              title="Revenue & sales forecast"
-              description="Closed sales and weighted pipeline."
-            >
-              <RevenueChart data={data.revenueSeries} currency={data.currency} />
-            </Section>
-          )}
-
-          {distributionCount > 0 && (
-            <div className={cn("grid gap-4 sm:gap-5", distributionCount === 2 && "xl:grid-cols-2")}>
-              {sections.pipeline && (
-                <Section title="Pipeline stage distribution" description="Includes won and lost.">
-                  <PipelineStageChart data={data.pipelineStages} />
-                </Section>
-              )}
             </div>
           )}
 
@@ -231,6 +205,22 @@ export default async function DashboardPage() {
               ))}
             </div>
           )}
+          {sections.revenue && (
+            <Section
+              title="Closed sales & forecast"
+              description="Won opportunity values and open opportunities weighted by their probability of closing. These are sales values, not payments received."
+            >
+              <RevenueChart data={data.revenueSeries} currency={data.currency} />
+            </Section>
+          )}
+          {sections.pipeline && (
+            <Section
+              title="Opportunities by stage"
+              description="Includes open, won and lost opportunities."
+            >
+              <PipelineStageChart data={data.pipelineStages} />
+            </Section>
+          )}
         </div>
       )}
     </PageContainer>
@@ -251,17 +241,22 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section className={cn(cardClass, className)}>
+    <section className={cn("@container", cardClass, className)}>
       <div className="pb-1">
         <h2 className="text-[15px] leading-snug font-semibold">{title}</h2>
         {description && (
-          <p className="mt-1.5 max-w-prose text-xs leading-relaxed text-muted-foreground">
+          <p className="mt-1.5 max-w-prose text-sm leading-relaxed text-muted-foreground">
             {description}
           </p>
         )}
       </div>
       {scrollLabel ? (
-        <div className="mt-4 max-h-96 overflow-auto pr-1" tabIndex={0} aria-label={scrollLabel}>
+        <div
+          className="mt-4 max-h-96 overflow-auto pr-1 focus-visible:rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+          role="region"
+          tabIndex={0}
+          aria-label={scrollLabel}
+        >
           {children}
         </div>
       ) : (

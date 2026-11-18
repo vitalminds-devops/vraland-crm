@@ -126,50 +126,84 @@ export default async function PaymentsPage({
 
         {data.rows.length ? (
           <>
-            <div className="overflow-x-auto">
+            <div>
               <Table className="w-full text-left text-sm">
-                <TableHeader className="bg-muted/60 text-xs uppercase text-muted-foreground">
+                <TableHeader className="hidden bg-muted/60 text-xs text-muted-foreground md:table-header-group">
                   <TableRow>
-                    <TableHead className="px-4 py-3">Date</TableHead>
-                    <TableHead className="px-4 py-3">Contact</TableHead>
-                    <TableHead className="px-4 py-3">Broker</TableHead>
-                    <TableHead className="px-4 py-3">For</TableHead>
-                    <TableHead className="px-4 py-3">Method</TableHead>
-                    <TableHead className="px-4 py-3">Invoice no.</TableHead>
-                    <TableHead className="px-4 py-3 text-right">Amount</TableHead>
+                    <TableHead scope="col" className="px-4 py-3 whitespace-nowrap">
+                      Paid on
+                    </TableHead>
+                    <TableHead scope="col" className="w-[38%] px-4 py-3">
+                      Contact & property
+                    </TableHead>
+                    <TableHead scope="col" className="px-4 py-3">
+                      Broker
+                    </TableHead>
+                    <TableHead scope="col" className="px-4 py-3">
+                      Payment details
+                    </TableHead>
+                    <TableHead scope="col" className="px-4 py-3 text-right">
+                      Amount paid
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className="divide-y">
                   {data.rows.map((row) => (
-                    <TableRow key={row.id}>
-                      <TableCell className="px-4 py-3">{calendarDate(row.paidOn)}</TableCell>
-                      <TableCell className="px-4 py-3">
+                    <TableRow
+                      key={row.id}
+                      className="grid grid-cols-2 gap-4 p-4 md:table-row md:p-0"
+                    >
+                      <TableCell className="block p-0 align-top md:table-cell md:px-4 md:py-4">
+                        <span className="mb-1 block text-xs text-muted-foreground md:hidden">
+                          Paid on
+                        </span>
+                        <span className="whitespace-nowrap">{calendarDate(row.paidOn)}</span>
+                      </TableCell>
+                      <TableCell className="order-first col-span-2 block min-w-0 p-0 align-top md:table-cell md:px-4 md:py-4">
                         <Link
                           href={`/billing/${row.dealId}`}
-                          className="font-medium hover:underline"
+                          className="font-semibold underline-offset-4 hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
                         >
                           {lead(row)}
                         </Link>
-                        <p className="text-xs text-muted-foreground">
-                          {row.dealCode} · {row.unitLabel}
-                        </p>
+                        <ul className="mt-1 space-y-1 text-sm text-muted-foreground">
+                          {row.unitLabel.split(" + ").map((unit, index) => (
+                            <li key={index} className="break-words">
+                              {unit}
+                            </li>
+                          ))}
+                        </ul>
+                        <p className="mt-2 text-xs text-muted-foreground">{row.dealCode}</p>
                       </TableCell>
-                      <TableCell className="px-4 py-3">
+                      <TableCell className="block min-w-0 p-0 align-top break-words md:table-cell md:px-4 md:py-4">
+                        <span className="mb-1 block text-xs text-muted-foreground md:hidden">
+                          Broker
+                        </span>
                         {row.brokerFirstName
                           ? `${row.brokerFirstName} ${row.brokerLastName}`
                           : "No broker"}
                       </TableCell>
-                      <TableCell className="px-4 py-3">
-                        {paymentClassificationLabels[
-                          row.classification as keyof typeof paymentClassificationLabels
-                        ] ?? row.classification}
+                      <TableCell className="block min-w-0 p-0 align-top md:table-cell md:px-4 md:py-4">
+                        <span className="mb-1 block text-xs text-muted-foreground md:hidden">
+                          Payment details
+                        </span>
+                        <p className="font-medium">
+                          {paymentClassificationLabels[
+                            row.classification as keyof typeof paymentClassificationLabels
+                          ] ?? row.classification}
+                        </p>
+                        <p className="mt-1 text-muted-foreground">
+                          {paymentMethodLabels[row.method as keyof typeof paymentMethodLabels] ??
+                            row.method}
+                        </p>
+                        <p className="mt-2 text-xs break-all text-muted-foreground">
+                          {row.referenceNo ? `Invoice: ${row.referenceNo}` : "No invoice number"}
+                        </p>
                       </TableCell>
-                      <TableCell className="px-4 py-3">
-                        {paymentMethodLabels[row.method as keyof typeof paymentMethodLabels] ??
-                          row.method}
-                      </TableCell>
-                      <TableCell className="px-4 py-3">{row.referenceNo ?? "—"}</TableCell>
-                      <TableCell className="px-4 py-3 text-right tabular-nums">
+                      <TableCell className="block p-0 text-right align-top font-semibold whitespace-nowrap tabular-nums md:table-cell md:px-4 md:py-4">
+                        <span className="mb-1 block text-xs font-normal text-muted-foreground md:hidden">
+                          Amount paid
+                        </span>
                         {peso(row.amount)}
                       </TableCell>
                     </TableRow>

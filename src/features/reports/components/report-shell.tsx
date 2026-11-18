@@ -39,6 +39,7 @@ export function ReportShell({
 }) {
   const query = new URLSearchParams({ from: filters.from, to: filters.to });
   for (const key of filterKeys) {
+    if (key !== "agent" && !extendedFilters) continue;
     const value = filters[key];
     if (value) query.set(key, value);
   }
@@ -55,12 +56,12 @@ export function ReportShell({
             className={buttonVariants({ variant: "secondary" })}
           >
             <Download aria-hidden="true" className="mr-2 h-4 w-4" />
-            Export
+            Export CSV
           </a>
         }
       />
-      <nav aria-label="Report sections" className="mt-6 overflow-x-auto">
-        <div className="inline-flex items-center gap-1 rounded-xl border border-border/60 bg-card p-1 shadow-sm">
+      <nav aria-label="Report sections" className="mt-2">
+        <div className="grid grid-cols-2 gap-1 rounded-xl border border-border bg-card p-1 sm:flex sm:flex-wrap">
           {tabs.map((tab) => {
             const current = tab.href === active;
             return (
@@ -68,7 +69,7 @@ export function ReportShell({
                 key={tab.href}
                 href={withFilters(tab.href)}
                 aria-current={current ? "page" : undefined}
-                className={`inline-flex items-center whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium transition-all focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:outline-none ${
+                className={`inline-flex items-center justify-center rounded-lg px-3 py-2 text-center text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-primary/25 focus-visible:outline-none ${
                   current
                     ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
@@ -83,12 +84,13 @@ export function ReportShell({
 
       <form
         method="get"
-        className="mt-5 grid gap-3 rounded-xl border border-border/60 bg-card p-4 shadow-sm sm:grid-cols-2 lg:grid-cols-6"
+        aria-label="Report filters"
+        className={`mt-5 grid gap-4 rounded-xl border border-border bg-card p-4 sm:grid-cols-2 ${extendedFilters ? "xl:grid-cols-3" : "xl:grid-cols-4"}`}
       >
-        <Field label="From">
+        <Field label="Start date">
           <DatePicker name="from" defaultValue={filters.from} className={control} />
         </Field>
-        <Field label="To">
+        <Field label="End date">
           <DatePicker name="to" defaultValue={filters.to} className={control} />
         </Field>
         <Field label="Agent">
@@ -137,23 +139,30 @@ export function ReportShell({
             </Field>
           </>
         )}
-        <div className="flex items-end gap-2">
+        <div className="flex items-end gap-2 [&>*]:flex-1">
           <Button type="submit" variant="primary" className="h-10">
-            Apply
+            Apply filters
           </Button>
           <ButtonLink href={active} variant="secondary" className="h-10">
             Reset
           </ButtonLink>
         </div>
       </form>
-      <div className="mt-6">{children}</div>
+      <p className="mt-4 text-sm text-muted-foreground">
+        Reporting period:{" "}
+        <span className="font-medium text-foreground">
+          {dateLabel(filters.from)} – {dateLabel(filters.to)}
+        </span>
+        . Dates use Manila time.
+      </p>
+      <div className="mt-5">{children}</div>
     </PageContainer>
   );
 }
 
 function Field({ label: title, children }: { label: string; children: ReactNode }) {
   return (
-    <label className="grid gap-1.5 text-xs font-medium text-muted-foreground">
+    <label className="grid min-w-0 gap-1.5 text-sm font-medium">
       <span>{title}</span>
       {children}
     </label>
@@ -163,6 +172,10 @@ const control =
   "h-10 min-w-0 rounded-md border border-border/60 bg-background px-3 text-sm text-foreground outline-none transition-all hover:border-border focus-visible:ring-2 focus-visible:ring-primary/25";
 const label = (value: string) =>
   value.replaceAll("_", " ").replace(/^./, (character) => character.toUpperCase());
+const dateLabel = (value: string) =>
+  new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeZone: "UTC" }).format(
+    new Date(`${value}T00:00:00Z`),
+  );
 
 export function MetricCard({
   label: title,
@@ -174,9 +187,9 @@ export function MetricCard({
   detail?: string;
 }) {
   return (
-    <section className="rounded-xl border border-border/50 bg-card p-5 shadow-xs dark:shadow-none">
-      <p className="text-xs text-muted-foreground">{title}</p>
-      <p className="mt-1 text-2xl leading-none font-semibold tracking-tight tabular-nums text-foreground">
+    <section className="min-w-0 rounded-xl border border-border bg-card p-4 sm:p-5">
+      <p className="text-sm font-medium text-muted-foreground">{title}</p>
+      <p className="mt-2 text-2xl leading-tight font-semibold tracking-tight break-words tabular-nums text-foreground">
         {value}
       </p>
       {detail && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{detail}</p>}

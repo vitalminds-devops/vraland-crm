@@ -39,7 +39,10 @@ export function RevenueChart({
   const hasData = data.some((point) => point.closedSales || point.forecast);
   if (!hasData) return <ChartEmpty message="No sales data yet." />;
   return (
-    <div className="h-60 w-full sm:h-72" aria-label="Revenue and sales forecast chart">
+    <div
+      className="h-60 w-full sm:h-72"
+      aria-label="Closed sales and probability-weighted forecast chart"
+    >
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
           <defs>
@@ -83,7 +86,7 @@ export function RevenueChart({
           <Area
             type="monotone"
             dataKey="forecast"
-            name="Weighted forecast"
+            name="Forecast (probability-weighted)"
             stroke={FORECAST_COLOR}
             fill="url(#forecast)"
             strokeWidth={2}
@@ -140,7 +143,9 @@ export function PipelineStageChart({ data }: { data: { name: string; value: numb
                 className="size-2.5 shrink-0 rounded-full"
                 style={{ backgroundColor: chartRamp[index % chartRamp.length] }}
               />
-              <span className="min-w-0 flex-1 truncate text-sm text-foreground">{entry.name}</span>
+              <span className="min-w-0 flex-1 text-sm break-words text-foreground">
+                {entry.name}
+              </span>
               <span className="text-sm font-semibold tabular-nums text-foreground">
                 {entry.value}
               </span>

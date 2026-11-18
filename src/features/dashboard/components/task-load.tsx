@@ -33,9 +33,9 @@ export function TaskLoad({ data }: { data: DashboardData["taskLoad"] }) {
 
   return (
     <div>
-      <dl className="grid grid-cols-2 gap-3">
+      <dl className="grid grid-cols-2 gap-x-6 gap-y-4">
         {buckets.map((bucket) => (
-          <div key={bucket.key} className="rounded-lg border border-border/60 bg-muted/20 p-3">
+          <div key={bucket.key}>
             <dt className="text-xs text-muted-foreground">{bucket.label}</dt>
             <dd
               className={cn(

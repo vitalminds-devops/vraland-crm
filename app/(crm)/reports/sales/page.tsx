@@ -34,6 +34,12 @@ export default async function SalesReportPage({
       currency: data.currency,
       maximumFractionDigits: 0,
     }).format(value);
+  const closeDate = (value: string | null) =>
+    value
+      ? new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeZone: "UTC" }).format(
+          new Date(`${value}T00:00:00Z`),
+        )
+      : "No close date";
 
   const trend = data.trend.length
     ? monthKeys(filters.from, filters.to).map(
@@ -49,46 +55,56 @@ export default async function SalesReportPage({
   return (
     <ReportShell
       title="Sales performance"
-      description="Closed sales over time."
+      description="Won opportunity values by close date."
       active="/reports/sales"
       filters={filters}
       options={options}
+      extendedFilters
     >
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          label="Closed deals"
+          label="Won opportunities"
           value={data.summary.closedDeals.toLocaleString()}
           detail={`${money(data.summary.salesValue)} total sales.`}
           icon={CheckCircle2}
         />
         <StatCard
-          label="Average deal value"
+          label="Average sale value"
           value={money(data.summary.averageDealValue)}
-          detail="Per closed-won deal."
+          detail="Per opportunity won in this period."
           icon={CircleDollarSign}
         />
         <StatCard
-          label="Open pipeline"
+          label="Current open pipeline"
           value={money(data.summary.pipelineValue)}
-          detail={`${data.summary.pipelineDeals.toLocaleString()} active deals.`}
+          detail={`${data.summary.pipelineDeals.toLocaleString()} open opportunities, across all close dates.`}
           icon={Layers}
         />
         <StatCard
-          label="Expected closings"
+          label="Upcoming closings"
           value={data.summary.expectedClosings.toLocaleString()}
           detail={`${money(data.summary.expectedClosingValue)} in the next 30 days.`}
           icon={CalendarClock}
         />
       </div>
+      <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+        Sales values are not payments collected. The date range applies to won sales; open pipeline
+        and upcoming closings reflect current opportunities.
+      </p>
 
       <section className="mt-6 rounded-xl border border-border/50 bg-card p-5 shadow-xs dark:shadow-none">
-        <h2 className="mb-5 font-semibold">Monthly closed sales</h2>
+        <h2 className="mb-5 font-semibold">Monthly won sales</h2>
         <SalesTrendChart data={trend} currency={data.currency} />
       </section>
 
       <section className="mt-6 overflow-hidden rounded-xl border border-border/50 bg-card shadow-xs dark:shadow-none">
         <div className="p-5">
-          <h2 className="font-semibold">Closed deals</h2>
+          <h2 className="font-semibold">Won opportunities</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Showing {data.closedDeals.length.toLocaleString()} of{" "}
+            {data.summary.closedDeals.toLocaleString()} won opportunities, most recent first. Export
+            CSV for up to 10,000 rows.
+          </p>
         </div>
         {data.closedDeals.length ? (
           <div className="overflow-x-auto">
@@ -96,7 +112,7 @@ export default async function SalesReportPage({
               <TableHeader className={tableHeadClass}>
                 <TableRow>
                   <TableHead scope="col" className="px-4 py-3 font-medium">
-                    Deal
+                    Opportunity
                   </TableHead>
                   <TableHead scope="col" className="hidden px-4 py-3 font-medium sm:table-cell">
                     Agent
@@ -104,8 +120,8 @@ export default async function SalesReportPage({
                   <TableHead scope="col" className="hidden px-4 py-3 font-medium lg:table-cell">
                     Property
                   </TableHead>
-                  <TableHead scope="col" className="px-4 py-3 font-medium">
-                    Closed
+                  <TableHead scope="col" className="hidden px-4 py-3 font-medium sm:table-cell">
+                    Close date
                   </TableHead>
                   <TableHead scope="col" className="px-4 py-3 text-right font-medium">
                     Amount
@@ -116,9 +132,21 @@ export default async function SalesReportPage({
                 {data.closedDeals.map((deal) => (
                   <TableRow key={deal.id} className="transition-colors hover:bg-muted/30">
                     <TableCell className="px-4 py-3">
-                      <Link href={`/deals/${deal.id}`} className="font-medium hover:text-primary">
+                      <Link
+                        href={`/deals/${deal.id}`}
+                        className="font-medium break-words hover:text-primary hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+                      >
                         {deal.title}
                       </Link>
+                      <p className="mt-1 text-xs text-muted-foreground sm:hidden">
+                        Agent: {deal.agentName}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground lg:hidden">
+                        {deal.propertyTitle ?? "No property"}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground sm:hidden">
+                        Closed: {closeDate(deal.actualCloseDate)}
+                      </p>
                     </TableCell>
                     <TableCell className="hidden px-4 py-3 text-xs text-muted-foreground sm:table-cell">
                       {deal.agentName}
@@ -126,16 +154,10 @@ export default async function SalesReportPage({
                     <TableCell className="hidden px-4 py-3 text-xs text-muted-foreground lg:table-cell">
                       {deal.propertyTitle ?? "No property"}
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-xs text-muted-foreground">
-                      {deal.actualCloseDate
-                        ? new Intl.DateTimeFormat("en-PH", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          }).format(new Date(`${deal.actualCloseDate}T00:00:00`))
-                        : "—"}
+                    <TableCell className="hidden px-4 py-3 text-xs whitespace-nowrap text-muted-foreground sm:table-cell">
+                      {closeDate(deal.actualCloseDate)}
                     </TableCell>
-                    <TableCell className="px-4 py-3 text-right font-medium tabular-nums">
+                    <TableCell className="px-4 py-3 text-right font-medium whitespace-nowrap tabular-nums">
                       {money(deal.amount)}
                     </TableCell>
                   </TableRow>

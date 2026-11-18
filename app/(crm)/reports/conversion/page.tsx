@@ -22,15 +22,13 @@ export default async function ConversionReportPage({
   return (
     <ReportShell
       title="Lead conversion"
-      description="How leads turn into sales."
+      description="Stage progress for contacts created in the selected period."
       active="/reports/conversion"
       filters={filters}
       options={options}
       extendedFilters
     >
-      <ConversionFunnel data={data.funnel} />
-
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-3">
         <StatCard
           label="Leads created"
           value={leads.toLocaleString()}
@@ -46,10 +44,18 @@ export default async function ConversionReportPage({
         <StatCard
           label="Overall conversion"
           value={`${data.overallRate}%`}
-          detail={`Leads to ${data.wonLabel}.`}
+          detail="Share of contacts with a won opportunity."
           icon={Gauge}
         />
       </div>
+      <section className="mt-6">
+        <h2 className="font-semibold">Lead progression</h2>
+        <p className="mt-1 mb-4 text-sm leading-relaxed text-muted-foreground">
+          Counts follow contacts created in the selected period. Their progress can include activity
+          after that period.
+        </p>
+        <ConversionFunnel data={data.funnel} />
+      </section>
     </ReportShell>
   );
 }

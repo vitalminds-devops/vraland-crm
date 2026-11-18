@@ -86,14 +86,15 @@ export function ContactsGroupedByBroker({ contacts }: ContactsGroupedByBrokerPro
           <div key={group.brokerId} className="border border-border/50 rounded-lg overflow-hidden">
             <button
               type="button"
+              aria-expanded={isExpanded}
               onClick={() => toggleBroker(group.brokerId)}
-              className="w-full flex items-center justify-between px-4 py-3 bg-muted/50 hover:bg-muted/80 transition-colors"
+              className="flex w-full items-center justify-between gap-3 bg-muted/50 px-4 py-3 text-left transition-colors hover:bg-muted/80 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
             >
-              <div className="flex items-center gap-3">
-                <Building2 className="h-4 w-4 text-muted-foreground" />
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <Building2 aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <span className="font-medium">{group.brokerName}</span>
                 <span className="text-sm text-muted-foreground">
-                  ({group.count} lead{group.count !== 1 ? "s" : ""})
+                  ({group.count} contact{group.count !== 1 ? "s" : ""})
                 </span>
               </div>
               {isExpanded ? (
@@ -109,9 +110,6 @@ export function ContactsGroupedByBroker({ contacts }: ContactsGroupedByBrokerPro
                   const initials = getInitials(contact.firstName, contact.lastName);
                   const displayName = formatContactName(contact);
                   const assignedAgent = [contact.assignedFirstName, contact.assignedLastName]
-                    .filter(Boolean)
-                    .join(" ");
-                  const broker = [contact.brokerFirstName, contact.brokerLastName]
                     .filter(Boolean)
                     .join(" ");
                   const createdDate =
@@ -140,22 +138,19 @@ export function ContactsGroupedByBroker({ contacts }: ContactsGroupedByBrokerPro
                       <div className="flex-1 min-w-0">
                         <Link
                           href={`/contacts/${contact.id}`}
-                          className="block truncate font-medium text-foreground transition-colors hover:text-primary hover:underline"
+                          className="block font-medium break-words text-foreground transition-colors hover:text-primary hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
                         >
                           {displayName}
                         </Link>
+                        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                          Agent: {assignedAgent || "Unassigned"}
+                        </p>
                         <div className="mt-1.5 sm:hidden" aria-label="Pipeline stage">
                           <PipelineStageBadge
                             stage={contact.pipelineStage}
                             probability={contact.stageProbability}
                           />
                         </div>
-                      </div>
-                      <div className="hidden lg:block text-sm text-foreground">
-                        {assignedAgent || <span className="text-muted-foreground">Unassigned</span>}
-                      </div>
-                      <div className="hidden xl:block text-sm text-foreground">
-                        {broker || <span className="text-muted-foreground">No broker</span>}
                       </div>
                       <div className="hidden sm:block" aria-label="Pipeline stage">
                         <PipelineStageBadge
@@ -165,6 +160,7 @@ export function ContactsGroupedByBroker({ contacts }: ContactsGroupedByBrokerPro
                       </div>
                       <Link
                         href={`/contacts/${contact.id}`}
+                        aria-label={`View ${displayName}`}
                         className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-card px-2.5 py-1 text-xs font-medium transition-colors hover:bg-muted/60 h-8"
                       >
                         <Eye className="h-3.5 w-3.5" />

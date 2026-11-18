@@ -41,6 +41,11 @@ type ContactsPageClientProps = {
   /** Super administrators may override the lock on won sales. */
   isSuperAdmin: boolean;
   viewMode?: "table" | "grouped";
+  pageSize: number;
+  sort?: string;
+  dir?: string;
+  showAdditionalColumns?: boolean;
+  hasActiveFilters?: boolean;
 };
 
 export function ContactsPageClient({
@@ -53,6 +58,11 @@ export function ContactsPageClient({
   canReassign,
   isSuperAdmin,
   viewMode = "table",
+  pageSize,
+  sort,
+  dir,
+  showAdditionalColumns,
+  hasActiveFilters,
 }: ContactsPageClientProps) {
   const [showReassignModal, setShowReassignModal] = useState(false);
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
@@ -70,7 +80,11 @@ export function ContactsPageClient({
           total={data.total}
           page={data.page}
           pages={data.pages}
-          pageSize={20}
+          pageSize={pageSize}
+          sort={sort}
+          dir={dir}
+          showAdditionalColumns={showAdditionalColumns}
+          hasActiveFilters={hasActiveFilters}
           canCreate={canCreate}
           canEdit={canEdit}
           canViewDocuments={canViewDocuments}

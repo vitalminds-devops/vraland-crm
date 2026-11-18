@@ -47,6 +47,10 @@ type ContactsPageWrapperProps = {
   employment?: string;
   broker?: string;
   preservedQuery?: string;
+  pageSize: number;
+  sort?: string;
+  dir?: string;
+  showAdditionalColumns?: boolean;
 };
 
 export function ContactsPageWrapper({
@@ -63,6 +67,10 @@ export function ContactsPageWrapper({
   employment,
   broker,
   preservedQuery,
+  pageSize,
+  sort,
+  dir,
+  showAdditionalColumns,
 }: ContactsPageWrapperProps) {
   const [viewMode, setViewMode] = useState<"table" | "grouped">("table");
 
@@ -91,6 +99,11 @@ export function ContactsPageWrapper({
           canReassign={canReassign}
           isSuperAdmin={isSuperAdmin}
           viewMode={viewMode}
+          pageSize={pageSize}
+          sort={sort}
+          dir={dir}
+          showAdditionalColumns={showAdditionalColumns}
+          hasActiveFilters={Boolean(search || lifecycle || employment || broker)}
         />
       </CardContent>
     </>

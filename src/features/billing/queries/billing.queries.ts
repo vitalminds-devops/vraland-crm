@@ -358,7 +358,6 @@ export async function getDealBilling(dealId: string) {
             prcLicenseNumber: contacts.prcLicenseNumber,
             email: contacts.email,
             mobile: contacts.mobilePhone1,
-            companyName: contacts.companyName,
             address: contacts.currentAddressLine1,
             barangay: contacts.currentBarangay,
             city: contacts.currentCity,
@@ -401,7 +400,6 @@ export async function getDealBilling(dealId: string) {
         prcLicenseNumber: contact?.prcLicenseNumber ?? "",
         emailAddress: contact?.email ?? "",
         mobileNumber: contact?.mobile ?? "",
-        companyName: contact?.companyName ?? "",
         completeAddress: [
           contact?.address,
           contact?.barangay,

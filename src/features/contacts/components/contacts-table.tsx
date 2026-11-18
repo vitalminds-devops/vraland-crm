@@ -134,11 +134,11 @@ export function ContactsTable({
           <TableHeader className="bg-muted/50 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             <TableRow>
               <TableHead className="sticky left-0 bg-muted/50 px-4 py-3">Contact</TableHead>
-              <TableHead className="hidden px-4 py-3 lg:table-cell">Agent</TableHead>
-              <TableHead className="hidden px-4 py-3 xl:table-cell">Broker</TableHead>
+              <TableHead className="hidden px-4 py-3 md:table-cell">Assigned agent</TableHead>
+              <TableHead className="hidden px-4 py-3 lg:table-cell">Broker</TableHead>
               <TableHead className="hidden px-4 py-3 sm:table-cell">Pipeline stage</TableHead>
               <TableHead className="hidden px-4 py-3 md:table-cell">Created</TableHead>
-              <TableHead className="w-28 px-4 py-3 text-right">Actions</TableHead>
+              <TableHead className="w-16 px-4 py-3 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody className="divide-y divide-border/40">
@@ -153,10 +153,10 @@ export function ContactsTable({
                     </div>
                   </div>
                 </TableCell>
-                <TableCell className="hidden px-4 py-3 lg:table-cell">
+                <TableCell className="hidden px-4 py-3 md:table-cell">
                   <div className="h-4 w-24 rounded bg-muted animate-pulse" />
                 </TableCell>
-                <TableCell className="hidden px-4 py-3 xl:table-cell">
+                <TableCell className="hidden px-4 py-3 lg:table-cell">
                   <div className="h-4 w-24 rounded bg-muted animate-pulse" />
                 </TableCell>
                 <TableCell className="hidden px-4 py-3 sm:table-cell">
@@ -165,7 +165,7 @@ export function ContactsTable({
                 <TableCell className="hidden px-4 py-3 md:table-cell">
                   <div className="h-4 w-20 rounded bg-muted animate-pulse" />
                 </TableCell>
-                <TableCell className="w-28 px-4 py-3">
+                <TableCell className="w-16 px-4 py-3">
                   <div className="ml-auto h-7 w-16 rounded-lg bg-muted animate-pulse" />
                 </TableCell>
               </TableRow>
@@ -221,10 +221,10 @@ export function ContactsTable({
                   <SortChevron active={activeSort === "contact"} dir={activeDir} />
                 </button>
               </TableHead>
-              <TableHead scope="col" className="hidden px-4 py-3 lg:table-cell">
-                Agent
+              <TableHead scope="col" className="hidden px-4 py-3 md:table-cell">
+                Assigned agent
               </TableHead>
-              <TableHead scope="col" className="hidden px-4 py-3 xl:table-cell">
+              <TableHead scope="col" className="hidden px-4 py-3 lg:table-cell">
                 Broker
               </TableHead>
               <TableHead
@@ -262,7 +262,7 @@ export function ContactsTable({
                   </TableHead>
                 </>
               )}
-              <TableHead scope="col" className="w-28 px-4 py-3 text-right">
+              <TableHead scope="col" className="w-16 px-4 py-3 text-right">
                 <ColumnsToggleButton pressed={showAdditionalColumns} onToggle={toggleColumns} />
               </TableHead>
             </TableRow>

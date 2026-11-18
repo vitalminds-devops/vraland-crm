@@ -104,6 +104,10 @@ export default async function ContactsPage({
           employment={q.employment}
           broker={q.broker}
           preservedQuery={preservedQuery}
+          pageSize={pageSize}
+          sort={sort}
+          dir={dir}
+          showAdditionalColumns={showAdditionalColumns}
         />
       </Card>
     </PageContainer>

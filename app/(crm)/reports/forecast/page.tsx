@@ -11,6 +11,7 @@ import { MetricCard, ReportEmpty, ReportShell } from "@/features/reports/compone
 import { getForecastReport, getReportOptions } from "@/features/reports/queries/report.queries";
 import { parseReportFilters } from "@/features/reports/schemas/report-filter.schema";
 import { requirePagePermission } from "@/lib/permissions/authorization";
+import { reportMonth } from "@/features/reports/lib/report-metrics";
 export default async function ForecastReportPage({
   searchParams,
 }: {
@@ -23,35 +24,79 @@ export default async function ForecastReportPage({
   return (
     <ReportShell
       title="Sales forecasting"
-      description="ARIMA sales projections and expected pipeline revenue."
+      description="Expected sales from open opportunities and projections based on past sales."
       active="/reports/forecast"
       filters={filters}
       options={options}
+      extendedFilters
     >
       <div className="grid gap-4 sm:grid-cols-3">
         <MetricCard
-          label="Forecast deals"
+          label="Expected opportunities"
           value={String(data.summary.deals)}
-          detail="Open deals expected in period"
+          detail="Open opportunities expected to close in this period."
         />
         <MetricCard
-          label="Gross pipeline"
+          label="Total pipeline value"
           value={money(data.summary.gross)}
-          detail="Before probability weighting"
+          detail="Full value of those open opportunities."
         />
         <MetricCard
-          label="Weighted forecast"
+          label="Weighted sales forecast"
           value={money(data.summary.weighted)}
-          detail="Deal value × close probability"
+          detail="Opportunity value × probability of closing."
         />
+      </div>
+      <div className="mt-6 grid gap-6 xl:grid-cols-[1.5fr_1fr]">
+        <section className="rounded-xl border bg-card p-5">
+          <h2 className="mb-5 font-semibold">Pipeline by expected close month</h2>
+          <ForecastChart data={data.monthly} currency={data.currency} />
+        </section>
+        <section className="overflow-hidden rounded-xl border bg-card">
+          <h2 className="p-5 font-semibold">Forecast by stage</h2>
+          {data.stages.length ? (
+            <div className="overflow-x-auto">
+              <p className="px-4 pb-3 text-xs text-muted-foreground sm:hidden">
+                Scroll the table horizontally to see all values.
+              </p>
+              <Table className="w-full text-left text-sm">
+                <TableHeader className="bg-muted/50 text-xs text-muted-foreground">
+                  <TableRow>
+                    <TableHead className="px-4 py-3">Stage</TableHead>
+                    <TableHead className="text-right">Opportunities</TableHead>
+                    <TableHead className="text-right">Total value</TableHead>
+                    <TableHead className="pr-4 text-right">Weighted value</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y">
+                  {data.stages.map((row) => (
+                    <TableRow key={row.stage}>
+                      <TableCell className="px-4 py-3 font-medium">{row.stage}</TableCell>
+                      <TableCell className="text-right tabular-nums">{row.deals}</TableCell>
+                      <TableCell className="text-right whitespace-nowrap tabular-nums">
+                        {money(row.gross)}
+                      </TableCell>
+                      <TableCell className="pr-4 text-right whitespace-nowrap tabular-nums">
+                        {money(row.weighted)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <ReportEmpty>No open deals are expected in this period.</ReportEmpty>
+          )}
+        </section>
       </div>
       <section className="mt-6 rounded-xl border bg-card p-5" aria-label="ARIMA sales forecast">
         <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="font-semibold">ARIMA Sales Forecast</h2>
+            <h2 className="font-semibold">Historical sales projection</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Based on {data.arima.observations} completed months of closed sales through{" "}
-              {data.arima.trainedThrough}. Agent, source, development and property filters apply.
+              Based on {data.arima.observations} completed months of won sales through{" "}
+              {reportMonth(data.arima.trainedThrough)}. Agent, development and property type filters
+              apply. This six-month projection is separate from the selected pipeline period.
             </p>
           </div>
           {data.arima.model && (
@@ -85,6 +130,9 @@ export default async function ForecastReportPage({
                 About ARIMA
               </a>
             </p>
+            <p className="mt-4 text-xs text-muted-foreground sm:hidden">
+              Scroll the table horizontally to see all estimates.
+            </p>
             <div className="mt-4 overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -98,7 +146,9 @@ export default async function ForecastReportPage({
                 <TableBody>
                   {data.arima.forecast.map((point) => (
                     <TableRow key={point.month}>
-                      <TableCell>{point.month}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {reportMonth(point.month)}
+                      </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {money(point.value)}
                       </TableCell>
@@ -121,41 +171,6 @@ export default async function ForecastReportPage({
           </ReportEmpty>
         )}
       </section>
-      <div className="mt-6 grid gap-6 xl:grid-cols-[1.5fr_1fr]">
-        <section className="rounded-xl border bg-card p-5">
-          <h2 className="mb-5 font-semibold">Pipeline by Expected Close Month</h2>
-          <ForecastChart data={data.monthly} currency={data.currency} />
-        </section>
-        <section className="overflow-hidden rounded-xl border bg-card">
-          <h2 className="p-5 font-semibold">Forecast by stage</h2>
-          {data.stages.length ? (
-            <div className="overflow-x-auto">
-              <Table className="w-full text-left text-sm">
-                <TableHeader className="bg-muted/50 text-xs text-muted-foreground">
-                  <TableRow>
-                    <TableHead className="px-4 py-3">Stage</TableHead>
-                    <TableHead>Deals</TableHead>
-                    <TableHead>Gross</TableHead>
-                    <TableHead className="pr-4">Weighted</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody className="divide-y">
-                  {data.stages.map((row) => (
-                    <TableRow key={row.stage}>
-                      <TableCell className="px-4 py-3 font-medium">{row.stage}</TableCell>
-                      <TableCell>{row.deals}</TableCell>
-                      <TableCell>{money(row.gross)}</TableCell>
-                      <TableCell className="pr-4">{money(row.weighted)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <ReportEmpty>No open deals are expected in this period.</ReportEmpty>
-          )}
-        </section>
-      </div>
     </ReportShell>
   );
 }
@@ -163,6 +178,5 @@ const currency = (code: string) => (value: number) =>
   new Intl.NumberFormat("en-PH", {
     style: "currency",
     currency: code,
-    notation: "compact",
-    maximumFractionDigits: 1,
+    maximumFractionDigits: 2,
   }).format(value);

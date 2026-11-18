@@ -20,7 +20,7 @@ const exporters: Record<string, (filters: ReportFilters) => Promise<CsvCell[][]>
   async sales(filters) {
     const data = await getSalesReport(filters, EXPORT_LIMIT);
     return [
-      ["Deal", "Agent", "Property", "Closed on", `Amount (${data.currency})`],
+      ["Opportunity", "Agent", "Property", "Close date", `Amount (${data.currency})`],
       ...data.closedDeals.map((deal) => [
         deal.title,
         deal.agentName,
@@ -34,10 +34,20 @@ const exporters: Record<string, (filters: ReportFilters) => Promise<CsvCell[][]>
   async forecast(filters) {
     const data = await getForecastReport(filters);
     return [
-      ["Month", "Deals", `Gross (${data.currency})`, `Weighted (${data.currency})`],
+      [
+        "Month",
+        "Opportunities",
+        `Total pipeline value (${data.currency})`,
+        `Weighted sales forecast (${data.currency})`,
+      ],
       ...data.monthly.map((row) => [row.month, row.deals, row.gross, row.weighted]),
       [],
-      ["Stage", "Deals", `Gross (${data.currency})`, `Weighted (${data.currency})`],
+      [
+        "Stage",
+        "Opportunities",
+        `Total pipeline value (${data.currency})`,
+        `Weighted sales forecast (${data.currency})`,
+      ],
       ...data.stages.map((row) => [row.stage, row.deals, row.gross, row.weighted]),
     ];
   },
@@ -47,10 +57,10 @@ const exporters: Record<string, (filters: ReportFilters) => Promise<CsvCell[][]>
       [
         "Agent",
         "Active leads",
-        "Deals opened",
+        "Opportunities created",
         "Won",
         `Sales value (${data.currency})`,
-        "Conversion %",
+        "Won / leads (%)",
         "Activities",
       ],
       ...data.agents.map((agent) => [
@@ -66,10 +76,7 @@ const exporters: Record<string, (filters: ReportFilters) => Promise<CsvCell[][]>
   },
   async conversion(filters) {
     const data = await getConversionReport(filters);
-    return [
-      ["Stage", "Contacts"],
-      ...data.funnel.map((stage) => [stage.label, stage.value]),
-    ];
+    return [["Stage", "Contacts"], ...data.funnel.map((stage) => [stage.label, stage.value])];
   },
 };
 

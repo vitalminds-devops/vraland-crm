@@ -51,7 +51,7 @@ function Row({
       className={`flex items-baseline justify-between gap-4 py-1.5 ${strong ? "mt-1 border-t pt-2.5 text-base font-semibold" : ""}`}
     >
       <dt className={muted ? "text-muted-foreground" : ""}>{label}</dt>
-      <dd className="tabular-nums">{value}</dd>
+      <dd className="shrink-0 text-right tabular-nums">{value}</dd>
     </div>
   );
 }
@@ -109,11 +109,7 @@ export default async function DealBillingPage({ params }: { params: Promise<{ de
 
   const applicant = bill.applicantDetails;
   const leadName =
-    applicant.applicantType !== "individual" && applicant.companyName
-      ? applicant.companyName
-      : applicant.firstName || applicant.lastName
-        ? formatContactName(applicant)
-        : bill.title;
+    applicant.firstName || applicant.lastName ? formatContactName(applicant) : bill.title;
   const badge = billStatusBadge[bill.status];
   const balance = Number(bill.total ?? 0) - Number(bill.paid);
   const sellingPrice = bill.lines.reduce((sum, line) => sum + Number(line.unitPrice), 0);
@@ -153,152 +149,169 @@ export default async function DealBillingPage({ params }: { params: Promise<{ de
         title={leadName}
         description={`${bill.dealCode} · ${bill.stageName} · Broker: ${broker}`}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <ButtonLink href={`/deals/${bill.dealId}`} variant="secondary" className="gap-2">
               <ExternalLink aria-hidden="true" className="size-4" />
-              Opportunity
+              View opportunity
             </ButtonLink>
             <BackButton fallbackHref="/billing" label="Back to billing" />
           </div>
         }
       />
 
-      <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <section className="rounded-xl border bg-card p-5">
-          <header className="flex flex-wrap items-center justify-between gap-2">
-            <Heading icon={Receipt}>Billing information</Heading>
-            <div className="flex items-center gap-2">
-              <DotBadge tone={badge.tone}>{badge.label}</DotBadge>
-              {bill.canManage && bill.billId && (
-                <EditBillButton
-                  dealId={bill.dealId}
-                  initial={billInitial}
-                  priceLocked={bill.dealStatus === "won"}
-                />
-              )}
-            </div>
-          </header>
-          {bill.billId && (
-            <div className="mt-4 rounded-lg border bg-muted/30 p-4">
-              <dl className="grid grid-cols-3 gap-3">
-                {(
-                  [
-                    ["Total", bill.total, "text-foreground"],
-                    ["Paid", bill.paid, "text-emerald-700 dark:text-emerald-400"],
-                    [
-                      "Balance",
-                      String(balance),
-                      balance > 0 ? "text-foreground" : "text-emerald-700 dark:text-emerald-400",
-                    ],
-                  ] as const
-                ).map(([label, value, tone]) => (
-                  <div key={label} className="min-w-0">
-                    <dt className="text-xs text-muted-foreground">{label}</dt>
-                    <dd className={`mt-0.5 truncate text-lg font-semibold tabular-nums ${tone}`}>
-                      {peso(value)}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-              <div
-                role="progressbar"
-                aria-label="Paid"
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={Math.round(paidPercent)}
-                className="mt-3 h-2 overflow-hidden rounded-full bg-muted"
-              >
-                <div
-                  className="h-full rounded-full bg-emerald-500"
-                  style={{ width: `${paidPercent}%` }}
-                />
+      <div className="mt-2 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="min-w-0 space-y-6">
+          <section className="@container min-w-0 rounded-xl border bg-card p-4 sm:p-5">
+            <header className="flex flex-wrap items-center justify-between gap-2">
+              <Heading icon={Receipt}>
+                {bill.billId ? "Bill summary" : "Opportunity details"}
+              </Heading>
+              <div className="flex items-center gap-2">
+                <DotBadge tone={badge.tone}>{badge.label}</DotBadge>
+                {bill.canManage && bill.billId && (
+                  <EditBillButton
+                    dealId={bill.dealId}
+                    initial={billInitial}
+                    priceLocked={bill.dealStatus === "won"}
+                  />
+                )}
               </div>
-              <p className="mt-1.5 text-xs text-muted-foreground">
-                {paidPercent > 0 && paidPercent < 1 ? "<1" : Math.round(paidPercent)}% paid
-              </p>
-            </div>
-          )}
-          <dl className="mt-4 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
-            <Detail icon={User} label="Contact" value={leadName} />
-            <Detail icon={Building2} label="Project" value={bill.developmentName} />
-            <Detail
-              icon={Home}
-              label={bill.lines.length > 1 ? "Units" : "Unit"}
-              value={unitLabel}
-            />
-            <Detail
-              icon={Ruler}
-              label="Floor area"
-              value={floorArea > 0 ? `${floorArea.toLocaleString("en-PH")} sqm` : null}
-            />
-            <div className="sm:col-span-2">
-              <Detail icon={MapPin} label="Address" value={address} />
-            </div>
-          </dl>
-          {(bill.reservationFee || bill.parkingAmount || bill.monthlyAmortization) && (
-            <dl className="mt-4 grid grid-cols-3 gap-3 rounded-lg bg-muted/50 px-3 py-2 text-sm">
-              {(
-                [
-                  ["Reservation fee", bill.reservationFee, Ticket],
-                  ["Parking fee", bill.parkingAmount, Car],
-                  ["Monthly", bill.monthlyAmortization, CalendarClock],
-                ] as const
-              ).map(([label, value, Icon]) => (
-                <div key={label} className="min-w-0">
-                  <dt className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Icon aria-hidden="true" className="size-3.5" />
-                    {label}
-                  </dt>
-                  <dd className="mt-0.5 tabular-nums">{value ? peso(value) : "—"}</dd>
+            </header>
+            {bill.billId && (
+              <div className="mt-5 border-y py-4">
+                <dl className="grid gap-4 @min-[32rem]:grid-cols-3">
+                  {(
+                    [
+                      ["Bill total", bill.total, "text-foreground"],
+                      ["Paid to date", bill.paid, "text-emerald-700 dark:text-emerald-400"],
+                      [
+                        "Remaining balance",
+                        String(balance),
+                        balance > 0 ? "text-foreground" : "text-emerald-700 dark:text-emerald-400",
+                      ],
+                    ] as const
+                  ).map(([label, value, tone]) => (
+                    <div key={label} className="min-w-0">
+                      <dt className="text-xs text-muted-foreground">{label}</dt>
+                      <dd className={`mt-0.5 text-lg font-semibold tabular-nums ${tone}`}>
+                        {peso(value)}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+                <div
+                  role="progressbar"
+                  aria-label="Paid"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={Math.round(paidPercent)}
+                  className="mt-3 h-2 overflow-hidden rounded-full bg-muted"
+                >
+                  <div
+                    className="h-full rounded-full bg-emerald-500"
+                    style={{ width: `${paidPercent}%` }}
+                  />
                 </div>
-              ))}
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  {paidPercent > 0 && paidPercent < 1 ? "<1" : Math.round(paidPercent)}% paid
+                </p>
+              </div>
+            )}
+            <dl className="mt-5 grid gap-x-6 gap-y-4 text-sm @min-[30rem]:grid-cols-2">
+              <Detail icon={User} label="Contact" value={leadName} />
+              <Detail icon={Building2} label="Project" value={bill.developmentName} />
+              <Detail
+                icon={Home}
+                label={bill.lines.length > 1 ? "Units" : "Unit"}
+                value={unitLabel}
+              />
+              <Detail
+                icon={Ruler}
+                label="Floor area"
+                value={floorArea > 0 ? `${floorArea.toLocaleString("en-PH")} sqm` : null}
+              />
+              <div className="col-span-full">
+                <Detail icon={MapPin} label="Address" value={address} />
+              </div>
             </dl>
+            {(bill.reservationFee || bill.parkingAmount || bill.monthlyAmortization) && (
+              <div className="mt-5 border-t pt-4">
+                <h3 className="text-sm font-medium">Opportunity payment terms</h3>
+                <dl className="mt-3 grid gap-4 text-sm @min-[32rem]:grid-cols-3">
+                  {(
+                    [
+                      ["Reservation fee", bill.reservationFee, Ticket],
+                      ["Parking fee", bill.parkingAmount, Car],
+                      ["Monthly amortization", bill.monthlyAmortization, CalendarClock],
+                    ] as const
+                  ).map(([label, value, Icon]) => (
+                    <div key={label} className="min-w-0">
+                      <dt className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Icon aria-hidden="true" className="size-3.5" />
+                        {label}
+                      </dt>
+                      <dd className="mt-0.5 tabular-nums">{value ? peso(value) : "—"}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            )}
+            {bill.billId && (
+              <div className="mt-6 border-t pt-4 text-sm">
+                <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold">
+                  <Calculator aria-hidden="true" className="size-4 text-muted-foreground" />
+                  Price breakdown
+                </h3>
+                <dl>
+                  {bill.lines.length > 1 ? (
+                    bill.lines.map((line, index) => (
+                      <Row
+                        key={index}
+                        label={shortLabel(line.unitLabel)}
+                        value={peso(line.unitPrice)}
+                        muted
+                      />
+                    ))
+                  ) : (
+                    <Row label="Selling price" value={peso(sellingPrice)} muted />
+                  )}
+                  {discount > 0 && (
+                    <>
+                      <Row label="Reservation discount" value={`−${peso(discount)}`} muted />
+                      <Row label="Net selling price" value={peso(netPrice)} muted />
+                    </>
+                  )}
+                  <Row
+                    label={`Miscellaneous fee${miscPercent === null ? "" : ` (${miscPercent}%)`}`}
+                    value={peso(miscFee)}
+                    muted
+                  />
+                  <Row label="Bill total" value={peso(bill.total)} strong />
+                </dl>
+                {bill.notes && <p className="mt-2 text-muted-foreground">{bill.notes}</p>}
+              </div>
+            )}
+          </section>
+          {!bill.billId && bill.canManage && (
+            <section className="min-w-0 rounded-xl border bg-card p-4 sm:p-5">
+              <Heading icon={Calculator}>Create bill</Heading>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Billed to {broker}. Review each unit’s price and miscellaneous fee, then save the
+                bill.
+              </p>
+              <div className="mt-5">
+                <BillForm dealId={bill.dealId} initial={billInitial} />
+              </div>
+            </section>
           )}
-          {bill.billId ? (
-            <div className="mt-6 border-t pt-4 text-sm">
-              <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold">
-                <Calculator aria-hidden="true" className="size-4 text-muted-foreground" />
-                Price breakdown
-              </h3>
-              <dl>
-                {bill.lines.length > 1 ? (
-                  bill.lines.map((line, index) => (
-                    <Row
-                      key={index}
-                      label={shortLabel(line.unitLabel)}
-                      value={peso(line.unitPrice)}
-                      muted
-                    />
-                  ))
-                ) : (
-                  <Row label="Selling price" value={peso(sellingPrice)} muted />
-                )}
-                {discount > 0 && (
-                  <>
-                    <Row label="Reservation discount" value={`−${peso(discount)}`} muted />
-                    <Row label="Net selling price" value={peso(netPrice)} muted />
-                  </>
-                )}
-                <Row
-                  label={`Miscellaneous fee${miscPercent === null ? "" : ` (${miscPercent}%)`}`}
-                  value={peso(miscFee)}
-                  muted
-                />
-                <Row label="Total receivable" value={peso(bill.total)} strong />
-              </dl>
-              {bill.notes && <p className="mt-2 text-muted-foreground">{bill.notes}</p>}
-            </div>
-          ) : bill.canManage ? (
-            <div className="mt-6 border-t pt-4">
-              <h3 className="mb-3 text-sm font-semibold">Create bill · billed to {broker}</h3>
-              <BillForm dealId={bill.dealId} initial={billInitial} />
-            </div>
-          ) : (
-            <p className="mt-4 text-sm text-muted-foreground">No bill yet.</p>
+          {!bill.billId && !bill.canManage && (
+            <p className="text-sm text-muted-foreground">
+              No bill has been created for this opportunity.
+            </p>
           )}
-        </section>
+        </div>
 
-        <aside className="rounded-xl border bg-card p-5 lg:sticky lg:top-4">
+        <aside className="min-w-0 rounded-xl border bg-card p-4 sm:p-5 xl:sticky xl:top-4">
           <header className="flex flex-wrap items-center justify-between gap-2">
             <Heading icon={Wallet}>
               Payments
@@ -344,11 +357,15 @@ export default async function DealBillingPage({ params }: { params: Promise<{ de
                         ] ?? payment.classification,
                         paymentMethodLabels[payment.method as keyof typeof paymentMethodLabels] ??
                           payment.method,
-                        payment.referenceNo && `Invoice no. ${payment.referenceNo}`,
                       ]
                         .filter(Boolean)
                         .join(" · ")}
                     </p>
+                    {payment.referenceNo && (
+                      <p className="mt-1 text-xs break-all text-muted-foreground">
+                        Invoice: {payment.referenceNo}
+                      </p>
+                    )}
                     {payment.notes && (
                       <p className="mt-0.5 text-xs text-muted-foreground">{payment.notes}</p>
                     )}
@@ -365,7 +382,11 @@ export default async function DealBillingPage({ params }: { params: Promise<{ de
               ))}
             </ul>
           ) : (
-            <p className="mt-3 text-sm text-muted-foreground">No payments yet.</p>
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+              {bill.billId
+                ? "No payments recorded yet."
+                : "Payments can be recorded after the bill is saved."}
+            </p>
           )}
         </aside>
       </div>

@@ -45,28 +45,28 @@ export default async function AgentReportPage({
   return (
     <ReportShell
       title="Agent leaderboard"
-      description="How each agent is doing."
+      description="Compare sales results and activity in the selected period."
       active="/reports/agents"
       filters={filters}
       options={options}
     >
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
-          label="Active agents"
+          label="Agents included"
           value={data.agents.length.toLocaleString()}
-          detail={`${totals.activeLeads.toLocaleString()} active leads.`}
+          detail={`${totals.activeLeads.toLocaleString()} active leads created in this period.`}
           icon={Users}
         />
         <StatCard
-          label="Closed deals"
+          label="Won opportunities"
           value={totals.closedDeals.toLocaleString()}
-          detail="Closed-won in period."
+          detail="Won in the selected period."
           icon={CheckCircle2}
         />
         <StatCard
           label="Sales value"
           value={money(totals.salesValue)}
-          detail="From agents' deals."
+          detail="Won opportunity values, not payments collected."
           icon={CircleDollarSign}
         />
         <StatCard
@@ -78,6 +78,15 @@ export default async function AgentReportPage({
       </div>
 
       <section className="mt-6 overflow-hidden rounded-xl border border-border/50 bg-card shadow-xs dark:shadow-none">
+        <div className="p-5">
+          <h2 className="font-semibold">Agent results</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Ranked by sales value, then won opportunities.
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground lg:hidden">
+            Scroll the table horizontally to see all metrics.
+          </p>
+        </div>
         {data.agents.length ? (
           <div className="overflow-x-auto">
             <Table className="w-full min-w-[760px] text-left text-sm">
@@ -90,7 +99,7 @@ export default async function AgentReportPage({
                     Active leads
                   </TableHead>
                   <TableHead scope="col" className="px-4 py-3 text-right font-medium">
-                    Deals opened
+                    Opportunities created
                   </TableHead>
                   <TableHead scope="col" className="px-4 py-3 text-right font-medium">
                     Won
@@ -99,7 +108,7 @@ export default async function AgentReportPage({
                     Sales value
                   </TableHead>
                   <TableHead scope="col" className="px-4 py-3 text-right font-medium">
-                    Conversion
+                    Won / leads
                   </TableHead>
                   <TableHead scope="col" className="px-4 py-3 text-right font-medium">
                     Activities
@@ -147,7 +156,9 @@ export default async function AgentReportPage({
         )}
       </section>
       <p className="mt-3 text-xs text-muted-foreground">
-        Close rate = closed-won ÷ leads assigned. Super Administrator excluded.
+        Won / leads = opportunities won in the selected period ÷ contacts created in that period and
+        assigned to the agent. Won opportunities may belong to older contacts. Super administrators
+        are excluded.
       </p>
     </ReportShell>
   );

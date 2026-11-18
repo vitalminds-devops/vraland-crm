@@ -4,7 +4,8 @@ import { cn } from "@/lib/utils/cn";
 import type { DashboardData } from "../queries/dashboard.queries";
 
 export function PriorityList({ items }: { items: DashboardData["priorities"] }) {
-  if (!items.length) return <EmptyList message="Nothing due in the next 7 days." />;
+  if (!items.length)
+    return <EmptyList message="No overdue or upcoming items in the next 7 days." />;
   return (
     <ul className="divide-y divide-border/60">
       {items.map((item) => {
@@ -13,13 +14,13 @@ export function PriorityList({ items }: { items: DashboardData["priorities"] }) 
         return (
           <li
             key={`${item.source}-${item.id}`}
-            className="flex items-start gap-3 py-3 first:pt-0 last:pb-0"
+            className="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-x-3 gap-y-1 py-3 first:pt-0 last:pb-0 @min-[24rem]:grid-cols-[2rem_minmax(0,1fr)_auto]"
           >
             <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
               <Icon aria-hidden="true" className="size-4" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-foreground">{item.title}</p>
+              <p className="text-sm font-medium break-words text-foreground">{item.title}</p>
               <p className="mt-1 text-xs capitalize text-muted-foreground">
                 {item.source === "viewing"
                   ? "Viewing"
@@ -28,7 +29,7 @@ export function PriorityList({ items }: { items: DashboardData["priorities"] }) 
             </div>
             <span
               className={cn(
-                "shrink-0 text-xs font-medium tabular-nums",
+                "col-start-2 text-xs font-medium tabular-nums @min-[24rem]:col-start-auto @min-[24rem]:text-right",
                 overdue ? "text-destructive" : "text-muted-foreground",
               )}
             >
@@ -44,7 +45,7 @@ export function PriorityList({ items }: { items: DashboardData["priorities"] }) 
 function dueLabel(dueAt: Date | null, overdue: boolean) {
   if (!dueAt) return "No due time";
   if (overdue) return "Overdue";
-  if (isToday(dueAt)) return format(dueAt, "h:mm a");
+  if (isToday(dueAt)) return `Today, ${format(dueAt, "h:mm a")}`;
   if (isTomorrow(dueAt)) return "Tomorrow";
   return format(dueAt, "d MMM");
 }
