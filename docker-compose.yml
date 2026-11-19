@@ -18,24 +18,19 @@ services:
     networks:
       - app-net
     environment:
-      NODE_ENV: production
-      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in Portainer}
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET in Portainer}
-      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?Set BETTER_AUTH_URL in Portainer}
-      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:?Set NEXT_PUBLIC_APP_URL in Portainer}
-      # Optional: extra trusted auth origins (comma-separated).
-      BETTER_AUTH_TRUSTED_ORIGINS: ${BETTER_AUTH_TRUSTED_ORIGINS:-}
-      # Optional: SMTP delivery for password-reset mail.
-      SMTP_HOST: ${SMTP_HOST:-}
-      SMTP_PORT: ${SMTP_PORT:-587}
-      SMTP_SECURE: ${SMTP_SECURE:-false}
-      SMTP_USER: ${SMTP_USER:-}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
-      SMTP_FROM: ${SMTP_FROM:-}
-      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-}
-      # Optional: Resend as an alternative email provider.
-      RESEND_API_KEY: ${RESEND_API_KEY:-}
-      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-}
+      - APP_PORT
+      - BETTER_AUTH_SECRET
+      - BETTER_AUTH_URL
+      - DATABASE_URL
+      - NEXT_PUBLIC_APP_URL
+      - RESEND_API_KEY
+      - RESEND_FROM_EMAIL
+      - SMTP_FROM
+      - SMTP_HOST
+      - SMTP_PASSWORD
+      - SMTP_PORT
+      - SMTP_SECURE
+      - SMTP_USER
     healthcheck:
       test:
         - CMD
