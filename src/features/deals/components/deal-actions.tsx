@@ -80,12 +80,18 @@ export function DealActions({
   function run(action: () => Promise<DealActionResult>) {
     startTransition(async () => {
       const result = await action();
-      notify(
-        result.success
-          ? result.data.message || "Saved."
-          : result.error.message || "Couldn't save. Try again.",
-        result.success ? "success" : "error",
-      );
+      if (!result.success && mode === "stage") {
+        notify("Opportunity has not moved", "error", {
+          id: `stage-move-${dealId}`,
+          description: result.error.message || "Refresh the pipeline and try again.",
+        });
+      } else
+        notify(
+          result.success
+            ? result.data.message || "Saved."
+            : result.error.message || "Couldn't save. Try again.",
+          result.success ? "success" : "error",
+        );
       if (result.success) setMode(null);
     });
   }
@@ -161,9 +167,10 @@ export function DealActions({
             setOpportunityStageId(null);
             notify(
               result.success && result.data.approvalRequested
-                ? "Sent for approval"
-                : "Moved to Opportunity",
+                ? "Move sent for approval"
+                : "Lead moved to Opportunity",
               "success",
+              { description: result.success ? result.data.message : undefined },
             );
             router.refresh();
           }}

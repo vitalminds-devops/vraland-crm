@@ -138,23 +138,41 @@ export async function getOpportunityDraft(dealId: string) {
 
 const detailsSchema = z
   .object({
-    dealId: z.uuid(),
-    stageId: z.uuid(),
-    tinNumber: z.string().trim().min(1, "Enter the client's TIN number.").max(50),
-    prcLicenseNumber: z.string().trim().max(50),
+    dealId: z.uuid({
+      error: "This lead could not be identified. Refresh the pipeline and try again.",
+    }),
+    stageId: z.uuid({
+      error: "The Opportunity stage could not be identified. Refresh the pipeline and try again.",
+    }),
+    tinNumber: z
+      .string()
+      .trim()
+      .min(1, "Enter the client's TIN number.")
+      .max(50, "TIN number must be 50 characters or fewer."),
+    prcLicenseNumber: z
+      .string()
+      .trim()
+      .max(50, "PRC license number must be 50 characters or fewer."),
     ...opportunitySelectionSchema.shape,
     financingPreference: z.enum(financingPreferences, { error: "Select how it will be paid." }),
-    financingPreferenceOther: z.string().trim().max(180),
-    bankName: z.string().trim().max(180),
+    financingPreferenceOther: z
+      .string()
+      .trim()
+      .max(180, "Other financing must be 180 characters or fewer."),
+    bankName: z.string().trim().max(180, "Bank name must be 180 characters or fewer."),
   })
   .superRefine((v, ctx) => {
     if (v.financingPreference === "bank_financing" && !v.bankName)
-      ctx.addIssue({ code: "custom", path: ["bankName"], message: "Enter the bank." });
+      ctx.addIssue({
+        code: "custom",
+        path: ["bankName"],
+        message: "In Details, enter the bank name for bank financing.",
+      });
     if (v.financingPreference === "other" && !v.financingPreferenceOther)
       ctx.addIssue({
         code: "custom",
         path: ["financingPreferenceOther"],
-        message: "Describe the financing.",
+        message: "In Details, describe how the client will pay under Other financing.",
       });
   });
 
@@ -193,7 +211,8 @@ async function estimateSelection(
   if (selected.length !== input.unitIds.length)
     return {
       success: false as const,
-      message: "Select available units shared with you in this building.",
+      message:
+        "One or more selected units are unavailable or not shared with you. In Details, clear the unit selection and choose available units in this building.",
     };
   if (building.parkingSpaces !== null && input.parkingSlotIds.length > building.parkingSpaces)
     return {
@@ -209,7 +228,8 @@ async function estimateSelection(
     if (input.parkingSlotIds.some((id) => !available.has(id)))
       return {
         success: false as const,
-        message: "Select available parking slots shared with you in this building.",
+        message:
+          "One or more selected parking slots are unavailable or not shared with you. In Details, choose available parking slots or remove parking to continue.",
       };
   }
   const prices = opportunityPrice(
@@ -222,7 +242,7 @@ async function estimateSelection(
     return {
       success: false as const,
       message:
-        "Set the building's gross list price and, when requesting parking, its parking price first.",
+        "The building's gross list price or parking price is missing or invalid. Ask an administrator to check these prices in Properties, then try again.",
     };
   return {
     success: true as const,
@@ -310,7 +330,8 @@ export async function openOpportunity(formData: FormData): Promise<DealActionRes
     financingPreferenceOther: formData.get("financingPreferenceOther") ?? "",
     bankName: formData.get("bankName") ?? "",
   });
-  if (!parsed.success) return validationFailureFromZod(parsed.error);
+  if (!parsed.success)
+    return validationFailureFromZod(parsed.error, parsed.error.issues[0]?.message);
   const v = parsed.data;
 
   const loaded = await loadDeal(v.dealId);
@@ -322,7 +343,11 @@ export async function openOpportunity(formData: FormData): Promise<DealActionRes
     );
   if (!row.contactId) return validationFailure("This opportunity has no client.");
   if (!context.permissions.has("contacts.update"))
-    return failure(permissionDenied("You cannot update this client's details."));
+    return failure(
+      permissionDenied(
+        "You do not have permission to update this client's details. Ask your administrator for access before moving this lead.",
+      ),
+    );
   const contactId = row.contactId;
   // A lead moved back from Opportunity can still hold its units while it has payments.
   const estimate = await estimateSelection(context, v, {
@@ -408,12 +433,14 @@ export async function openOpportunity(formData: FormData): Promise<DealActionRes
   const storage = getDocumentStorage();
   const stored: string[] = [];
   let savedVersion: string | undefined;
+  let uploadsComplete = false;
   try {
     for (const upload of uploads) {
       const key = `${context.organizationId}/contacts/${contactId}/${upload.folder}/${randomUUID()}.${upload.checked.ext}`;
       await storage.put(key, upload.checked.body);
       stored.push(key);
     }
+    uploadsComplete = true;
     savedVersion = await db.transaction(async (tx) => {
       const [locked] = await tx
         .select({ stageSlug: pipelineStages.slug, updatedAt: deals.updatedAt })
@@ -530,15 +557,36 @@ export async function openOpportunity(formData: FormData): Promise<DealActionRes
     await Promise.all(stored.map((key) => storage.remove(key).catch(() => undefined)));
     if (error instanceof OpportunityChanged) return failure(conflict(error.message));
     logError("Opportunity details save failed", error, { operation: "opportunity_details" });
-    return databaseFailure("The details could not be saved.");
+    return databaseFailure(
+      uploadsComplete
+        ? "The lead could not be moved to Opportunity because its details could not be saved. Please try again."
+        : "The documents could not be uploaded. The lead has not moved to Opportunity. Please try again.",
+    );
   }
   revalidatePath(`/contacts/${contactId}`);
-  return changeDealStage({
+  const result = await changeDealStage({
     dealId: v.dealId,
     stageId: v.stageId,
     note: "",
     expectedUpdatedAt: savedVersion,
   });
+  if (!result.success)
+    return {
+      ...result,
+      error: {
+        ...result.error,
+        message: `Details and documents saved, but the lead was not moved to Opportunity. ${result.error.message}`,
+      },
+    };
+  return {
+    ...result,
+    data: {
+      ...result.data,
+      message: result.data.approvalRequested
+        ? "A manager must approve this move. The lead will stay in Leads until then."
+        : "Selected units and parking slots are reserved.",
+    },
+  };
 }
 
 const changeSchema = opportunitySelectionSchema.extend({ dealId: z.uuid() });

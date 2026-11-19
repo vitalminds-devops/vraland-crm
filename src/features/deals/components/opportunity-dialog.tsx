@@ -33,6 +33,7 @@ import {
 import { PropertyFloorUnitSelector } from "@/features/properties";
 import { cn } from "@/lib/utils/cn";
 import { groupDigits } from "@/lib/utils/group-digits";
+import { fieldErrorsOf } from "@/lib/types/action-result.client";
 
 import {
   getOpportunityDraft,
@@ -191,6 +192,7 @@ export function OpportunityDialog({
 }) {
   const [draft, setDraft] = useState<OpportunityDraft | null>(null);
   const [failed, setFailed] = useState(false);
+  const [moveError, setMoveError] = useState<{ title: string; description: string } | null>(null);
   const [step, setStep] = useState<1 | 2>(1);
   const [idFile, setIdFile] = useState<File | null>(null);
   const [hasAppointment, setHasAppointment] = useState(false);
@@ -272,8 +274,14 @@ export function OpportunityDialog({
     (draft!.onFile.appointmentForm || hasAppointment) &&
     extras.every((extra) => extra.type);
 
+  function showMoveError(title: string, description: string) {
+    setMoveError({ title, description });
+    notify(title, "error", { description });
+  }
+
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setMoveError(null);
     if (step === 1) {
       if (documentsReady) setStep(2);
       return;
@@ -288,10 +296,38 @@ export function OpportunityDialog({
       form.append("additional", extra.file);
       form.append("additionalType", extra.type);
     }
+    for (const entry of form.values()) {
+      if (entry instanceof File && entry.size > 15 * 1024 * 1024) {
+        showMoveError(
+          "Document is too large",
+          `${entry.name} exceeds the 15 MB limit. In Documents, replace it with a file that is 15 MB or smaller, then try again.`,
+        );
+        setStep(1);
+        return;
+      }
+    }
     startTransition(async () => {
-      const result = await openOpportunity(form);
+      let result: DealActionResult;
+      try {
+        result = await openOpportunity(form);
+      } catch {
+        showMoveError(
+          "Could not confirm the move",
+          "We did not receive a confirmation. Refresh the pipeline to check whether the lead is in Opportunity before trying again.",
+        );
+        return;
+      }
       if (!result.success) {
-        notify(result.error.message || "Couldn't save. Try again.", "error");
+        const fieldErrors = fieldErrorsOf(result);
+        const messages = [...new Set(Object.values(fieldErrors).flat())];
+        showMoveError(
+          "Lead was not moved to Opportunity",
+          messages.length
+            ? messages.join("\n")
+            : result.error.message ||
+                "Please try again. If it still fails, contact your administrator.",
+        );
+        if (fieldErrors.tinNumber || fieldErrors.prcLicenseNumber) setStep(1);
         return;
       }
       onDone(result);
@@ -317,11 +353,25 @@ export function OpportunityDialog({
             </header>
 
             {failed ? (
-              <p className="mt-5 text-sm text-destructive">This opportunity could not be loaded.</p>
+              <p role="alert" className="mt-5 text-sm text-destructive">
+                Lead details could not be loaded. Close this dialog, refresh the pipeline, and try
+                again.
+              </p>
             ) : !draft ? (
               <p className="mt-5 text-sm text-muted-foreground">Loading…</p>
             ) : (
               <form onSubmit={submit} className="mt-4 grid gap-4">
+                {moveError && (
+                  <div
+                    role="alert"
+                    className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm"
+                  >
+                    <p className="font-medium text-destructive">{moveError.title}</p>
+                    <p className="mt-1 whitespace-pre-line break-words text-foreground">
+                      {moveError.description}
+                    </p>
+                  </div>
+                )}
                 <ol className="flex items-center gap-2 text-xs font-medium">
                   {(["Documents", "Details"] as const).map((label, index) => {
                     const current = step === index + 1;

@@ -1,4 +1,5 @@
 import { beforeEach, expect, it, vi } from "vitest";
+import type { DealActionResult } from "./deal.actions";
 import {
   getOpportunityEstimate,
   getOpportunityParking,
@@ -30,6 +31,9 @@ const inventory = vi.hoisted(() => ({
   queryRows: [] as unknown[][],
   updates: [] as Record<string, unknown>[],
   lockStage: "leads",
+  stageResult: { success: true, data: { id: "deal" } } as DealActionResult,
+  put: vi.fn(),
+  remove: vi.fn(),
 }));
 
 vi.mock("@/db", () => ({
@@ -73,7 +77,11 @@ vi.mock("@/lib/permissions/authorization", () => ({
   }),
   canAccessResource: async () => true,
 }));
-vi.mock("./deal.actions", () => ({ changeDealStage: async () => ({ success: true, data: {} }) }));
+vi.mock("./deal.actions", () => ({ changeDealStage: async () => inventory.stageResult }));
+vi.mock("@/lib/storage/document-storage", () => ({
+  getDocumentStorage: () => ({ put: inventory.put, remove: inventory.remove }),
+}));
+vi.mock("@/lib/logger", () => ({ logError: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("../lib/opportunity-requirements", async (original) => ({
   ...(await original<typeof import("../lib/opportunity-requirements")>()),
@@ -96,9 +104,12 @@ beforeEach(() => {
   inventory.queryRows = [];
   inventory.updates = [];
   inventory.lockStage = "leads";
+  inventory.stageResult = { success: true, data: { id } };
+  inventory.put.mockReset();
+  inventory.remove.mockReset();
 });
 
-it("saves the building, parking quantity, and authoritative total before moving", async () => {
+function leadForm() {
   inventory.queryRows = [
     [{ dealId: id, stageSlug: "leads", contactId: id, firstName: "Buyer", lastName: "Test" }],
     [{ id }],
@@ -111,7 +122,14 @@ it("saves the building, parking quantity, and authoritative total before moving"
   form.set("financingPreference", "cash");
   form.set("parkingSlotIds", id);
   form.set("amount", "1");
-  expect(await openOpportunity(form)).toMatchObject({ success: true });
+  return form;
+}
+
+it("saves the building, parking quantity, and authoritative total before moving", async () => {
+  expect(await openOpportunity(leadForm())).toMatchObject({
+    success: true,
+    data: { message: "Selected units and parking slots are reserved." },
+  });
   expect(inventory.updates).toContainEqual(
     expect.objectContaining({
       propertyId: id,
@@ -124,6 +142,57 @@ it("saves the building, parking quantity, and authoritative total before moving"
       currency: "PHP",
     }),
   );
+});
+
+it("explains that approval is still needed instead of claiming the lead moved", async () => {
+  inventory.stageResult = { success: true, data: { id, approvalRequested: true } };
+  expect(await openOpportunity(leadForm())).toMatchObject({
+    success: true,
+    data: {
+      approvalRequested: true,
+      message: "A manager must approve this move. The lead will stay in Leads until then.",
+    },
+  });
+});
+
+it("reports saved details separately from an inventory conflict during the move", async () => {
+  inventory.stageResult = {
+    success: false,
+    error: { code: "CONFLICT", message: "Unit A1 is no longer available. Select another unit." },
+  };
+  expect(await openOpportunity(leadForm())).toMatchObject({
+    success: false,
+    error: {
+      code: "CONFLICT",
+      message:
+        "Details and documents saved, but the lead was not moved to Opportunity. Unit A1 is no longer available. Select another unit.",
+    },
+  });
+  expect(inventory.updates).not.toHaveLength(0);
+});
+
+it("returns an actionable upload error without saving details", async () => {
+  const form = leadForm();
+  form.set("validId", new File(["%PDF-1.7\n"], "id.pdf", { type: "application/pdf" }));
+  inventory.put.mockRejectedValueOnce(new Error("Storage unavailable"));
+  expect(await openOpportunity(form)).toMatchObject({
+    success: false,
+    error: {
+      message:
+        "The documents could not be uploaded. The lead has not moved to Opportunity. Please try again.",
+    },
+  });
+  expect(inventory.updates).toEqual([]);
+});
+
+it("names the missing bank in the toast message", async () => {
+  const form = leadForm();
+  form.set("financingPreference", "bank_financing");
+  expect(await openOpportunity(form)).toMatchObject({
+    success: false,
+    error: { message: "In Details, enter the bank name for bank financing." },
+  });
+  expect(inventory.updates).toEqual([]);
 });
 
 it("calculates the expected amount using authorized building prices", async () => {
@@ -202,7 +271,7 @@ it("rejects inaccessible parking IDs and parking from another building", async (
   inventory.parking = [];
   expect(await getOpportunityEstimate(selection)).toMatchObject({
     success: false,
-    message: expect.stringContaining("parking slots shared with you"),
+    message: expect.stringContaining("parking slots are unavailable or not shared with you"),
   });
 });
 

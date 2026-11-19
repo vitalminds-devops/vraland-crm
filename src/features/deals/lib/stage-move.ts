@@ -134,8 +134,8 @@ export function dropHintFor(
     return {
       text:
         needed === NO_RESERVATION_MESSAGE
-          ? "Reservation fee not fully paid"
-          : "Monthly amortization not fully paid",
+          ? "Reservation payment needed"
+          : "First monthly payment needed",
       tone: "blocked",
     };
 

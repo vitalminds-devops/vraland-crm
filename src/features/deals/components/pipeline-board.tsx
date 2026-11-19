@@ -215,10 +215,15 @@ export function PipelineBoard({
       const result = await changeDealStage({ dealId, stageId, note }, options);
       if (!result.success) {
         if (!options.expectPending) rollback();
-        notify(result.error.message || "Couldn't move opportunity.", "error");
+        notify(`Could not move to ${toStage.name}`, "error", {
+          id: `stage-move-${dealId}`,
+          description: result.error.message || "Refresh the pipeline and try the move again.",
+        });
       } else if (result.data.approvalRequested) {
         if (!options.expectPending) rollback();
-        notify("Sent for approval", "success");
+        notify("Move sent for approval", "success", {
+          description: `A manager must approve the move to ${toStage.name}. The opportunity stays in its current stage until then.`,
+        });
       } else {
         notify(`Moved to ${toStage.name}`, "success");
       }
@@ -235,14 +240,16 @@ export function PipelineBoard({
 
     // UI-level validation before the server call, mirroring the server's rules.
     if (!canMoveDealToStage(before, toStage, sortedStages, canChangeStage, userRole, canMoveBack)) {
-      notify(
-        paymentNeededFor(
-          before,
-          sortedStages.find((s) => s.id === before.stageId),
-          toStage,
-        ) ?? "Can't move to that stage.",
-        "error",
-      );
+      notify(`Cannot move to ${toStage.name}`, "error", {
+        id: `stage-move-${dealId}`,
+        description:
+          paymentNeededFor(
+            before,
+            sortedStages.find((s) => s.id === before.stageId),
+            toStage,
+          ) ??
+          "Your permissions or the current pipeline stage prevent this move. Open the opportunity to see the available stage changes.",
+      });
       return;
     }
 
@@ -350,12 +357,14 @@ export function PipelineBoard({
               const { dealId, stageId } = opportunityRequest;
               setOpportunityRequest(null);
               if (result.success && result.data.approvalRequested) {
-                notify("Sent for approval", "success");
+                notify("Move sent for approval", "success", { description: result.data.message });
               } else {
                 setItems((current) =>
                   current.map((d) => (d.id === dealId ? { ...d, stageId } : d)),
                 );
-                notify("Moved to Opportunity", "success");
+                notify("Lead moved to Opportunity", "success", {
+                  description: result.success ? result.data.message : undefined,
+                });
               }
               router.refresh();
             }}
@@ -783,4 +792,3 @@ function owner(deal: Deal) {
   if (deal.agentFirstName) return `${deal.agentFirstName} ${deal.agentLastName ?? ""}`.trim();
   return "Unassigned";
 }
-
