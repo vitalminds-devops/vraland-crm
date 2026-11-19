@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { notify } from "@/components/ui/toast";
+import { documentFileError } from "@/lib/storage/document-validation";
 import { cn } from "@/lib/utils/cn";
 
 import { saveUserCertificate, saveUserDocument } from "../actions/settings.actions";
@@ -197,17 +198,31 @@ export function UserDocumentsWorkspace({
   const uploadCertificate = (form: FormData, element: HTMLFormElement) => {
     form.set("userId", user.id);
     startTransition(async () => {
-      const result = await saveUserCertificate(form);
-      notify(
-        result.success
-          ? "Certificate uploaded."
-          : result.error.message || "Couldn't upload certificate.",
-        result.success ? "success" : "error",
-      );
-      if (result.success) {
-        element.reset();
-        setCertificateOpen(false);
-        router.refresh();
+      try {
+        const file = form.get("file");
+        const error =
+          file instanceof File ? await documentFileError(file) : "Select a certificate file.";
+        if (error) {
+          notify(error, "error");
+          return;
+        }
+        const result = await saveUserCertificate(form);
+        notify(
+          result.success
+            ? "Certificate uploaded."
+            : result.error.message || "Couldn't upload certificate.",
+          result.success ? "success" : "error",
+        );
+        if (result.success) {
+          element.reset();
+          setCertificateOpen(false);
+          router.refresh();
+        }
+      } catch {
+        notify(
+          "Upload confirmation was not received. Refresh the document list before uploading again.",
+          "error",
+        );
       }
     });
   };
@@ -223,14 +238,26 @@ export function UserDocumentsWorkspace({
     form.set("file", file);
     const verb = documentId ? "replace" : "upload";
     startTransition(async () => {
-      const result = await saveUserDocument(form);
-      notify(
-        result.success
-          ? `Document ${verb}d.`
-          : result.error.message || `Couldn't ${verb} document.`,
-        result.success ? "success" : "error",
-      );
-      if (result.success) router.refresh();
+      try {
+        const error = await documentFileError(file);
+        if (error) {
+          notify(error, "error");
+          return;
+        }
+        const result = await saveUserDocument(form);
+        notify(
+          result.success
+            ? `Document ${verb}d.`
+            : result.error.message || `Couldn't ${verb} document.`,
+          result.success ? "success" : "error",
+        );
+        if (result.success) router.refresh();
+      } catch {
+        notify(
+          "Upload confirmation was not received. Refresh the document list before uploading again.",
+          "error",
+        );
+      }
     });
   };
 

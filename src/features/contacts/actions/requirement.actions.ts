@@ -15,7 +15,7 @@ import {
 } from "../schemas/requirement.schema";
 import { logError } from "@/lib/logger";
 import { getDocumentStorage } from "@/lib/storage/document-storage";
-import { matchesDeclaredType } from "@/lib/storage/file-signature";
+import { documentFileError, requirementFileTypes } from "@/lib/storage/document-validation";
 import {
   databaseFailure,
   failure,
@@ -138,12 +138,6 @@ export async function addContactRequirement(input: {
   }
 }
 
-const uploadTypes: Record<string, string> = {
-  "application/pdf": "pdf",
-  "image/jpeg": "jpg",
-  "image/png": "png",
-};
-
 /** Stores a file for one requirement, attaches it to the contact and marks the requirement submitted. */
 export async function uploadRequirementDocument(
   formData: FormData,
@@ -152,11 +146,10 @@ export async function uploadRequirementDocument(
   const id = requirementDeleteSchema.safeParse({ id: formData.get("id") });
   if (!id.success) return validationFailure("Choose a valid document.");
   const file = formData.get("file");
-  if (!(file instanceof File) || !file.size) return validationFailure("Choose a file.");
-  if (file.size > 15 * 1024 * 1024) return validationFailure("Files must be 15 MB or smaller.");
-  const ext = uploadTypes[file.type];
-  if (!ext || !(await matchesDeclaredType(file)))
-    return validationFailure("Only PDF, JPEG and PNG files are accepted.");
+  if (!(file instanceof File)) return validationFailure("Choose a file.");
+  const fileError = await documentFileError(file, requirementFileTypes);
+  if (fileError) return validationFailure(fileError);
+  const ext = requirementFileTypes[file.type];
   const [existing] = await db
     .select()
     .from(contactDocumentRequirements)

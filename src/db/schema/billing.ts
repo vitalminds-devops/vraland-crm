@@ -13,6 +13,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { deals } from "./deals";
+import { documents } from "./documents";
 import { organizations, users } from "./organization";
 import { createdAt, updatedAt } from "./shared";
 
@@ -97,6 +98,9 @@ export const payments = pgTable(
     /** One of `paymentClassifications`: a reservation unlocks Opportunity, the first monthly unlocks Won. */
     classification: varchar({ length: 20 }).default("downpayment").notNull(),
     referenceNo: varchar("reference_no", { length: 120 }),
+    transactionSlipDocumentId: uuid("transaction_slip_document_id").references(() => documents.id, {
+      onDelete: "set null",
+    }),
     notes: text(),
     recordedBy: uuid("recorded_by").references(() => users.id, {
       onDelete: "set null",

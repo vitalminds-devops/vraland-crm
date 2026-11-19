@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangle, Check, Plus, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition, type ChangeEvent } from "react";
+import { useRef, useState, useTransition, type ChangeEvent } from "react";
 import { Controller, type FieldPath, useForm, useWatch } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -159,6 +159,9 @@ export function ContactForm({
 }: ContactFormProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const creationId = useRef<string | null>(null);
+  const submitting = useRef(false);
+  const savedContactId = useRef<string | null>(null);
   // Separate from `pending`: a duplicate check fired by leaving a field must not disable Save under the click.
   const [, startDuplicateCheck] = useTransition();
   const [duplicate, setDuplicate] = useState<VisibleDuplicateMatch | null>(null);
@@ -341,6 +344,8 @@ export function ContactForm({
   }
 
   function submit(values: ContactInput) {
+    if (submitting.current) return;
+    submitting.current = true;
     setDealError(undefined);
     startTransition(async () => {
       try {
@@ -353,9 +358,16 @@ export function ContactForm({
             return;
           }
         }
+        if (!contactId && !creationId.current) {
+          // Keep the request id through the error page's Retry button and browser reloads.
+          const url = new URL(window.location.href);
+          creationId.current = url.searchParams.get("creationId") || crypto.randomUUID();
+          url.searchParams.set("creationId", creationId.current);
+          window.history.replaceState(null, "", url);
+        }
         const result = contactId
           ? await updateContact(contactId, values)
-          : await createContact(values);
+          : await createContact(values, creationId.current!);
         if (!result.success) {
           for (const [field, messages] of Object.entries(fieldErrorsOf(result))) {
             if (messages[0])
@@ -369,6 +381,7 @@ export function ContactForm({
           notify(result.error.message, "error");
           return;
         }
+        savedContactId.current = result.data.id;
         if (dealValues && wantsDeal) {
           const saveDeal = contactId ? saveDealForContact : createDealForContact;
           const dealResult = await saveDeal(
@@ -388,14 +401,25 @@ export function ContactForm({
         router.push("/contacts");
         router.refresh();
       } catch (error) {
-        notify(getUserFacingMessage(error), "error");
+        notify(
+          savedContactId.current
+            ? "The contact was saved, but the remaining steps could not finish. Retry Save to continue with the same contact."
+            : getUserFacingMessage(error),
+          "error",
+        );
+      } finally {
+        submitting.current = false;
       }
     });
   }
 
   return (
     <form
-      onSubmit={handleSubmit(submit, () => notify("Review the highlighted fields below.", "error"))}
+      onSubmit={(event) => {
+        void handleSubmit(submit, () => notify("Review the highlighted fields below.", "error"))(
+          event,
+        );
+      }}
       className={formShellClass}
     >
       <FormStyle />

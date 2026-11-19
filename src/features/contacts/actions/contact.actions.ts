@@ -146,10 +146,7 @@ async function validateAssignee(context: AuthorizationContext, userId: string | 
  */
 async function checkContactReferences(
   context: AuthorizationContext,
-  value: Pick<
-    ContactInput,
-    "assignedAgentId" | "preferredDevelopmentId" | "preferredUnitIds"
-  >,
+  value: Pick<ContactInput, "assignedAgentId" | "preferredDevelopmentId" | "preferredUnitIds">,
 ): Promise<string | null> {
   if (!(await validateAssignee(context, value.assignedAgentId || null)))
     return "Select an active agent or broker.";
@@ -287,6 +284,7 @@ function reviewMessage(
 async function insertContact(
   context: AuthorizationContext,
   input: ContactInput,
+  creationId: string,
 ): Promise<ContactActionResult> {
   const parsed = contactSchema.safeParse(input);
   if (!parsed.success) return validationFailureFromZod(parsed.error, reviewMessage(parsed.error));
@@ -307,7 +305,7 @@ async function insertContact(
   if (referenceError) return validationFailure(referenceError);
   try {
     const id = await db.transaction(async (tx) => {
-      const created = await insertContactRow(tx, context, value);
+      const created = await insertContactRow(tx, context, value, undefined, creationId);
       if (!created.success) throw new Error(created.error.message);
       const opened = await openDealForApprovedContact(tx, context, {
         contactId: created.data.id,
@@ -361,6 +359,7 @@ async function insertContactRow(
   context: AuthorizationContext,
   value: ContactInput,
   approvalStatus?: ContactApprovalStatus,
+  creationId?: string,
 ): Promise<ActionResult<InsertedContact>> {
   try {
     let brokerUserId: string | null = null;
@@ -379,6 +378,7 @@ async function insertContactRow(
     const [record] = await tx
       .insert(contacts)
       .values({
+        id: creationId,
         organizationId: context.organizationId,
         contactCode: generateContactCode(),
         firstName: value.firstName,
@@ -480,9 +480,37 @@ async function insertContactRow(
     return databaseFailure(describeWriteError(error));
   }
 }
-export async function createContact(input: ContactInput): Promise<ContactActionResult> {
+export async function createContact(
+  input: ContactInput,
+  creationId: string,
+): Promise<ContactActionResult> {
   const context = await requirePermission("contacts.create");
-  const result = await insertContact(context, input);
+  if (!z.uuid().safeParse(creationId).success)
+    return validationFailure("Invalid creation request.");
+  // A response can fail after commit. The form keeps this id so its retry reuses the saved contact.
+  const savedContact = async () => {
+    const [saved] = await db
+      .select({ id: contacts.id })
+      .from(contacts)
+      .where(
+        and(
+          eq(contacts.id, creationId),
+          eq(contacts.organizationId, context.organizationId),
+          eq(contacts.createdBy, context.userId),
+          isNull(contacts.deletedAt),
+        ),
+      )
+      .limit(1);
+    return saved;
+  };
+  const saved = await savedContact();
+  if (saved) return success({ id: saved.id });
+  let result = await insertContact(context, input, creationId);
+  // Concurrent submissions race on the primary key; the losing transaction has rolled back.
+  if (!result.success) {
+    const committed = await savedContact();
+    if (committed) result = success({ id: committed.id });
+  }
   if (result.success) revalidatePath("/contacts");
   return result;
 }

@@ -17,9 +17,9 @@ export type AuditLogFilters = {
   action?: string;
   entityType?: string;
   actorUserId?: string;
-  /** Inclusive ISO day (`YYYY-MM-DD`), interpreted at local midnight. */
+  /** Inclusive ISO day (`YYYY-MM-DD`), interpreted at Manila midnight. */
   from?: string;
-  /** Inclusive ISO day, interpreted as the end of that day. */
+  /** Inclusive ISO day, interpreted as the end of that Manila day. */
   to?: string;
 };
 
@@ -47,13 +47,13 @@ export type AuditLogFacets = {
 
 function startOfDay(value: string | undefined): Date | undefined {
   if (!value) return undefined;
-  const date = new Date(`${value}T00:00:00`);
+  const date = new Date(`${value}T00:00:00+08:00`);
   return Number.isNaN(date.getTime()) ? undefined : date;
 }
 
 function endOfDay(value: string | undefined): Date | undefined {
   if (!value) return undefined;
-  const date = new Date(`${value}T23:59:59.999`);
+  const date = new Date(`${value}T23:59:59.999+08:00`);
   return Number.isNaN(date.getTime()) ? undefined : date;
 }
 

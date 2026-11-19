@@ -16,7 +16,7 @@ import { documentTypeLabel } from "@/features/contacts/lib/contact-options";
 import { canAccessResource, requirePermission } from "@/lib/permissions/authorization";
 import type { AuthorizationContext } from "@/lib/permissions/policy";
 import { getDocumentStorage } from "@/lib/storage/document-storage";
-import { matchesDeclaredType } from "@/lib/storage/file-signature";
+import { documentFileError, documentFileTypes } from "@/lib/storage/document-validation";
 import { documentMetadataSchema } from "../schemas/document.schema";
 import { logError } from "@/lib/logger";
 import {
@@ -33,36 +33,11 @@ import { documentScope, sensitiveDocumentCondition } from "../lib/document-scope
 
 /** Result of a document action, carrying the id of the affected record. */
 export type DocumentResult = ActionResult<{ id: string }>;
-const allowedTypes = new Set([
-  "application/pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "image/jpeg",
-  "image/png",
-  "text/plain",
-]);
-const maxBytes = 15 * 1024 * 1024;
 const refresh = (id?: string) => {
   revalidatePath("/documents");
   revalidatePath("/documents/archive");
   if (id) revalidatePath(`/documents/${id}`);
 };
-async function validFile(file: File) {
-  if (!file.size || file.size > maxBytes) return "Files must be between 1 byte and 15 MB.";
-  if (!allowedTypes.has(file.type) || !(await matchesDeclaredType(file)))
-    return "Only PDF, DOCX, JPEG, PNG, and plain-text files are supported.";
-  return null;
-}
-function safeExtension(file: File) {
-  return (
-    {
-      "application/pdf": "pdf",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
-      "image/jpeg": "jpg",
-      "image/png": "png",
-      "text/plain": "txt",
-    } as Record<string, string>
-  )[file.type];
-}
 async function validRelation(
   context: AuthorizationContext,
   type: "contact" | "property" | "deal",
@@ -89,7 +64,7 @@ export async function uploadDocument(formData: FormData): Promise<DocumentResult
     return validationFailureFromZod(parsed.error, "Enter valid document metadata.");
   const file = formData.get("file");
   if (!(file instanceof File)) return validationFailure("Select a file to upload.");
-  const fileError = await validFile(file);
+  const fileError = await documentFileError(file);
   if (fileError) return validationFailure(fileError);
   const v = parsed.data;
   const name = v.name || documentTypeLabel(v.documentType);
@@ -102,7 +77,7 @@ export async function uploadDocument(formData: FormData): Promise<DocumentResult
     return failureFrom(ActionErrorCode.NOT_FOUND, "One or more related records are unavailable.");
   const body = Buffer.from(await file.arrayBuffer());
   const checksum = createHash("sha256").update(body).digest("hex");
-  const key = `${context.organizationId}/${new Date().getUTCFullYear()}/${randomUUID()}.${safeExtension(file)}`;
+  const key = `${context.organizationId}/${new Date().getUTCFullYear()}/${randomUUID()}.${documentFileTypes[file.type]}`;
   const storage = getDocumentStorage();
   try {
     await storage.put(key, body);

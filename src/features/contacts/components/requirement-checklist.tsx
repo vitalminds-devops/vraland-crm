@@ -9,7 +9,7 @@ import {
   seedContactRequirements,
   uploadRequirementDocument,
 } from "../actions/requirement.actions";
-import type { ActionResult } from "@/lib/types/action-result";
+import { validationFailure, type ActionResult } from "@/lib/types/action-result";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,6 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { notify } from "@/components/ui/toast";
+import { documentFileError, requirementFileTypes } from "@/lib/storage/document-validation";
 import { defaultRequirementStatus, requiredDocumentTypes } from "../lib/contact-options";
 
 type RequirementRow = {
@@ -52,14 +53,21 @@ export function RequirementChecklist({
   const [pending, startTransition] = useTransition();
   const [showAdd, setShowAdd] = useState(false);
   const [preview, setPreview] = useState<RequirementRow | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const run = (action: () => Promise<ActionResult<unknown>>) => {
     startTransition(async () => {
-      const result = await action();
-      if (!result.success) notify(result.error.message, "error");
-      else {
-        setShowAdd(false);
-        router.refresh();
+      try {
+        const result = await action();
+        if (!result.success) notify(result.error.message, "error");
+        else {
+          setShowAdd(false);
+          router.refresh();
+        }
+      } catch {
+        setUploadError(
+          "Confirmation was not received. Refresh this checklist to check whether the document was saved before trying again.",
+        );
       }
     });
   };
@@ -110,6 +118,11 @@ export function RequirementChecklist({
       </div>
 
       {showAdd && canManage && <AddRequirementForm contactId={contactId} run={run} />}
+      {uploadError && (
+        <p role="alert" className="text-sm text-destructive">
+          {uploadError}
+        </p>
+      )}
 
       {requirements.length > 0 && (
         <ul className="divide-y divide-border rounded-lg border border-border">
@@ -160,7 +173,17 @@ export function RequirementChecklist({
                         const form = new FormData();
                         form.set("id", requirement.id);
                         form.set("file", file);
-                        run(() => uploadRequirementDocument(form));
+                        setUploadError(null);
+                        run(async () => {
+                          const error = await documentFileError(file, requirementFileTypes);
+                          if (error) {
+                            setUploadError(error);
+                            return validationFailure(error);
+                          }
+                          const result = await uploadRequirementDocument(form);
+                          if (!result.success) setUploadError(result.error.message);
+                          return result;
+                        });
                       }}
                     />
                   </label>

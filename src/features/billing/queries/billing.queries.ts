@@ -9,6 +9,7 @@ import {
   dealContacts,
   deals,
   developments,
+  documents,
   payments,
   pipelineStages,
   properties,
@@ -421,6 +422,7 @@ export async function getDealBilling(dealId: string) {
           method: payments.method,
           classification: payments.classification,
           referenceNo: payments.referenceNo,
+          transactionSlipDocumentId: payments.transactionSlipDocumentId,
           notes: payments.notes,
           recordedByFirstName: users.firstName,
           recordedByLastName: users.lastName,
@@ -455,6 +457,34 @@ async function paymentsContext() {
   const context = await requireAuthorizationContext();
   if (!canManageBilling(context)) throw new AuthorizationError();
   return context;
+}
+
+/** Payment evidence follows billing access and the opportunity's data scope. */
+export async function getPaymentSlip(id: string) {
+  const context = await requireAuthorizationContext();
+  if (!canViewBilling(context) && !canManageBilling(context)) throw new AuthorizationError();
+  const [record] = await db
+    .select({
+      name: documents.name,
+      storageKey: documents.storageKey,
+      mimeType: documents.mimeType,
+    })
+    .from(payments)
+    .innerJoin(bills, eq(payments.billId, bills.id))
+    .innerJoin(deals, eq(bills.dealId, deals.id))
+    .innerJoin(documents, eq(payments.transactionSlipDocumentId, documents.id))
+    .where(
+      and(
+        eq(payments.id, id),
+        eq(payments.organizationId, context.organizationId),
+        eq(documents.organizationId, context.organizationId),
+        eq(documents.dealId, deals.id),
+        isNull(payments.deletedAt),
+        dealInDataScope(context),
+      ),
+    )
+    .limit(1);
+  return record ?? null;
 }
 
 /** Recorded payments on the opportunities in the user's data access, newest first. */

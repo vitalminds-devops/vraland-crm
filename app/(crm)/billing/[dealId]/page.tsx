@@ -369,6 +369,14 @@ export default async function DealBillingPage({ params }: { params: Promise<{ de
                     {payment.notes && (
                       <p className="mt-0.5 text-xs text-muted-foreground">{payment.notes}</p>
                     )}
+                    {payment.transactionSlipDocumentId && (
+                      <a
+                        href={`/api/payments/${payment.id}/slip`}
+                        className="mt-1 inline-block text-xs font-medium text-primary underline underline-offset-4"
+                      >
+                        Download transaction slip
+                      </a>
+                    )}
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1">
                     <span className="text-xs text-muted-foreground">

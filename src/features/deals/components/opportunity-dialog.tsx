@@ -23,6 +23,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { notify } from "@/components/ui/toast";
+import { documentFileError, requirementFileTypes } from "@/lib/storage/document-validation";
 import {
   bankOptions,
   financingPreferenceLabels,
@@ -296,19 +297,18 @@ export function OpportunityDialog({
       form.append("additional", extra.file);
       form.append("additionalType", extra.type);
     }
-    for (const entry of form.values()) {
-      if (entry instanceof File && entry.size > 15 * 1024 * 1024) {
-        showMoveError(
-          "Document is too large",
-          `${entry.name} exceeds the 15 MB limit. In Documents, replace it with a file that is 15 MB or smaller, then try again.`,
-        );
-        setStep(1);
-        return;
-      }
-    }
     startTransition(async () => {
       let result: DealActionResult;
       try {
+        for (const entry of form.values()) {
+          if (!(entry instanceof File) || !entry.name) continue;
+          const error = await documentFileError(entry, requirementFileTypes);
+          if (error) {
+            showMoveError("Document was not accepted", error);
+            setStep(1);
+            return;
+          }
+        }
         result = await openOpportunity(form);
       } catch {
         showMoveError(

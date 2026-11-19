@@ -21,6 +21,7 @@ import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { Textarea } from "@/components/ui/textarea";
 import { notify } from "@/components/ui/toast";
 import { manilaToday } from "@/lib/utils/manila-time";
+import { documentFileError, requirementFileTypes } from "@/lib/storage/document-validation";
 import { recordPayment, removePayment } from "../actions/billing.actions";
 import {
   paymentClassificationLabels,
@@ -99,6 +100,7 @@ export function RecordPaymentButton({
   const [error, setError] = useState<string>();
   const [pending, start] = useTransition();
   const [selected, setSelected] = useState(billId ?? "");
+  const [method, setMethod] = useState("");
   const selectedBalance = billId ? balance : bills?.find((b) => b.id === selected)?.balance;
 
   return (
@@ -110,6 +112,7 @@ export function RecordPaymentButton({
         onClick={() => {
           setError(undefined);
           setSelected(billId ?? "");
+          setMethod("");
           setOpen(true);
         }}
       >
@@ -130,22 +133,40 @@ export function RecordPaymentButton({
             const form = new FormData(event.currentTarget);
             setError(undefined);
             start(async () => {
-              const result = await recordPayment({
-                billId: selected,
-                amount: form.get("amount"),
-                paidOn: form.get("paidOn"),
-                method: form.get("method"),
-                classification: form.get("classification"),
-                referenceNo: form.get("referenceNo"),
-                notes: form.get("notes"),
-              });
-              if (!result.success) {
-                setError(result.error.message);
-                return;
+              try {
+                const file = form.get("transactionSlip");
+                const slip = file instanceof File && file.name ? file : undefined;
+                if (slip) {
+                  const fileError = await documentFileError(slip, requirementFileTypes);
+                  if (fileError) {
+                    setError(fileError);
+                    return;
+                  }
+                }
+                const result = await recordPayment(
+                  {
+                    billId: selected,
+                    amount: form.get("amount"),
+                    paidOn: form.get("paidOn"),
+                    method: form.get("method"),
+                    classification: form.get("classification"),
+                    referenceNo: form.get("referenceNo"),
+                    notes: form.get("notes"),
+                  },
+                  slip,
+                );
+                if (!result.success) {
+                  setError(result.error.message);
+                  return;
+                }
+                setOpen(false);
+                notify(result.data.message || "Payment recorded.", "success");
+                router.refresh();
+              } catch {
+                setError(
+                  "Payment confirmation was not received. Check this bill's payments before submitting again.",
+                );
               }
-              setOpen(false);
-              notify(result.data.message || "Payment recorded.", "success");
-              router.refresh();
             });
           }}
         >
@@ -208,7 +229,12 @@ export function RecordPaymentButton({
           <div className="grid gap-4 sm:grid-cols-2">
             <label className={field}>
               <span className={fieldLabel}>Method</span>
-              <NativeSelect name="method" required defaultValue="">
+              <NativeSelect
+                name="method"
+                required
+                value={method}
+                onChange={(event) => setMethod(event.target.value)}
+              >
                 <NativeSelectOption value="" disabled>
                   Select method
                 </NativeSelectOption>
@@ -228,6 +254,22 @@ export function RecordPaymentButton({
             <span className={fieldLabel}>Notes</span>
             <Textarea name="notes" rows={2} maxLength={2000} placeholder="Optional" />
           </label>
+          {method && (
+            <label className={field}>
+              <span className={fieldLabel}>
+                Upload transaction slip{" "}
+                <span className="font-normal text-muted-foreground">(optional)</span>
+              </span>
+              <Input
+                name="transactionSlip"
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                disabled={pending}
+                onChange={() => setError(undefined)}
+              />
+              <span className="text-xs text-muted-foreground">PDF, JPG or PNG · maximum 15 MB</span>
+            </label>
+          )}
           {error && (
             <p role="alert" className="text-xs text-destructive">
               {error}

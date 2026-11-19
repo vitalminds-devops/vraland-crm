@@ -56,6 +56,7 @@ function formatLogEntry(entry: LogEntry): string {
 
   if (entry.error) {
     parts.push(`Error: ${entry.error.message}`);
+    if (entry.error.code) parts.push(`Code: ${entry.error.code}`);
     if (entry.error.stack && process.env.NODE_ENV !== "production") {
       parts.push(`Stack: ${entry.error.stack}`);
     }

@@ -58,7 +58,7 @@ export async function createDevelopment(input: DevelopmentInput): Promise<Develo
         .values({
           ...valuesFor(parsed.data),
           organizationId: context.organizationId,
-          code: `DEV-${randomUUID().slice(0, 8).toUpperCase()}`,
+          code: `DEV-${randomUUID().toUpperCase()}`,
         })
         .returning({ id: developments.id });
       await tx.insert(activities).values({

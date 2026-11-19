@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { notify } from "@/components/ui/toast";
+import { documentFileError } from "@/lib/storage/document-validation";
 import { documentTypeOptions } from "@/features/contacts/lib/contact-options";
 import { archiveDocument, restoreDocument, uploadDocument } from "../actions/document.actions";
 type Named = {
@@ -35,6 +36,7 @@ export function DocumentUpload({
 }) {
   const [open, setOpen] = useState(false);
   const [pending, start] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   return (
     <>
@@ -47,10 +49,27 @@ export function DocumentUpload({
           <form
             onSubmit={(e) => {
               e.preventDefault();
+              const form = new FormData(e.currentTarget);
+              setError(null);
               start(async () => {
-                const r = await uploadDocument(new FormData(e.currentTarget));
-                if (r.success) router.push(`/documents/${r.data.id}`);
-                else notify(r.error.message, "error");
+                try {
+                  const file = form.get("file");
+                  const fileError =
+                    file instanceof File
+                      ? await documentFileError(file)
+                      : "Select a file to upload.";
+                  if (fileError) {
+                    setError(fileError);
+                    return;
+                  }
+                  const r = await uploadDocument(form);
+                  if (r.success) router.push(`/documents/${r.data.id}`);
+                  else setError(r.error.message);
+                } catch {
+                  setError(
+                    "Upload confirmation was not received. Check Documents before uploading again. Accepted formats: PDF, DOCX, JPG, PNG or TXT; maximum 15 MB per file.",
+                  );
+                }
               });
             }}
             className="grid gap-3"
@@ -106,6 +125,11 @@ export function DocumentUpload({
             <p className="text-xs text-muted-foreground">
               PDF, DOCX, JPEG, PNG, or TXT · maximum 15 MB
             </p>
+            {error && (
+              <p role="alert" className="text-sm text-destructive">
+                {error}
+              </p>
+            )}
             <Button
               disabled={pending}
               className="rounded bg-primary px-3 py-2 text-sm text-primary-foreground"

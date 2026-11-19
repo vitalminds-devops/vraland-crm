@@ -1,9 +1,20 @@
 "use server";
 
+import { createHash, randomUUID } from "node:crypto";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { auditLogs, billItems, bills, deals, payments, pipelineStages } from "@/db/schema";
+import {
+  auditLogs,
+  billItems,
+  bills,
+  deals,
+  documents,
+  payments,
+  pipelineStages,
+} from "@/db/schema";
+import { documentFileError, requirementFileTypes } from "@/lib/storage/document-validation";
+import { getDocumentStorage } from "@/lib/storage/document-storage";
 import { conflict, permissionDenied } from "@/lib/errors";
 import { InventoryUnavailable } from "@/features/deals/lib/deal-inventory";
 import {
@@ -203,14 +214,24 @@ export async function saveBill(input: unknown): Promise<ActionResult<{ id: strin
 
 export async function recordPayment(
   input: unknown,
+  transactionSlip?: File,
 ): Promise<ActionResult<{ id: string; message: string }>> {
   const context = await requireBillingManager();
   if (!context) return notManager();
   const parsed = paymentSchema.safeParse(input);
   if (!parsed.success) return validationFailureFromZod(parsed.error);
   const value = parsed.data;
+  if (transactionSlip !== undefined) {
+    if (!(transactionSlip instanceof File))
+      return validationFailure("Choose a transaction slip file.");
+    const error = await documentFileError(transactionSlip, requirementFileTypes);
+    if (error) return validationFailure(error);
+  }
+  let storedKey: string | undefined;
+  let savedPaymentId: string | undefined;
 
   try {
+    const slipBody = transactionSlip ? Buffer.from(await transactionSlip.arrayBuffer()) : null;
     const outcome = await db.transaction(async (tx) => {
       const [target] = await tx
         .select({ dealId: bills.dealId })
@@ -255,6 +276,35 @@ export async function recordPayment(
       if (value.classification === "reservation" && value.amount < reservationDue - 0.004)
         return { kind: "reservation-short" as const, due: reservationDue };
 
+      let transactionSlipDocumentId: string | null = null;
+      if (transactionSlip && slipBody) {
+        transactionSlipDocumentId = randomUUID();
+        storedKey = `${context.organizationId}/payments/${transactionSlipDocumentId}.${requirementFileTypes[transactionSlip.type]}`;
+        await getDocumentStorage().put(storedKey, slipBody);
+        await tx.insert(documents).values({
+          id: transactionSlipDocumentId,
+          organizationId: context.organizationId,
+          dealId: bill.dealId,
+          name: transactionSlip.name.slice(0, 220),
+          documentType: "transaction_slip",
+          category: "payment",
+          isSensitive: true,
+          status: "final",
+          storageKey: storedKey,
+          mimeType: transactionSlip.type,
+          fileSizeBytes: transactionSlip.size,
+          checksumSha256: createHash("sha256").update(slipBody).digest("hex"),
+          createdBy: context.userId,
+        });
+        await tx.insert(auditLogs).values({
+          organizationId: context.organizationId,
+          actorUserId: context.userId,
+          action: "create",
+          entityType: "document",
+          entityId: transactionSlipDocumentId,
+          newValues: { documentType: "transaction_slip", billId: bill.id, dealId: bill.dealId },
+        });
+      }
       const [payment] = await tx
         .insert(payments)
         .values({
@@ -265,6 +315,7 @@ export async function recordPayment(
           method: value.method,
           classification: value.classification,
           referenceNo: value.referenceNo,
+          transactionSlipDocumentId,
           notes: value.notes,
           recordedBy: context.userId,
         })
@@ -283,6 +334,7 @@ export async function recordPayment(
           method: value.method,
           classification: value.classification,
           referenceNo: value.referenceNo,
+          transactionSlipDocumentId,
         },
       });
       const propertyIds = await syncBillingInventory(tx, context, deal);
@@ -328,6 +380,7 @@ export async function recordPayment(
           ? "This bill is already fully paid."
           : `The payment is more than the ₱${outcome.balance.toLocaleString("en-PH", { minimumFractionDigits: 2 })} balance.`,
       );
+    savedPaymentId = outcome.id;
     refresh(outcome.dealId, outcome.propertyIds);
     // After the payment commits, so a refused move or one awaiting approval never loses the payment.
     // One stage at a time; stop at the first move that is refused or sent for approval.
@@ -354,6 +407,21 @@ export async function recordPayment(
     const message = ["Payment recorded.", movedTo, stopped].filter(Boolean).join(" ");
     return success({ id: outcome.id, message });
   } catch (error) {
+    if (storedKey && !savedPaymentId)
+      await getDocumentStorage()
+        .remove(storedKey)
+        .catch(() => undefined);
+    if (savedPaymentId) {
+      logError("Payment saved but follow-up failed", error, {
+        operation: "billing_record_payment",
+        paymentId: savedPaymentId,
+      });
+      return success({
+        id: savedPaymentId,
+        message:
+          "Payment recorded. Automatic updates could not finish; refresh the bill to check its status.",
+      });
+    }
     if (error instanceof InventoryUnavailable) return failure(conflict(error.message));
     logError("Payment record failed", error, {
       operation: "billing_record_payment",

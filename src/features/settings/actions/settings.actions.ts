@@ -42,7 +42,7 @@ import {
   superAdministratorRoleSlug,
 } from "@/lib/permissions/catalog";
 import { getDocumentStorage } from "@/lib/storage/document-storage";
-import { matchesDeclaredType } from "@/lib/storage/file-signature";
+import { documentFileError, documentFileTypes } from "@/lib/storage/document-validation";
 import { createHash, randomUUID } from "node:crypto";
 import { hashPassword } from "better-auth/crypto";
 import { canManageUsers, hasPermission } from "@/lib/permissions/policy";
@@ -83,7 +83,6 @@ async function revokeUserSessions(
       ),
     );
 }
-
 
 async function isSuperAdministratorUser(userId: string) {
   const [row] = await db
@@ -154,15 +153,6 @@ const agentAccountSchema = z.object({
   documents: z.array(z.instanceof(File)).max(5),
 });
 
-const onboardingFileTypes: Record<string, string> = {
-  "application/pdf": "pdf",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "text/plain": "txt",
-};
-const onboardingFileLimit = 15 * 1024 * 1024;
-
 type StoredOnboardingFile = {
   name: string;
   storageKey: string;
@@ -174,23 +164,16 @@ type StoredOnboardingFile = {
 function parseOnboardingFiles(formData: FormData) {
   return formData
     .getAll("documents")
-    .filter((value): value is File => value instanceof File && value.size > 0);
+    .filter((value): value is File => value instanceof File && Boolean(value.name));
 }
 
 async function validateOnboardingFiles(files: File[], required: boolean) {
   if (required && files.length === 0) return "Upload at least one credential document.";
   if (files.length > 5) return "Upload no more than 5 documents.";
-  const signatures = await Promise.all(files.map(matchesDeclaredType));
-  if (
-    files.some(
-      (file, index) =>
-        !file.size ||
-        file.size > onboardingFileLimit ||
-        !onboardingFileTypes[file.type] ||
-        !signatures[index],
-    )
-  )
-    return "Documents must be PDF, DOCX, JPEG, PNG, or plain text, and no larger than 15 MB each.";
+  for (const file of files) {
+    const error = await documentFileError(file);
+    if (error) return error;
+  }
   return null;
 }
 
@@ -205,7 +188,7 @@ async function storeOnboardingFiles(
   try {
     for (const file of files) {
       const body = Buffer.from(await file.arrayBuffer());
-      const storageKey = `${organizationId}/onboarding/${randomUUID()}.${onboardingFileTypes[file.type]}`;
+      const storageKey = `${organizationId}/onboarding/${randomUUID()}.${documentFileTypes[file.type]}`;
       await storage.put(storageKey, body);
       stored.push({
         name: file.name.slice(0, 220) || "Onboarding document",
@@ -992,7 +975,12 @@ export async function setUserDeleted(input: unknown): Promise<SettingsResult> {
           ...(deleted ? {} : { status: target.status }),
           ...broker.oldValues,
         },
-        newValues: { deletedAt: deleted ? "now" : null, handover, ...restored, ...broker.newValues },
+        newValues: {
+          deletedAt: deleted ? "now" : null,
+          handover,
+          ...restored,
+          ...broker.newValues,
+        },
       });
     });
     refresh("/settings/users");

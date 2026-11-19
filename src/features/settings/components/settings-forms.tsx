@@ -15,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { notify } from "@/components/ui/toast";
+import { documentFileError } from "@/lib/storage/document-validation";
 import {
   isAdministratorRoleSlug,
   masterBrokerRoleSlug,
@@ -137,22 +138,46 @@ function Step({
 /** An upload box for the user's documents that lists what was picked. */
 function DocumentsField({ label }: { label: string }) {
   const [files, setFiles] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
   return (
     <div className="grid gap-2">
       <label className="relative flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-dashed border-border bg-muted/30 px-4 py-5 text-center transition-colors hover:border-primary/50 hover:bg-primary/5 focus-within:ring-2 focus-within:ring-primary/30">
         <Upload aria-hidden="true" className="size-5 text-primary" />
         <span className="text-sm font-semibold text-foreground">Click here to choose files</span>
-        <span className="text-xs text-muted-foreground">PDF, Word, JPG or PNG · up to 5 files</span>
+        <span className="text-xs text-muted-foreground">
+          PDF, DOCX, JPG, PNG or TXT · up to 5 files · 15 MB each
+        </span>
         <input
           type="file"
           name="documents"
           accept=".pdf,.docx,.jpg,.jpeg,.png,.txt"
           multiple
           aria-label={label}
-          onChange={(event) => setFiles(Array.from(event.target.files ?? [], (file) => file.name))}
+          onChange={async (event) => {
+            setError(null);
+            const input = event.currentTarget;
+            const selected = Array.from(input.files ?? []);
+            let error = selected.length > 5 ? "Upload no more than 5 documents." : null;
+            for (const file of selected) {
+              error ??= await documentFileError(file);
+            }
+            if (error) {
+              input.value = "";
+              setFiles([]);
+              setError(error);
+              notify(error, "error");
+              return;
+            }
+            setFiles(selected.map((file) => file.name));
+          }}
           className="absolute inset-0 cursor-pointer opacity-0"
         />
       </label>
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
       {files.length > 0 && (
         <ul className="grid gap-1.5">
           {files.map((name) => (
@@ -233,11 +258,18 @@ function useAction() {
   const [pending, start] = useTransition();
   const run = (fn: () => Promise<ActionResult<unknown>>) =>
     start(async () => {
-      const result = await fn();
-      notify(
-        result.success ? "Saved." : result.error.message || "Couldn't save.",
-        result.success ? "success" : "error",
-      );
+      try {
+        const result = await fn();
+        notify(
+          result.success ? "Saved." : result.error.message || "Couldn't save.",
+          result.success ? "success" : "error",
+        );
+      } catch {
+        notify(
+          "Save confirmation was not received. Check the user list before submitting again.",
+          "error",
+        );
+      }
     });
   return { pending, run };
 }

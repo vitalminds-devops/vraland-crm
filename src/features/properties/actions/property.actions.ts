@@ -186,7 +186,7 @@ export async function createProperty(input: PropertyInput): Promise<PropertyActi
         .insert(properties)
         .values({
           ...valuesFor(parsed.data, context),
-          propertyCode: `PROP-${randomUUID().slice(0, 8).toUpperCase()}`,
+          propertyCode: `PROP-${randomUUID().toUpperCase()}`,
           createdBy: context.userId,
         })
         .returning({ id: properties.id });

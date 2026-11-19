@@ -25,11 +25,34 @@ vi.mock("../lib/document-scope", () => ({
 }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 import { contactDocumentRequirements } from "@/db/schema";
-import { archiveDocument, restoreDocument } from "./document.actions";
+import { archiveDocument, restoreDocument, uploadDocument } from "./document.actions";
+import { uploadRequirementDocument } from "@/features/contacts/actions/requirement.actions";
 
 beforeEach(() => {
   mocks.transaction.mockReset();
 });
+
+it.each([
+  ["empty.pdf", "application/pdf", "", "is empty"],
+  ["renamed.pdf", "application/pdf", "not a PDF", "contents do not match"],
+  ["picture.gif", "image/gif", "GIF89a", "unsupported file type"],
+])(
+  "explains why %s was rejected before creating any records",
+  async (name, type, body, message) => {
+    for (const upload of [uploadDocument, uploadRequirementDocument]) {
+      const form = new FormData();
+      form.set("id", "11111111-1111-4111-8111-111111111111");
+      form.set("documentType", "general");
+      for (const field of ["contactId", "propertyId", "dealId"]) form.set(field, "");
+      form.set("file", new File([body], name, { type }));
+      expect(await upload(form)).toMatchObject({
+        success: false,
+        error: { message: expect.stringContaining(message) },
+      });
+      expect(mocks.transaction).not.toHaveBeenCalled();
+    }
+  },
+);
 
 it("refuses to restore a document that is not archived", async () => {
   mocks.row = { id: "doc", status: "draft", name: "ID", archivedAt: null };

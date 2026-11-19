@@ -2,7 +2,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { revalidatePath } from "next/cache";
 import { InventoryUnavailable } from "@/features/deals/lib/deal-inventory";
 import { syncBillingInventory } from "../lib/billing-inventory";
-import { bills } from "@/db/schema";
+import { bills, documents, payments } from "@/db/schema";
 import { changeDealStage } from "@/features/deals/actions/deal.actions";
 import {
   NO_FIRST_MONTH_MESSAGE,
@@ -22,6 +22,11 @@ const mock = vi.hoisted(() => ({
   slug: "opportunity",
   inScope: true,
   writes: [] as { table: unknown; values: Record<string, unknown> }[],
+  put: vi.fn(),
+  remove: vi.fn(),
+}));
+vi.mock("@/lib/storage/document-storage", () => ({
+  getDocumentStorage: () => ({ put: mock.put, remove: mock.remove }),
 }));
 vi.mock("@/db", () => ({ db: { transaction: mock.transaction } }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
@@ -64,6 +69,8 @@ const input = {
 };
 beforeEach(() => {
   vi.clearAllMocks();
+  mock.put.mockResolvedValue(undefined);
+  mock.remove.mockResolvedValue(undefined);
   mock.canManage = true;
   mock.writes = [];
   mock.unavailable = false;
@@ -384,4 +391,63 @@ it("refuses bills and payments on opportunities outside the user's data access",
   expect(await removePayment({ id: input.dealId })).toMatchObject({ success: false });
   expect(mock.writes).toEqual([]);
   expect(syncBillingInventory).not.toHaveBeenCalled();
+});
+
+const transactionSlip = () => new File(["%PDF-1.7\n"], "transfer.pdf", { type: "application/pdf" });
+
+it("stores the transaction slip and links it to the payment in the same transaction", async () => {
+  mock.reads = fullPaymentReads();
+  expect((await recordPayment(paymentInput, transactionSlip())).success).toBe(true);
+  const document = mock.writes.find((write) => write.table === documents)?.values;
+  const payment = mock.writes.find((write) => write.table === payments)?.values;
+  expect(document).toMatchObject({
+    dealId: input.dealId,
+    documentType: "transaction_slip",
+    isSensitive: true,
+    mimeType: "application/pdf",
+  });
+  expect(payment?.transactionSlipDocumentId).toBe(document?.id);
+  expect(mock.put).toHaveBeenCalledWith(document?.storageKey, expect.any(Buffer));
+  expect(mock.remove).not.toHaveBeenCalled();
+});
+
+it("rejects an invalid slip before saving money or uploading anything", async () => {
+  const result = await recordPayment(
+    paymentInput,
+    new File(["not PDF"], "bad.pdf", { type: "application/pdf" }),
+  );
+  expect(result).toMatchObject({
+    success: false,
+    error: { message: expect.stringContaining("contents do not match") },
+  });
+  expect(mock.transaction).not.toHaveBeenCalled();
+  expect(mock.put).not.toHaveBeenCalled();
+});
+
+it("removes the uploaded slip when the payment transaction rolls back", async () => {
+  mock.reads = fullPaymentReads();
+  mock.unavailable = true;
+  expect((await recordPayment(paymentInput, transactionSlip())).success).toBe(false);
+  expect(mock.writes).toEqual([]);
+  expect(mock.remove).toHaveBeenCalledWith(mock.put.mock.calls[0][0]);
+});
+
+it("does not record a payment when its slip cannot be stored", async () => {
+  mock.reads = fullPaymentReads();
+  mock.put.mockRejectedValueOnce(new Error("disk unavailable"));
+  expect((await recordPayment(paymentInput, transactionSlip())).success).toBe(false);
+  expect(mock.writes).toEqual([]);
+});
+
+it("keeps the saved payment and slip if refreshing the page fails after commit", async () => {
+  mock.reads = fullPaymentReads();
+  vi.mocked(revalidatePath).mockImplementationOnce(() => {
+    throw new Error("refresh failed");
+  });
+  expect(await recordPayment(paymentInput, transactionSlip())).toMatchObject({
+    success: true,
+    data: { message: expect.stringContaining("Payment recorded.") },
+  });
+  expect(mock.writes.some((write) => write.table === payments)).toBe(true);
+  expect(mock.remove).not.toHaveBeenCalled();
 });

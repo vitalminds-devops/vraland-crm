@@ -29,7 +29,7 @@ import { formatContactName } from "@/features/contacts/lib/helpers";
 import { canAccessResource, requirePermission } from "@/lib/permissions/authorization";
 import { logError } from "@/lib/logger";
 import { getDocumentStorage } from "@/lib/storage/document-storage";
-import { matchesDeclaredType } from "@/lib/storage/file-signature";
+import { documentFileError, requirementFileTypes } from "@/lib/storage/document-validation";
 import {
   databaseFailure,
   failure,
@@ -57,15 +57,9 @@ import {
 import { APPOINTMENT_TYPE, VALID_ID_TYPE, documentsOnFile } from "../lib/opportunity-requirements";
 import { changeDealStage, type DealActionResult } from "./deal.actions";
 
-const MAX_BYTES = 15 * 1024 * 1024;
 // 2 required + 3 extra files at 15 MB stay under the 80 MB server action body limit.
 const MAX_EXTRA_FILES = 3;
 class OpportunityChanged extends Error {}
-const fileTypes: Record<string, string> = {
-  "application/pdf": "pdf",
-  "image/jpeg": "jpg",
-  "image/png": "png",
-};
 
 async function loadDeal(dealId: string) {
   const context = await requirePermission("deals.change_stage");
@@ -298,11 +292,10 @@ async function checkFile(
   entry: FormDataEntryValue | null,
   label: string,
 ): Promise<CheckedFile | string | null> {
-  if (!(entry instanceof File) || !entry.size) return null;
-  if (entry.size > MAX_BYTES) return `${label}: file must be 15 MB or smaller.`;
-  const ext = fileTypes[entry.type];
-  if (!ext || !(await matchesDeclaredType(entry)))
-    return `${label}: only PDF, JPEG and PNG files are accepted.`;
+  if (!(entry instanceof File) || !entry.name) return null;
+  const error = await documentFileError(entry, requirementFileTypes);
+  if (error) return `${label}: ${error}`;
+  const ext = requirementFileTypes[entry.type];
   const body = Buffer.from(await entry.arrayBuffer());
   return {
     file: entry,

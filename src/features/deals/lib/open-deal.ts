@@ -112,7 +112,7 @@ export async function openDealForApprovedContact(
     .insert(deals)
     .values({
       organizationId: context.organizationId,
-      dealCode: `DEAL-${randomUUID().slice(0, 8).toUpperCase()}`,
+      dealCode: `DEAL-${randomUUID().toUpperCase()}`,
       title,
       dealType,
       stageId: stage.id,
