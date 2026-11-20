@@ -3,7 +3,9 @@
 FROM node:22.20-alpine AS dependencies
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN node --version \
+# Same npm as the developers' machines, so the lockfile they commit installs as-is.
+RUN npm install -g npm@11.19.1 \
+    && node --version \
     && npm --version \
     && npm ci --verbose --no-audit --no-fund
 

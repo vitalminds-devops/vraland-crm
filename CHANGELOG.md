@@ -5,6 +5,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+- Server builds install packages with the same npm version used in development.
+
 ## [0.4.1] - 2026-11-20
 
 ### Fixed
