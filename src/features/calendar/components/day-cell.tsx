@@ -1,11 +1,12 @@
 "use client";
 
-import { format, isSameMonth, isToday, isWeekend } from "date-fns";
+import { format, isSameDay, isSameMonth, isWeekend } from "date-fns";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { CalendarEventChip } from "./calendar-event";
 import { MoreEventsPopover } from "./more-events-popover";
 import type { CalendarEvent } from "../lib/event-types";
+import { manilaWall } from "../lib/calendar-helpers";
 
 const MAX_VISIBLE = 3;
 
@@ -29,7 +30,7 @@ export function DayCell({
   onOpenDay: (date: Date) => void;
 }) {
   const inMonth = isSameMonth(date, activeMonth);
-  const today = isToday(date);
+  const today = isSameDay(date, manilaWall(new Date()));
   const weekend = isWeekend(date);
   const visible = events.slice(0, MAX_VISIBLE);
   const hidden = events.length - visible.length;
@@ -39,6 +40,7 @@ export function DayCell({
       role="gridcell"
       aria-selected={isFocused}
       aria-label={format(date, "EEEE, MMMM d, yyyy")}
+      aria-current={today ? "date" : undefined}
       data-day={format(date, "yyyy-MM-dd")}
       tabIndex={isFocused ? 0 : -1}
       onFocus={() => onFocusDate(date)}
@@ -50,7 +52,7 @@ export function DayCell({
         }
       }}
       className={cn(
-        "group/cell relative flex min-h-[84px] sm:min-h-[120px] min-w-0 flex-col gap-1 border-b border-r border-border/40 p-1 sm:p-1.5 transition-colors",
+        "group/cell relative flex min-h-[84px] sm:min-h-[112px] min-w-0 flex-col gap-1 border-b border-r border-border/40 p-1 sm:p-1.5 transition-colors outline-none focus-visible:z-20 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
         inMonth ? "bg-card" : "bg-muted/20",
         weekend && inMonth && "bg-muted/30",
         today && "bg-primary/[0.06] dark:bg-primary/[0.12]",
@@ -60,7 +62,7 @@ export function DayCell({
         <span
           className={cn(
             "grid size-6 place-items-center rounded-full text-[13px] font-medium tabular-nums",
-            !inMonth && "text-muted-foreground/50",
+            !inMonth && "text-muted-foreground",
             today && "bg-primary text-primary-foreground",
           )}
         >
@@ -75,12 +77,12 @@ export function DayCell({
               onAddOnDate(date);
             }}
             className={cn(
-              "grid size-5 place-items-center rounded-md text-muted-foreground opacity-0 transition-opacity",
-              "hover:bg-primary/10 hover:text-primary focus-visible:opacity-100",
+              "hidden size-7 place-items-center rounded-md text-muted-foreground opacity-0 transition-opacity sm:grid",
+              "hover:bg-primary/10 hover:text-primary focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-ring",
               "group-hover/cell:opacity-100",
             )}
           >
-            <Plus className="size-3.5" />
+            <Plus aria-hidden="true" className="size-4" />
           </button>
         ) : null}
       </div>

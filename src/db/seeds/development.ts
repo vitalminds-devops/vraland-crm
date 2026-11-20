@@ -1,6 +1,7 @@
 import "../../config/load-environment";
 import { randomUUID } from "node:crypto";
 import { hashPassword } from "better-auth/crypto";
+import { manilaDate, startOfManilaDay } from "../../lib/utils/manila-time";
 import { and, asc, eq } from "drizzle-orm";
 
 import { closeDatabaseConnection, db } from "../client";
@@ -565,11 +566,7 @@ await db.transaction(async (tx) => {
     .from(pipelineStages)
     .where(eq(pipelineStages.organizationId, organization.id));
 
-  const closeDateFromNow = (days: number) => {
-    const date = new Date();
-    date.setDate(date.getDate() + days);
-    return date.toISOString().slice(0, 10);
-  };
+  const closeDateFromNow = (days: number) => manilaDate(startOfManilaDay(new Date(), days));
 
   const sampleDeals: {
     dealCode: string;

@@ -45,7 +45,7 @@ export function TaskStatus({ id, status }: { id: string; status: string }) {
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className={cn(
-          "h-9 w-full cursor-pointer appearance-none rounded-md border border-border bg-card py-0 pr-7 pl-3 text-xs leading-normal font-medium outline-none transition-colors hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/25 disabled:cursor-wait disabled:opacity-70",
+          "h-10 w-full cursor-pointer appearance-none rounded-md border border-border bg-card py-0 pr-7 pl-3 text-xs leading-normal font-medium outline-none transition-colors hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/25 disabled:cursor-wait disabled:opacity-70",
           colors.bg,
           colors.text,
         )}

@@ -4,9 +4,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import SalesPage from "../../../../app/(crm)/reports/sales/page";
 import ForecastPage from "../../../../app/(crm)/reports/forecast/page";
 import AgentsPage from "../../../../app/(crm)/reports/agents/page";
-import ConversionPage from "../../../../app/(crm)/reports/conversion/page";
 import { GET } from "../../../../app/api/reports/[report]/export/route";
-import { ConversionFunnel } from "./conversion-funnel";
 import { reportMonth } from "../lib/report-metrics";
 
 const fixture = vi.hoisted(() => ({ empty: false }));
@@ -124,16 +122,6 @@ vi.mock("@/features/reports/queries/report.queries", () => ({
           },
         ],
   }),
-  getConversionReport: async () => ({
-    wonLabel: "CTS Signed - Won",
-    overallRate: fixture.empty ? 0 : 8,
-    funnel: [
-      { key: "leads", label: "Leads", value: fixture.empty ? 0 : 100 },
-      { key: "opportunity", label: "Opportunity", value: fixture.empty ? 0 : 45 },
-      { key: "reservation", label: "Reservation", value: fixture.empty ? 0 : 20 },
-      { key: "closed", label: "CTS Signed - Won", value: fixture.empty ? 0 : 8 },
-    ],
-  }),
 }));
 beforeEach(() => {
   fixture.empty = false;
@@ -149,13 +137,12 @@ const pages = {
   sales: SalesPage,
   forecast: ForecastPage,
   agents: AgentsPage,
-  conversion: ConversionPage,
 };
 async function render(kind: keyof typeof pages) {
   return renderToStaticMarkup(await pages[kind]({ searchParams: Promise.resolve(search) }));
 }
 
-it.each(["sales", "forecast", "conversion"] as const)(
+it.each(["sales", "forecast"] as const)(
   "shows all applicable filters and exports the chosen range on %s",
   async (kind) => {
     const html = await render(kind);
@@ -197,21 +184,7 @@ it("explains sales timing and the limited on-screen list", async () => {
   expect(html).toContain("up to 10,000 rows");
 });
 
-it("offers a useful empty conversion state and shows zero progress as zero", () => {
-  expect(
-    renderToStaticMarkup(
-      createElement(ConversionFunnel, { data: [{ key: "leads", label: "Leads", value: 0 }] }),
-    ),
-  ).toContain("Try a wider date range");
-  const html = renderToStaticMarkup(
-    createElement(ConversionFunnel, {
-      data: [
-        { key: "leads", label: "Leads", value: 10 },
-        { key: "closed", label: "Won", value: 0 },
-      ],
-    }),
-  );
-  expect(html).toContain('style="width:0%"');
+it("labels report months", () => {
   expect(reportMonth("2026-11")).toBe("Nov 2026");
 });
 
@@ -222,4 +195,12 @@ it("uses the same agent ratio label in the CSV", async () => {
   );
   expect(response.status).toBe(200);
   expect(await response.text()).toContain("Won / leads (%)");
+});
+
+it("no longer exports the removed lead conversion report", async () => {
+  const response = await GET(
+    new Request("http://localhost/api/reports/conversion/export?from=2026-01-01&to=2026-11-30"),
+    { params: Promise.resolve({ report: "conversion" }) },
+  );
+  expect(response.status).toBe(404);
 });

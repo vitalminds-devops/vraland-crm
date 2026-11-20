@@ -218,6 +218,7 @@ export function DocumentTable({
                   month: "short",
                   day: "numeric",
                   year: "numeric",
+                  timeZone: "Asia/Manila",
                 })}
               </TableCell>
               {shared && (

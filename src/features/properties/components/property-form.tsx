@@ -642,7 +642,7 @@ function DetailGroup({
     <fieldset className="rounded-lg border border-[var(--border)] p-4 sm:p-5">
       <legend className="sr-only">{title}</legend>
       <div className="mb-4 flex items-center gap-3">
-        <span className="grid size-8 shrink-0 place-content-center rounded-md bg-[var(--accent)]/10 text-[var(--accent)]">
+        <span className="grid size-8 shrink-0 place-content-center rounded-md bg-[var(--form-accent)]/10 text-[var(--form-accent)]">
           <Icon aria-hidden="true" className="size-4" />
         </span>
         <div>

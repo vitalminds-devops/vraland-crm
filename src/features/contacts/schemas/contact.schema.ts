@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { manilaToday } from "@/lib/utils/manila-time";
 import {
   channelRequirementMessages,
   channelValueFields,
@@ -54,7 +55,7 @@ function contactSchemaFor(requireDetails: boolean) {
       birthDate: z
         .union([z.iso.date({ error: "Enter a valid date of birth." }), z.literal(""), z.null()])
         .optional()
-        .refine((value) => !value || value <= new Date().toISOString().slice(0, 10), {
+        .refine((value) => !value || value <= manilaToday(), {
           message: "Date of birth cannot be in the future.",
         })
         .transform((value) => value || null),

@@ -14,7 +14,6 @@ const tabs = [
   { href: "/reports/sales", label: "Sales performance" },
   { href: "/reports/forecast", label: "Forecasting" },
   { href: "/reports/agents", label: "Agent leaderboard" },
-  { href: "/reports/conversion", label: "Lead conversion" },
 ];
 
 /** The filters every report understands, in a stable order. */

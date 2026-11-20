@@ -21,9 +21,9 @@ export const EVENT_COLORS: Record<EventKind, EventColorClasses> = {
     label: "Viewing",
   },
   follow_up: {
-    chip: "bg-accent/15 text-accent-foreground dark:bg-accent/20 dark:text-accent",
-    accent: "border-l-accent",
-    dot: "bg-accent",
+    chip: "bg-brand-3/10 text-brand-3 dark:bg-brand-3/15",
+    accent: "border-l-brand-3",
+    dot: "bg-brand-3",
     label: "Follow-up",
   },
   closing: {

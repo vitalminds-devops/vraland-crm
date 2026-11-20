@@ -9,7 +9,7 @@ import {
   DialogPortal,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Eye, X } from "lucide-react";
+import { CalendarClock, X } from "lucide-react";
 import { type ReactNode, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -53,7 +53,7 @@ export function ViewingForm({
   return (
     <>
       <Button variant="primary" className="gap-2" onClick={() => setOpen(true)}>
-        <Eye className="size-4" />
+        <CalendarClock aria-hidden="true" className="size-4" />
         Schedule viewing
       </Button>
 
@@ -88,7 +88,7 @@ export function ViewingForm({
                       aria-hidden="true"
                       className="grid size-9 shrink-0 place-items-center rounded-full bg-brand-1/10 text-brand-1 dark:bg-brand-1/15"
                     >
-                      <Eye className="size-4" />
+                      <CalendarClock aria-hidden="true" className="size-4" />
                     </span>
                     <div className="min-w-0">
                       <DialogTitle className="text-base leading-tight font-semibold text-foreground">

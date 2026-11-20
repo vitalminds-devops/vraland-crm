@@ -6,6 +6,7 @@ export function formatDate(date: Date | string | null | undefined): string {
     month: "short",
     day: "numeric",
     year: "numeric",
+    timeZone: "Asia/Manila",
   }).format(dateObj);
 }
 

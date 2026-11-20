@@ -33,12 +33,14 @@ function isViewingOwner(
   return false;
 }
 
+/** Whether this user may change (or, with `permission` Delete viewings, delete) the viewing. */
 export function canEditViewing(
   context: AuthorizationContext,
   viewing: ViewingReference,
   dealParticipants?: string[],
+  permission: "calendar.update_viewings" | "calendar.delete_viewings" = "calendar.update_viewings",
 ): boolean {
-  if (!context.permissions.has("calendar.manage")) return false;
+  if (!context.permissions.has(permission)) return false;
 
   if (!isSameOrganization(context, viewing.organizationId)) return false;
 

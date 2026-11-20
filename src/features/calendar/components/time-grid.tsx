@@ -1,19 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  addDays,
-  differenceInMinutes,
-  format,
-  isSameDay,
-  isToday,
-  startOfDay,
-  startOfWeek,
-} from "date-fns";
+import { addDays, differenceInMinutes, format, isSameDay, startOfDay, startOfWeek } from "date-fns";
 import { manilaWall, timeLabel } from "../lib/calendar-helpers";
 import { EVENT_COLORS, eventKind } from "../lib/event-colors";
 import { type CalendarEvent } from "../lib/event-types";
 import { cn } from "@/lib/utils/cn";
+import { ResponseMark, declinedTitle } from "./response-mark";
 
 const START_HOUR = 7;
 const END_HOUR = 20;
@@ -62,7 +55,7 @@ export function TimeGrid({
             key={day.toISOString()}
             className={cn(
               "sticky top-0 z-20 border-b border-l border-border/50 bg-card px-2 py-2 text-center",
-              isToday(day) && "bg-primary/[0.06]",
+              isSameDay(day, manilaWall(now)) && "bg-primary/[0.06]",
             )}
           >
             <p className="text-[12px] uppercase tracking-[0.5px] text-muted-foreground">
@@ -71,7 +64,7 @@ export function TimeGrid({
             <p
               className={cn(
                 "mx-auto mt-0.5 grid size-6 place-items-center rounded-full text-[13px] font-semibold",
-                isToday(day) && "bg-primary text-primary-foreground",
+                isSameDay(day, manilaWall(now)) && "bg-primary text-primary-foreground",
               )}
             >
               {format(day, "d")}
@@ -119,8 +112,9 @@ export function TimeGrid({
 }
 
 function NowLine({ now, day }: { now: Date; day: Date }) {
-  if (!isToday(day)) return null;
+  // `day` is in Manila wall time, so compare it with Manila's now, not the browser clock.
   const wall = manilaWall(now);
+  if (!isSameDay(day, wall)) return null;
   const minutes = wall.getHours() * 60 + wall.getMinutes();
   const top = ((minutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
   if (top < 0 || top > (END_HOUR - START_HOUR) * HOUR_HEIGHT) return null;
@@ -159,8 +153,11 @@ function PositionedEvent({
         colors.accent,
       )}
     >
-      <span className="block font-semibold tabular-nums">{timeLabel(event)}</span>
-      <span className="block truncate">{event.title}</span>
+      <span className="flex items-center justify-between gap-1 font-semibold tabular-nums">
+        {timeLabel(event)}
+        <ResponseMark event={event} />
+      </span>
+      <span className={cn("block truncate", declinedTitle(event))}>{event.title}</span>
     </button>
   );
 }

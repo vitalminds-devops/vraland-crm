@@ -134,9 +134,7 @@ export async function openDealForApprovedContact(
     dealId: row.id,
     toStageId: stage.id,
     changedBy: context.userId,
-    note: input.another
-      ? "Another opportunity opened for this client"
-      : "Lead created",
+    note: input.another ? "Another opportunity opened for this client" : "Lead created",
   });
   await tx.insert(activities).values({
     organizationId: context.organizationId,

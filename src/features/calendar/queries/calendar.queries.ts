@@ -14,6 +14,7 @@ import { requirePermission } from "@/lib/permissions/authorization";
 import { hasOrganizationWideAccess } from "@/lib/permissions/policy";
 import { grantedPropertyCondition } from "@/lib/permissions/property-access";
 import { dataScopeCondition, scopedAgentCondition } from "@/lib/permissions/scope";
+import { canChangeEvent, responseSummary, type Invitee } from "../lib/event-access";
 export async function listCalendarEvents(input: { start: Date; end: Date; type?: string }) {
   const context = await requirePermission("calendar.view");
   const organizationWide = hasOrganizationWideAccess(context);
@@ -60,6 +61,7 @@ export async function listCalendarEvents(input: { start: Date; end: Date; type?:
       ownerId: calendarEvents.createdBy,
       ownerFirstName: owner.firstName,
       ownerLastName: owner.lastName,
+      invitees: sql<Invitee[]>`invited.people`,
     })
     .from(calendarEvents)
     .leftJoin(propertyViewings, eq(propertyViewings.eventId, calendarEvents.id))
@@ -88,6 +90,18 @@ export async function listCalendarEvents(input: { start: Date; end: Date; type?:
       owner,
       and(eq(calendarEvents.createdBy, owner.id), eq(owner.organizationId, context.organizationId)),
     )
+    // Everyone invited, with their answer, in one lookup per event.
+    .leftJoinLateral(
+      sql`(select coalesce(json_agg(json_build_object(
+          'userId', cu.user_id,
+          'name', trim(u.first_name || ' ' || coalesce(u.last_name, '')),
+          'status', cu.attendee_status,
+          'note', cu.response_note
+        ) order by u.first_name, u.last_name), '[]'::json) as people
+        from calendar_event_users cu join users u on u.id = cu.user_id
+        where cu.event_id = ${calendarEvents.id}) invited`,
+      sql`true`,
+    )
     .where(
       and(
         eq(calendarEvents.organizationId, context.organizationId),
@@ -99,7 +113,23 @@ export async function listCalendarEvents(input: { start: Date; end: Date; type?:
     )
     .orderBy(asc(calendarEvents.startAt));
   return {
-    rows,
+    rows: rows.map((row) => {
+      const mine = row.invitees.find((person) => person.userId === context.userId);
+      return {
+        ...row,
+        responseStatus: row.viewingId
+          ? null
+          : responseSummary(row.invitees, row.ownerId, context.userId),
+        // Viewings keep their own rules, which the server checks when they're changed.
+        canEdit: row.viewingId
+          ? context.permissions.has("calendar.update_viewings")
+          : canChangeEvent(context, row.ownerId),
+        canDelete: row.viewingId
+          ? context.permissions.has("calendar.delete_viewings")
+          : canChangeEvent(context, row.ownerId),
+        canRespond: !row.viewingId && Boolean(mine) && row.ownerId !== context.userId,
+      };
+    }),
     // The same permission the create actions require.
     canCreate: context.permissions.has("calendar.manage"),
     canUpdate: context.permissions.has("tasks.update"),
@@ -176,7 +206,7 @@ export async function getCalendarOptions() {
   const context = await requirePermission("calendar.view");
   const agentScope = scopedAgentCondition(context);
 
-  const [agents, contactRows, propertyRows] = await Promise.all([
+  const [agents, contactRows, propertyRows, people] = await Promise.all([
     db
       .select({
         id: users.id,
@@ -233,6 +263,20 @@ export async function getCalendarOptions() {
       )
       .orderBy(asc(properties.title))
       .limit(500),
+    // Anyone can be invited to an event, not only the people in your data access.
+    context.permissions.has("calendar.assign")
+      ? db
+          .select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+          .from(users)
+          .where(
+            and(
+              eq(users.organizationId, context.organizationId),
+              eq(users.status, "active"),
+              isNull(users.deletedAt),
+            ),
+          )
+          .orderBy(asc(users.firstName), asc(users.lastName))
+      : [],
   ]);
-  return { agents, contacts: contactRows, properties: propertyRows };
+  return { agents, contacts: contactRows, properties: propertyRows, people };
 }

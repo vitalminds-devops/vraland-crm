@@ -502,21 +502,67 @@ export const permissionDetails = {
     ],
   },
   "calendar.manage": {
-    allows:
-      "Schedule, edit, reschedule and delete calendar events and property viewings, and record viewing outcomes.",
+    allows: "Add events, and change or delete the events you created.",
     conditions: [
-      "Needs View calendar to reach the pages and forms",
-      "Linked contact, property and opportunity must be within your data access",
-      "Only See all records users can assign a viewing to another agent",
-      "Others' viewings are always booked under themselves",
-      "Event attendee can be any active user in the organization",
-      "Edit others' events only with See all records; else creator or attendee only",
-      "Edit viewings only as its agent, creator or opportunity participant, unless See all records",
+      "Needs View calendar & viewings to reach the pages and forms",
+      "Events are only for you unless you can Invite others to events",
+      "Only an event's creator can edit or delete it, unless Edit and delete others' events",
+      "Viewings have their own permissions below",
+    ],
+  },
+  "calendar.assign": {
+    allows: "Invite chosen active users to an event.",
+    conditions: [
+      "Needs Add events",
+      "Each person invited accepts or declines; a decline needs a reason the creator can read",
+      "Changing the time or who is invited asks them to respond again",
+    ],
+  },
+  "calendar.broadcast": {
+    allows: "Invite every active user in the organization to an event at once.",
+    conditions: [
+      "Needs Add events",
+      "Invites the people active when the event is saved; later users are not added",
+      "Each person accepts or declines like any invite",
+    ],
+  },
+  "calendar.edit_others": {
+    allows: "Change or delete events created by someone else.",
+    conditions: [
+      "Needs Add events",
+      "Without it, only an event's creator can edit or delete it",
+      "Viewings follow their own permissions",
+    ],
+  },
+  "calendar.schedule_viewings": {
+    allows: "Schedule property viewings for a contact.",
+    conditions: [
+      "Needs View calendar & viewings",
+      "The contact and property must be within your data access and granted properties",
+      "Booked under yourself unless you can Schedule viewings for other agents",
       "Blocks double-booking an agent's overlapping scheduled or confirmed viewings",
-      "Completed or no-show viewings cannot be deleted",
+    ],
+  },
+  "calendar.assign_viewings": {
+    allows: "Pick another agent for a viewing.",
+    conditions: ["Needs Schedule viewings", "The agent must be an active user"],
+  },
+  "calendar.update_viewings": {
+    allows:
+      "Edit and reschedule viewings, and mark them confirmed, completed, no-show or cancelled.",
+    conditions: [
+      "Only viewings where you are the agent, the creator or on the opportunity, unless See all records",
       "Marking a viewing completed can enrol the contact in marketing follow-ups",
     ],
   },
+  "calendar.delete_viewings": {
+    allows: "Delete a viewing.",
+    conditions: [
+      "Only viewings where you are the agent, the creator or on the opportunity, unless See all records",
+      "Completed or no-show viewings cannot be deleted",
+    ],
+  },
+
   "marketing.view": {
     allows:
       "See marketing campaigns, follow-up automations, email and SMS templates, and campaign results.",

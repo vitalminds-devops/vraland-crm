@@ -1,6 +1,7 @@
-import { format, isBefore, isToday, isTomorrow } from "date-fns";
+import { isBefore } from "date-fns";
 import { CalendarCheck2, CheckSquare2 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { manilaDaysBetween } from "@/lib/utils/manila-time";
 import type { DashboardData } from "../queries/dashboard.queries";
 
 export function PriorityList({ items }: { items: DashboardData["priorities"] }) {
@@ -42,12 +43,24 @@ export function PriorityList({ items }: { items: DashboardData["priorities"] }) 
   );
 }
 
+const manilaTime = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit",
+  timeZone: "Asia/Manila",
+});
+const manilaDay = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  timeZone: "Asia/Manila",
+});
+
 function dueLabel(dueAt: Date | null, overdue: boolean) {
   if (!dueAt) return "No due time";
   if (overdue) return "Overdue";
-  if (isToday(dueAt)) return `Today, ${format(dueAt, "h:mm a")}`;
-  if (isTomorrow(dueAt)) return "Tomorrow";
-  return format(dueAt, "d MMM");
+  const days = manilaDaysBetween(dueAt);
+  if (days === 0) return `Today, ${manilaTime.format(dueAt)}`;
+  if (days === 1) return "Tomorrow";
+  return manilaDay.format(dueAt);
 }
 
 /** The dashed placeholder every dashboard list falls back to when it is empty. */

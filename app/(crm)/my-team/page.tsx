@@ -1,4 +1,3 @@
-import { format } from "date-fns";
 import { ContactRound, KanbanSquare, UserCheck, UsersRound } from "lucide-react";
 import { redirect } from "next/navigation";
 import { PageContainer } from "@/components/common/page-container";
@@ -7,6 +6,7 @@ import { StatCard } from "@/components/common/stat-card";
 import { Card } from "@/components/ui/card";
 import { DotBadge, type DotBadgeTone } from "@/components/ui/dot-badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { manilaDateTime } from "@/lib/utils/manila-time";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import {
   Table,
@@ -132,9 +132,7 @@ export default async function MyTeamPage() {
                         {member.openOpportunities}
                       </TableCell>
                       <TableCell className="hidden px-4 py-4 text-muted-foreground lg:table-cell">
-                        {member.lastLoginAt
-                          ? format(member.lastLoginAt, "MMM d, yyyy, h:mm a")
-                          : "Never"}
+                        {member.lastLoginAt ? manilaDateTime(member.lastLoginAt) : "Never"}
                       </TableCell>
                       <TableCell className="px-4 py-4 sm:pr-6">
                         <DotBadge tone={statusTone[member.status] ?? "gray"}>

@@ -8,8 +8,8 @@ import { ViewingForm } from "@/features/calendar/components/viewing-form";
 import { ViewingStatus } from "@/features/calendar/components/viewing-status";
 import { getCalendarOptions, listViewings } from "@/features/calendar/queries/calendar.queries";
 import { requirePagePermission } from "@/lib/permissions/authorization";
-import { hasOrganizationWideAccess } from "@/lib/permissions/policy";
 import { canEditViewing, type ViewingReference } from "@/lib/permissions/viewings";
+import { manilaDateTime } from "@/lib/utils/manila-time";
 export default async function ViewingsPage({
   searchParams,
 }: {
@@ -22,7 +22,7 @@ export default async function ViewingsPage({
     listViewings({ status: q.status, recent: q.when !== "all" }),
     getCalendarOptions(),
   ]);
-  const canAssign = hasOrganizationWideAccess(context);
+  const canAssign = context.permissions.has("calendar.assign_viewings");
 
   // Check edit permissions for each viewing
   const editableViewings = new Set<string>();
@@ -49,7 +49,7 @@ export default async function ViewingsPage({
         actions={
           <>
             <BackButton fallbackHref="/calendar" label="Back to calendar" />
-            {context.permissions.has("calendar.manage") ? (
+            {context.permissions.has("calendar.schedule_viewings") ? (
               <ViewingForm options={options} canAssign={canAssign} currentUserId={context.userId} />
             ) : undefined}
           </>
@@ -105,7 +105,7 @@ export default async function ViewingsPage({
                 <Info label="Contact" value={`${v.contactFirstName} ${v.contactLastName}`} />
                 <Info
                   label="Schedule"
-                  value={`${v.startAt.toLocaleString()} – ${v.endAt.toLocaleTimeString()}`}
+                  value={`${manilaDateTime(v.startAt)} – ${v.endAt.toLocaleTimeString("en-US", { timeZone: "Asia/Manila", timeStyle: "short" })}`}
                 />
                 <Info
                   label="Agent"

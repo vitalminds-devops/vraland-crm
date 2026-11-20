@@ -5,7 +5,6 @@ import {
   and,
   asc,
   count,
-  countDistinct,
   desc,
   eq,
   gte,
@@ -450,98 +449,4 @@ export async function getAgentReport(filters: ReportFilters) {
     })
     .sort((a, b) => b.salesValue - a.salesValue || b.closedDeals - a.closedDeals);
   return { currency, agents };
-}
-
-/** The pipeline stages the funnel follows, in order, with the label used when a stage is missing. */
-const funnelStages = [
-  {
-    key: "opportunity",
-    label: "Opportunity",
-    reached: ["opportunity", "reservation", "closed-won"],
-  },
-  { key: "reservation", label: "Reservation", reached: ["reservation", "closed-won"] },
-] as const;
-
-/**
- * Whether one of the contact's deals is in one of `slugs` now or passed through one, so a deal that
- * later moved on, or was lost, still counts for the stages it reached.
- */
-function reachedStage(
-  contactId: typeof contacts.id,
-  organizationId: string,
-  slugs: readonly string[],
-) {
-  const list = sql.join(
-    slugs.map((slug) => sql`${slug}`),
-    sql`, `,
-  );
-  return sql`exists (
-    select 1 from deal_contacts dc
-    join deals d on d.id = dc.deal_id
-    join pipeline_stages cur on cur.id = d.stage_id
-    where dc.contact_id = ${contactId} and d.organization_id = ${organizationId} and d.deleted_at is null
-      and (cur.slug in (${list}) or exists (
-        select 1 from deal_stage_history h
-        join pipeline_stages ps on ps.id = h.to_stage_id
-        where h.deal_id = d.id and ps.slug in (${list})
-      ))
-  )`;
-}
-
-export async function getConversionReport(filters: ReportFilters) {
-  const { context, organizationWide } = await reportContext();
-  const contactScope = organizationWide
-    ? undefined
-    : dataScopeCondition(context, {
-        organizationId: contacts.organizationId,
-        ownerUserId: contacts.assignedUserId,
-        brokerUserId: contacts.brokerUserId,
-      });
-  const propertyFilter =
-    filters.development || filters.propertyType
-      ? sql`and exists (select 1 from properties p2 where (${filters.development ? sql`p2.development_id = ${filters.development}` : sql`true`}) and (${filters.propertyType ? sql`p2.property_type = ${filters.propertyType}` : sql`true`}) and (exists (select 1 from property_viewings pv2 where pv2.property_id = p2.id and pv2.contact_id = ${contacts.id}) or exists (select 1 from deal_contacts dc2 join deals d2 on d2.id = dc2.deal_id where dc2.contact_id = ${contacts.id} and d2.property_id = p2.id and d2.organization_id = ${context.organizationId})))`
-      : sql``;
-  const base = and(
-    eq(contacts.organizationId, context.organizationId),
-    isNull(contacts.deletedAt),
-    gte(contacts.createdAt, manilaMidnight(filters.from)),
-    lt(contacts.createdAt, manilaMidnight(endExclusive(filters.to))),
-    contactScope,
-    filters.agent ? eq(contacts.assignedUserId, filters.agent) : undefined,
-    sql`true ${propertyFilter}`,
-  );
-  const [rows, stageRows] = await Promise.all([
-    db
-      .select({
-        leads: countDistinct(contacts.id),
-        opportunity: sql<number>`count(distinct ${contacts.id}) filter (where ${reachedStage(contacts.id, context.organizationId, funnelStages[0].reached)})`,
-        reservation: sql<number>`count(distinct ${contacts.id}) filter (where ${reachedStage(contacts.id, context.organizationId, funnelStages[1].reached)})`,
-        closed: sql<number>`count(distinct ${contacts.id}) filter (where exists (select 1 from deal_contacts dc join deals d on d.id = dc.deal_id where dc.contact_id = ${contacts.id} and d.status = 'won' and d.deleted_at is null and d.organization_id = ${context.organizationId}))`,
-      })
-      .from(contacts)
-      .where(base),
-    db
-      .select({ slug: pipelineStages.slug, name: pipelineStages.name })
-      .from(pipelineStages)
-      .where(eq(pipelineStages.organizationId, context.organizationId)),
-  ]);
-  const row = rows[0] ?? { leads: 0, opportunity: 0, reservation: 0, closed: 0 };
-  // Labels follow the organization's own stage names, e.g. "CTS Signed - Won".
-  const stageName = (slug: string, fallback: string) =>
-    stageRows.find((stage) => stage.slug === slug)?.name ?? fallback;
-  const wonLabel = stageName("closed-won", "Won");
-  const funnel = [
-    { key: "leads", label: stageName("leads", "Leads"), value: Number(row.leads) },
-    ...funnelStages.map((stage) => ({
-      key: stage.key,
-      label: stageName(stage.key, stage.label),
-      value: Number(row[stage.key]),
-    })),
-    { key: "closed", label: wonLabel, value: Number(row.closed) },
-  ];
-  return {
-    funnel,
-    wonLabel,
-    overallRate: safeRate(row.closed, row.leads),
-  };
 }

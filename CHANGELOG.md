@@ -5,8 +5,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-11-20
+
+### Added
+- Calendar invitations with accept and decline responses, and separate calendar and viewing permissions.
+
 ### Changed
+- Refined task columns and forms, calendar controls, development lists, user documents and contact form actions.
+- Improved opportunity address entry and ID address matching, with clearer reassignment and stage actions.
+- Standardized CRM labels and removed the conversion report.
 - Server builds install packages with the same npm version used in development.
+
+### Fixed
+- Form accent colors no longer override shared button hover colors, and contact form actions no longer cover Notes.
+- Calendar month navigation handles month-end dates, and keyboard navigation focuses day cells correctly.
+- Improved document replacement handling and contact name formatting.
 
 ## [0.4.1] - 2026-11-20
 

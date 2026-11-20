@@ -1,5 +1,18 @@
 import "server-only";
-import { and, asc, count, desc, eq, ilike, inArray, isNull, lte, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  isNull,
+  lte,
+  or,
+  sql,
+  type AnyColumn,
+} from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db";
 import {
@@ -46,6 +59,10 @@ const fromStage = alias(pipelineStages, "from_stage");
 const toStage = alias(pipelineStages, "to_stage");
 const brokerUser = alias(users, "broker_user");
 const leadCreator = alias(users, "lead_creator");
+/** A user's role names, so a card can say who someone is rather than a fixed title. */
+const roleNamesOf = (userId: AnyColumn) =>
+  sql<string | null>`(select string_agg(r.name, ', ' order by r.name)
+    from user_roles ur join roles r on r.id = ur.role_id where ur.user_id = ${userId})`;
 
 export async function getPipelineBoard() {
   const context = await requirePermission("deals.view");
@@ -114,8 +131,14 @@ export async function getPipelineBoard() {
               and u.id = any(${contacts.preferredUnitIds})))`,
         agentFirstName: users.firstName,
         agentLastName: users.lastName,
+        brokerFirstName: brokerUser.firstName,
+        brokerLastName: brokerUser.lastName,
+        agentRoleNames: roleNamesOf(users.id),
+        brokerRoleNames: roleNamesOf(brokerUser.id),
+        agentIsBroker: sql<boolean>`coalesce(${deals.brokerUserId} = ${deals.primaryAgentUserId}, false)`,
         creatorFirstName: leadCreator.firstName,
         creatorLastName: leadCreator.lastName,
+        creatorRoleNames: roleNamesOf(leadCreator.id),
         contactFirstName: contacts.firstName,
         contactMiddleName: contacts.middleName,
         contactLastName: contacts.lastName,
@@ -151,6 +174,7 @@ export async function getPipelineBoard() {
       )
       .leftJoin(contacts, eq(dealContacts.contactId, contacts.id))
       .leftJoin(leadCreator, eq(contacts.createdBy, leadCreator.id))
+      .leftJoin(brokerUser, eq(deals.brokerUserId, brokerUser.id))
       // One lookup of the latest stage change, shared by the note and the date.
       .leftJoinLateral(
         sql`(select h.note, h.changed_at from deal_stage_history h

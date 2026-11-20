@@ -1,6 +1,5 @@
 import {
   getAgentReport,
-  getConversionReport,
   getForecastReport,
   getSalesReport,
 } from "@/features/reports/queries/report.queries";
@@ -73,10 +72,6 @@ const exporters: Record<string, (filters: ReportFilters) => Promise<CsvCell[][]>
         agent.activities,
       ]),
     ];
-  },
-  async conversion(filters) {
-    const data = await getConversionReport(filters);
-    return [["Stage", "Contacts"], ...data.funnel.map((stage) => [stage.label, stage.value])];
   },
 };
 

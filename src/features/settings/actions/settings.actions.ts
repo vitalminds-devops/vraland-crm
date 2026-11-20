@@ -162,9 +162,14 @@ type StoredOnboardingFile = {
 };
 
 function parseOnboardingFiles(formData: FormData) {
-  return formData
-    .getAll("documents")
-    .filter((value): value is File => value instanceof File && Boolean(value.name));
+  return (
+    formData
+      .getAll("documents")
+      // An empty file input still submits a nameless, zero-byte part; documents are optional.
+      .filter(
+        (value): value is File => value instanceof File && Boolean(value.name) && value.size > 0,
+      )
+  );
 }
 
 async function validateOnboardingFiles(files: File[], required: boolean) {

@@ -59,7 +59,11 @@ export const calendarEventUsers = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    /** needs_action until the person assigned accepts or declines. */
     attendeeStatus: varchar("attendee_status", { length: 20 }).default("accepted").notNull(),
+    /** Why they declined. */
+    responseNote: text("response_note"),
+    respondedAt: timestamp("responded_at", { withTimezone: true }),
   },
   (t) => [primaryKey({ columns: [t.eventId, t.userId] })],
 );

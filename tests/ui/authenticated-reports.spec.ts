@@ -7,7 +7,6 @@ for (const [path, heading] of [
   ["/dashboard", "Dashboard"],
   ["/reports/sales", "Sales performance"],
   ["/reports/forecast", "Sales forecasting"],
-  ["/reports/conversion", "Lead conversion"],
   ["/reports/agents", "Agent leaderboard"],
 ] as const) {
   test(`isolated administrator can render ${path}`, async ({ page, identity }) => {

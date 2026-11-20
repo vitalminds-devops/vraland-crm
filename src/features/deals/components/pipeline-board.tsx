@@ -63,6 +63,7 @@ import { useRouter } from "next/navigation";
 import { OpportunityDialog } from "./opportunity-dialog";
 import { isCloseDateOverdue } from "../lib/close-date";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { manilaDateTime } from "@/lib/utils/manila-time";
 
 /** A lane: the shared `MoveStage` shape, under the board's own name for it. */
 type Stage = MoveStage;
@@ -86,8 +87,15 @@ type Deal = {
   propertyTitle: string | null;
   agentFirstName: string | null;
   agentLastName: string | null;
+  brokerFirstName: string | null;
+  brokerLastName: string | null;
+  /** The broker handles the deal as its agent too. */
+  agentIsBroker: boolean;
+  agentRoleNames: string | null;
+  brokerRoleNames: string | null;
   creatorFirstName: string | null;
   creatorLastName: string | null;
+  creatorRoleNames: string | null;
   contactFirstName: string | null;
   contactMiddleName: string | null;
   contactLastName: string | null;
@@ -530,6 +538,10 @@ function DealCard({
   const place = placeOf(deal);
   const creator =
     [deal.creatorFirstName, deal.creatorLastName].filter(Boolean).join(" ") || "Unknown user";
+  const broker = [deal.brokerFirstName, deal.brokerLastName].filter(Boolean).join(" ");
+  const agentLabel = `${deal.agentRoleNames ?? "Agent"}: ${agentName(deal)}`;
+  const brokerLabel = `${deal.brokerRoleNames ?? "Broker"}: ${broker}`;
+  const creatorLabel = deal.creatorRoleNames ? `${deal.creatorRoleNames}: ${creator}` : creator;
 
   return (
     <article
@@ -594,15 +606,23 @@ function DealCard({
         </div>
       )}
       <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/40 pt-2.5">
-        <span
-          className="min-w-0 truncate text-[11px] text-muted-foreground"
-          title={`Entered by: ${creator}`}
-        >
-          Entered by: {creator}
+        <span className="flex min-w-0 flex-col gap-0.5 text-[11px]">
+          <span className="truncate text-muted-foreground" title={creatorLabel}>
+            {creatorLabel}
+          </span>
+          {agentName(deal) && (
+            <span className="truncate text-foreground/80" title={agentLabel}>
+              {agentLabel}
+            </span>
+          )}
+          {broker && !deal.agentIsBroker && (
+            <span className="truncate text-muted-foreground" title={brokerLabel}>
+              {brokerLabel}
+            </span>
+          )}
         </span>
         {agentName(deal) && (
-          <span title={`Agent: ${agentName(deal)}`}>
-            <span className="sr-only">Agent: {agentName(deal)}</span>
+          <span title={agentLabel}>
             <span
               aria-hidden="true"
               className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary ring-1 ring-inset ring-primary/15"
@@ -667,7 +687,7 @@ function DealCard({
                 <p className="mt-1 text-xs">{deal.lastStageNote}</p>
                 {deal.lastStageChangedAt && (
                   <p className="mt-2 text-[10px] text-muted-foreground">
-                    Changed: {new Date(deal.lastStageChangedAt).toLocaleString()}
+                    Changed: {manilaDateTime(new Date(deal.lastStageChangedAt))}
                   </p>
                 )}
               </TooltipContent>

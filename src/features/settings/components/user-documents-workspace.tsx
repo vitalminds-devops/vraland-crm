@@ -18,6 +18,8 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { notify, notifyLoading } from "@/components/ui/toast";
 import { documentFileError } from "@/lib/storage/document-validation";
 import { cn } from "@/lib/utils/cn";
+import { manilaToday } from "@/lib/utils/manila-time";
+import { formatDate } from "@/features/contacts/lib/helpers";
 
 import { saveUserCertificate, saveUserDocument } from "../actions/settings.actions";
 
@@ -50,7 +52,7 @@ const previewableTypes = new Set(["application/pdf", "image/jpeg", "image/png", 
 const fileButton = (variant: "primary" | "secondary") =>
   cn(
     buttonVariants({ variant, size: "sm" }),
-    "cursor-pointer gap-1.5 has-[:disabled]:pointer-events-none has-[:disabled]:opacity-50",
+    "min-h-10 cursor-pointer gap-1.5 has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring/30 has-[:disabled]:pointer-events-none has-[:disabled]:opacity-50 sm:min-h-8",
   );
 
 function certificateStatus(certificate: UserDocument, today: string) {
@@ -62,8 +64,8 @@ function certificateStatus(certificate: UserDocument, today: string) {
   if (!certificate.validUntil || certificate.validUntil < today)
     return { label: "Expired", styles: "bg-destructive/10 text-destructive" };
   const daysRemaining = Math.ceil(
-    (new Date(`${certificate.validUntil}T00:00:00`).getTime() -
-      new Date(`${today}T00:00:00`).getTime()) /
+    (new Date(`${certificate.validUntil}T00:00:00Z`).getTime() -
+      new Date(`${today}T00:00:00Z`).getTime()) /
       86_400_000,
   );
   return daysRemaining <= 30
@@ -89,12 +91,14 @@ function fileKind(mimeType: string | null) {
 
 function Section({
   title,
+  description,
   count,
   action,
   empty,
   children,
 }: {
   title: string;
+  description: string;
   count: number;
   action: ReactNode;
   empty: string;
@@ -102,19 +106,22 @@ function Section({
 }) {
   return (
     <Card>
-      <CardHeader className="flex items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-sm font-semibold">
-          {title}
-          <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-normal tabular-nums text-muted-foreground">
-            {count}
-          </span>
-        </h2>
+      <CardHeader className="flex flex-wrap items-center justify-between gap-3">
+        <div className="grid gap-1">
+          <h2 className="flex items-center gap-2 text-sm font-semibold">
+            {title}
+            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-normal tabular-nums text-muted-foreground">
+              {count}
+            </span>
+          </h2>
+          <p className="text-xs text-muted-foreground">{description}</p>
+        </div>
         {action}
       </CardHeader>
       {count > 0 ? (
         <ul className="divide-y divide-border/50">{children}</ul>
       ) : (
-        <p className="p-4 text-sm text-muted-foreground">{empty}</p>
+        <p className="px-4 py-6 text-sm text-muted-foreground">{empty}</p>
       )}
     </Card>
   );
@@ -134,28 +141,32 @@ function DocumentRow({
   const meta = [
     fileKind(document.mimeType),
     formatSize(document.fileSizeBytes),
-    document.createdAt.toLocaleDateString(),
+    formatDate(document.createdAt),
   ].filter(Boolean);
   return (
     <li className="grid gap-3 p-4">
-      <div className="flex min-w-0 flex-wrap items-center gap-3">
+      <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-4 sm:grid-cols-[auto_minmax(0,1fr)_auto]">
         <FileText aria-hidden="true" size={18} className="shrink-0 text-muted-foreground" />
         <div className="min-w-0 flex-1">
-          <h3 className="break-words text-sm font-medium">{document.name}</h3>
+          <h3 className="text-sm font-medium [overflow-wrap:anywhere]">{document.name}</h3>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
             {details}
             {meta.join(" · ")}
           </p>
         </div>
-        <div className="ml-auto flex shrink-0 items-center gap-2">
+        <div className="col-span-2 flex flex-wrap items-center gap-2 sm:col-span-1 sm:justify-end">
           {actions}
           <a
             href={`/api/settings/user-documents/${document.id}/download`}
             aria-label={`Download ${document.name}`}
             title="Download"
-            className={buttonVariants({ variant: "ghost", size: "sm", className: "px-2" })}
+            className={buttonVariants({
+              variant: "ghost",
+              size: "sm",
+              className: "min-h-10 gap-1.5 sm:min-h-8",
+            })}
           >
-            <Download aria-hidden="true" size={15} />
+            <Download aria-hidden="true" size={15} /> Download
           </a>
         </div>
       </div>
@@ -180,14 +191,14 @@ export function UserDocumentsWorkspace({
       <Button
         variant="ghost"
         size="sm"
-        className="gap-1.5"
+        className="min-h-10 gap-1.5 sm:min-h-8"
         aria-label={`Preview ${document.name}`}
         onClick={() => setPreview(document)}
       >
         <Eye aria-hidden="true" size={15} /> Preview
       </Button>
     );
-  const today = new Date().toISOString().slice(0, 10);
+  const today = manilaToday();
   const certificates = documents.filter(
     (document) => document.documentType === "accreditation_certificate",
   );
@@ -271,16 +282,17 @@ export function UserDocumentsWorkspace({
   };
 
   return (
-    <div className="mt-6 grid gap-6">
+    <div className="grid gap-5">
       <Section
         title="Certificates"
+        description="Accreditation certificates and validity dates."
         count={certificates.length}
-        empty="No certificates yet."
+        empty="No certificates yet. Add a certificate to record its number and validity dates."
         action={
           <Button
             variant="primary"
             size="sm"
-            className="gap-1.5"
+            className="min-h-10 gap-1.5 sm:min-h-8"
             onClick={() => setCertificateOpen(true)}
           >
             <Plus aria-hidden="true" size={15} /> Add certificate
@@ -314,11 +326,12 @@ export function UserDocumentsWorkspace({
 
       <Section
         title="Other documents"
+        description="PDF, Word (.docx), JPG, PNG or TXT. Up to 15 MB per file."
         count={otherDocuments.length}
-        empty="No documents yet."
+        empty="No other documents yet. Upload a file to keep it with this user's records."
         action={
           <label className={fileButton("primary")}>
-            <Upload aria-hidden="true" size={15} /> Upload
+            <Upload aria-hidden="true" size={15} /> Upload document
             <input
               type="file"
               accept={fileTypes}
@@ -449,6 +462,9 @@ export function UserDocumentsWorkspace({
                 <label className={field}>
                   Certificate file
                   <Input required type="file" name="file" accept={fileTypes} />
+                  <span className="text-xs font-normal text-muted-foreground">
+                    PDF, Word (.docx), JPG, PNG or TXT. Up to 15 MB.
+                  </span>
                 </label>
                 <div className="mt-2 flex justify-end gap-2">
                   <DialogClose asChild>

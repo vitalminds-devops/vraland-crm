@@ -6,6 +6,7 @@ import { CalendarX2, MapPin, User } from "lucide-react";
 import { EVENT_COLORS, eventKind } from "../lib/event-colors";
 import { contactName, ownerName, type CalendarEvent } from "../lib/event-types";
 import { cn } from "@/lib/utils/cn";
+import { ResponseMark, declinedTitle } from "./response-mark";
 
 export function CalendarAgenda({
   events,
@@ -57,8 +58,11 @@ export function CalendarAgenda({
                       </time>
                       <span className={cn("size-2.5 shrink-0 rounded-full", colors.dot)} />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13px] font-medium">
-                          {event.title}
+                        <span className="flex items-center gap-1.5 text-[13px] font-medium">
+                          <span className={cn("truncate", declinedTitle(event))}>
+                            {event.title}
+                          </span>
+                          <ResponseMark event={event} />
                         </span>
                         <span className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
                           {contact ? (

@@ -3,7 +3,6 @@ import type { CalendarFilter } from "../lib/event-colors";
 import type { CalendarView as ViewId } from "./calendar-toolbar";
 import { getCalendarOptions, listCalendarEvents } from "../queries/calendar.queries";
 import { requirePagePermission } from "@/lib/permissions/authorization";
-import { hasOrganizationWideAccess } from "@/lib/permissions/policy";
 import { manilaToday } from "@/lib/utils/manila-time";
 import { manilaViewRange } from "../lib/manila-range";
 
@@ -49,7 +48,10 @@ export async function CalendarPageContent({
         ? "/calendar/closings"
         : "/calendar";
 
-  const canAssign = hasOrganizationWideAccess(context);
+  const canAssign = context.permissions.has("calendar.assign_viewings");
+  const canScheduleViewings = context.permissions.has("calendar.schedule_viewings");
+  const canAssignEvents = context.permissions.has("calendar.assign");
+  const canBroadcast = context.permissions.has("calendar.broadcast");
   const currentUserId = context.userId;
 
   return (
@@ -65,6 +67,9 @@ export async function CalendarPageContent({
       canCreate={canCreate}
       options={options}
       canAssign={canAssign}
+      canScheduleViewings={canScheduleViewings}
+      canAssignEvents={canAssignEvents}
+      canBroadcast={canBroadcast}
       currentUserId={currentUserId}
     />
   );

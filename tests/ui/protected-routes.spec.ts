@@ -34,7 +34,6 @@ const routes = [
   "/reports/sales",
   "/reports/forecast",
   "/reports/agents",
-  "/reports/conversion",
   "/settings",
   "/settings/logs",
   "/settings/roles",

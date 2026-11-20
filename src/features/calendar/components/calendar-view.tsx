@@ -18,7 +18,7 @@ import { TimeGrid } from "./time-grid";
 import { CalendarAgenda } from "./calendar-agenda";
 import { matchesFilter, type CalendarFilter } from "../lib/event-colors";
 import type { CalendarEvent } from "../lib/event-types";
-import { formatDate, shift, usePrefersReducedMotion } from "../lib/calendar-helpers";
+import { formatDate, manilaWall, shift, usePrefersReducedMotion } from "../lib/calendar-helpers";
 import type { CalendarView as CalendarViewId } from "./calendar-toolbar";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -81,7 +81,7 @@ export function CalendarView({
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       switch (e.key.toLowerCase()) {
         case "t":
-          navigate(new Date());
+          navigate(manilaWall(new Date()));
           break;
         case "arrowleft":
           navigate(shift(date, view, -1));
@@ -135,6 +135,17 @@ export function CalendarView({
 
   return (
     <div className={`flex-1 bg-card ${reduceMotion ? "" : "animate-in fade-in-0 duration-150"}`}>
+      {view === "month" && filtered.length === 0 && (
+        <p
+          role="status"
+          className="border-b border-border/40 px-4 py-3 text-xs text-muted-foreground"
+        >
+          {activeFilter === "all"
+            ? "No events in this month."
+            : "No events match this filter in this month. Try All events to see other event types."}
+          {canCreate && " Use Add event or Schedule viewing to get started."}
+        </p>
+      )}
       {body}
       {popover ? (
         <EventPopover
@@ -194,23 +205,21 @@ function MonthGrid({
               ? -7
               : 0;
     if (!delta) return;
+    if ((e.target as HTMLElement).closest("button, a")) return;
     e.preventDefault();
+    e.stopPropagation();
     const next = addDays(focusedDate, delta);
     onFocusDate(next);
     requestAnimationFrame(() => {
       gridRef.current
-        ?.querySelector<HTMLElement>(`[data-day="${format(next, "yyyy-MM-dd")}"]`)
+        ?.querySelector<HTMLElement>(`[role="gridcell"][data-day="${format(next, "yyyy-MM-dd")}"]`)
         ?.focus();
     });
   };
 
   return (
     <div className="overflow-x-auto" role="grid" aria-label={format(date, "MMMM yyyy")}>
-      <div
-        ref={gridRef}
-        className="min-w-[320px] sm:min-w-[760px] focus:outline-none"
-        onKeyDown={handleKeyDown}
-      >
+      <div ref={gridRef} className="min-w-[280px] focus:outline-none" onKeyDown={handleKeyDown}>
         <div role="row" className="grid grid-cols-7 border-b border-border/50 bg-muted/40">
           {WEEKDAYS.map((day) => (
             <div

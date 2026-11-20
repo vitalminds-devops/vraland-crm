@@ -48,7 +48,17 @@ export const permissionCatalog = {
     "deals.move_back",
   ],
   tasks: ["tasks.view", "tasks.create", "tasks.update", "tasks.delete"],
-  calendar: ["calendar.view", "calendar.manage"],
+  calendar: [
+    "calendar.view",
+    "calendar.manage",
+    "calendar.assign",
+    "calendar.broadcast",
+    "calendar.edit_others",
+    "calendar.schedule_viewings",
+    "calendar.assign_viewings",
+    "calendar.update_viewings",
+    "calendar.delete_viewings",
+  ],
   marketing: [
     "marketing.view",
     // Create and edit campaigns, sequences, steps and message templates.
@@ -274,8 +284,37 @@ export const permissionMetadata = {
     description: "Open Calendar & viewings and view events you can access.",
   },
   "calendar.manage": {
-    label: "Manage calendar & viewings",
-    description: "Schedule, change and cancel viewings and events.",
+    label: "Add events",
+    description: "Add events, and change or delete the ones you created.",
+  },
+  "calendar.assign": {
+    label: "Invite others to events",
+    description: "Invite chosen people to an event. They accept or decline it.",
+  },
+  "calendar.broadcast": {
+    label: "Invite everyone to events",
+    description: "Invite every active user to an event at once.",
+  },
+  "calendar.edit_others": {
+    label: "Edit and delete others' events",
+    description: "Change or delete events someone else created.",
+  },
+  "calendar.schedule_viewings": {
+    label: "Schedule viewings",
+    description: "Schedule property viewings for a contact.",
+  },
+  "calendar.assign_viewings": {
+    label: "Schedule viewings for other agents",
+    description: "Pick another agent for a viewing, not just yourself.",
+  },
+  "calendar.update_viewings": {
+    label: "Reschedule viewings and record outcomes",
+    description:
+      "Edit and move viewings, and mark them confirmed, completed, no-show or cancelled.",
+  },
+  "calendar.delete_viewings": {
+    label: "Delete viewings",
+    description: "Remove a viewing that has no outcome on record.",
   },
 
   "marketing.view": {
@@ -418,6 +457,9 @@ const agentPermissions = permissionKeys.filter((key) =>
     "tasks.update",
     "calendar.view",
     "calendar.manage",
+    "calendar.schedule_viewings",
+    "calendar.update_viewings",
+    "calendar.delete_viewings",
     "requirements.view",
     "requirements.manage",
     "documents.view",
@@ -430,6 +472,7 @@ const brokerPermissions = [
   "properties.grant_unit_access",
   "records.view_team",
   "billing.view",
+  "calendar.assign",
 ] as const satisfies readonly PermissionKey[];
 
 const brokerAccessDescription = "Same access as a Broker.";

@@ -30,9 +30,10 @@ const detailLabel = "text-xs font-medium uppercase tracking-wide text-muted-fore
 
 function formatDateTime(value: Date | null): string {
   if (!value) return "Never";
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat("en-PH", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: "Asia/Manila",
   }).format(new Date(value));
 }
 

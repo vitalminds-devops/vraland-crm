@@ -5,7 +5,7 @@ const optionalDateTime = z
   .transform((v) => v || null);
 export const taskSchema = z
   .object({
-    title: z.string().trim().min(2).max(220),
+    title: z.string().trim().min(2, "Enter a title with at least 2 characters.").max(220),
     description: z.string().trim().max(5000).optional().default(""),
     taskType: z.enum(["follow_up", "call", "email", "document", "viewing", "closing", "general"]),
     priority: z.enum(["low", "medium", "high", "urgent"]),

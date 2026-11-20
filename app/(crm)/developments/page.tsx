@@ -2,13 +2,12 @@ import { Plus, Search } from "lucide-react";
 import { FilterForm } from "@/components/common/filter-form";
 import { PageContainer } from "@/components/common/page-container";
 import { PageHeader } from "@/components/common/page-header";
-import { ButtonLink } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
-import { DevelopmentGrid, label, fieldClass } from "@/features/developments";
+import { DevelopmentGrid, label } from "@/features/developments";
 import { loadDevelopmentsPageData } from "@/features/developments/lib/page-loaders";
-import { cn } from "@/lib/utils/cn";
 
 export default async function DevelopmentsPage({
   searchParams,
@@ -33,9 +32,10 @@ export default async function DevelopmentsPage({
         }
       />
 
-      <Card className="mt-6">
+      <Card>
         <FilterForm className="flex flex-col gap-2 border-b border-border/40 p-4 md:flex-row md:items-center">
           <label className="relative min-w-0 md:flex-1">
+            <span className="sr-only">Search developments by code, name, or location</span>
             <Search
               aria-hidden="true"
               className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
@@ -44,14 +44,13 @@ export default async function DevelopmentsPage({
               name="search"
               defaultValue={search}
               placeholder="Search code, name, or location"
-              className={cn(fieldClass, "pl-9")}
+              className="pl-9"
             />
           </label>
           <NativeSelect
             name="status"
             aria-label="Status"
             defaultValue={status ?? ""}
-            className={cn(fieldClass, "pr-9")}
             wrapperClassName="md:w-48 md:shrink-0"
           >
             <NativeSelectOption value="">All statuses</NativeSelectOption>
@@ -61,11 +60,20 @@ export default async function DevelopmentsPage({
               </NativeSelectOption>
             ))}
           </NativeSelect>
+          <Button type="submit" variant="secondary">
+            Search
+          </Button>
+          {(search || status) && (
+            <ButtonLink href="/developments" variant="ghost">
+              Clear filters
+            </ButtonLink>
+          )}
         </FilterForm>
 
         <DevelopmentGrid
           rows={data.rows}
           canUpdate={context.permissions.has("developments.update")}
+          hasFilters={Boolean(search || status)}
         />
 
         <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border/40 p-4 text-sm">

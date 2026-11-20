@@ -1,6 +1,5 @@
 "use client";
 
-import { differenceInCalendarDays, format } from "date-fns";
 import {
   Bell,
   Briefcase,
@@ -28,6 +27,8 @@ import { TablePagination } from "@/components/ui/table-pagination";
 import { SortChevron, sortHeaderClass, tableHeadClass } from "@/components/ui/table-parts";
 import { formatContactName } from "@/features/contacts";
 import { cn } from "@/lib/utils/cn";
+import { manilaDateTime, manilaDaysBetween } from "@/lib/utils/manila-time";
+import { formatDate } from "@/features/contacts/lib/helpers";
 
 import { TaskBadge } from "./task-badge";
 import { TaskForm } from "./task-form";
@@ -75,10 +76,10 @@ const CLOSED = ["completed", "cancelled"];
 
 function dueMeta(dueAt: Date | null, closed: boolean) {
   if (!dueAt) return { label: "No due date", tone: "text-muted-foreground", overdue: false };
-  const days = differenceInCalendarDays(dueAt, new Date());
+  const days = manilaDaysBetween(dueAt);
   if (closed)
     return {
-      label: format(dueAt, "MMM d, yyyy"),
+      label: formatDate(dueAt),
       tone: "text-muted-foreground",
       overdue: false,
     };
@@ -111,19 +112,11 @@ function RecordLink({
   return (
     <Link
       href={href}
-      className="inline-flex min-w-0 items-center gap-1 transition-colors hover:text-primary"
+      className="inline-flex min-w-0 items-center gap-1 rounded-sm transition-colors hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
     >
       <Icon aria-hidden="true" className="size-3 shrink-0" />
       <span className="truncate">{children}</span>
     </Link>
-  );
-}
-
-function Sep() {
-  return (
-    <span aria-hidden="true" className="text-border">
-      ·
-    </span>
   );
 }
 
@@ -216,17 +209,27 @@ export function TasksTable({
   return (
     <>
       <div className="overflow-x-auto">
-        <Table className="w-full table-fixed text-left text-sm">
+        <Table aria-label="Tasks" className="w-full table-fixed text-left text-sm">
           <TableHeader className={tableHeadClass}>
             <TableRow>
-              {sortableHeader("task", "Task", "px-4 py-3 sm:w-[34%] sm:px-5")}
+              {sortableHeader("task", "Task", "px-4 py-3")}
+              <TableHead scope="col" className="hidden px-4 py-3 xl:table-cell">
+                Type
+              </TableHead>
               {sortableHeader("due", "Due", "hidden px-4 py-3 sm:table-cell")}
-              {sortableHeader("priority", "Priority", "hidden w-28 px-4 py-3 md:table-cell")}
+              {sortableHeader("priority", "Priority", "hidden px-4 py-3 md:table-cell")}
               {sortableHeader("assignee", "Assignee", "hidden px-4 py-3 lg:table-cell")}
-              {sortableHeader("status", "Status", "w-32 px-2 py-3 sm:w-36 sm:px-4")}
+              <TableHead scope="col" className="hidden px-4 py-3 xl:table-cell">
+                Created by
+              </TableHead>
+              {sortableHeader(
+                "status",
+                "Status",
+                "py-3 pl-2 pr-0 text-right sm:pl-4 [&>button]:w-32 [&>button]:max-w-full",
+              )}
               {editable && (
-                <TableHead scope="col" className="w-12 px-2 py-3">
-                  <span className="sr-only">Actions</span>
+                <TableHead scope="col" className="w-16 px-3 py-3 text-center">
+                  Actions
                 </TableHead>
               )}
             </TableRow>
@@ -243,6 +246,9 @@ export function TasksTable({
                 ? `${row.assignedFirstName} ${row.assignedLastName ?? ""}`.trim()
                 : null;
               const TypeIcon = TASK_TYPE_ICONS[row.taskType];
+              const creator =
+                [row.creatorFirstName, row.creatorLastName].filter(Boolean).join(" ") ||
+                "Unknown user";
               const hasRecords = row.contactId || row.propertyId || row.dealId;
 
               return (
@@ -250,12 +256,12 @@ export function TasksTable({
                   key={row.id}
                   className="border-b border-border/40 bg-card transition-colors hover:bg-muted/40 focus-within:bg-muted/40"
                 >
-                  <TableCell className="px-4 py-4 sm:px-5">
+                  <TableCell className="px-4 py-3">
                     <div className="flex min-w-0 flex-col gap-1.5">
                       <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                         <span
                           className={cn(
-                            "line-clamp-2 break-words font-semibold",
+                            "line-clamp-2 [overflow-wrap:anywhere] font-semibold",
                             closed ? "text-muted-foreground" : "text-foreground",
                           )}
                           title={row.title}
@@ -263,53 +269,43 @@ export function TasksTable({
                           {row.title}
                         </span>
                       </span>
-                      <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                        <span className="inline-flex shrink-0 items-center gap-1">
+                      <span
+                        className={cn(
+                          "flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground",
+                          !hasRecords && !row.description && "xl:hidden",
+                        )}
+                      >
+                        <span className="inline-flex shrink-0 items-center gap-1 xl:hidden">
                           {TypeIcon && <TypeIcon aria-hidden="true" className="size-3.5" />}
                           {taskTypeLabel(row.taskType)}
                         </span>
-                        <Sep />
-                        <span className="min-w-0 break-words">
-                          Created by:{" "}
-                          {[row.creatorFirstName, row.creatorLastName].filter(Boolean).join(" ") ||
-                            "Unknown user"}
-                        </span>
+                        <span className="min-w-0 break-words xl:hidden">Created by: {creator}</span>
                         {!hasRecords && row.description && (
-                          <>
-                            <Sep />
-                            <span className="max-w-[36ch] truncate">{row.description}</span>
-                          </>
+                          <span className="max-w-full truncate" title={row.description}>
+                            {row.description}
+                          </span>
                         )}
                         {row.contactId && (
-                          <>
-                            <Sep />
-                            <RecordLink href={`/contacts/${row.contactId}`} icon={User}>
-                              {formatContactName({
-                                firstName: row.contactFirstName,
-                                middleName: row.contactMiddleName,
-                                lastName: row.contactLastName,
-                              })}
-                            </RecordLink>
-                          </>
+                          <RecordLink href={`/contacts/${row.contactId}`} icon={User}>
+                            {formatContactName({
+                              firstName: row.contactFirstName,
+                              middleName: row.contactMiddleName,
+                              lastName: row.contactLastName,
+                            })}
+                          </RecordLink>
                         )}
                         {row.propertyId && (
-                          <>
-                            <Sep />
-                            <RecordLink
-                              href={`/properties/buildings/${row.propertyId}`}
-                              icon={Building2}
-                            >
-                              {row.propertyTitle}
-                            </RecordLink>
-                          </>
+                          <RecordLink
+                            href={`/properties/buildings/${row.propertyId}`}
+                            icon={Building2}
+                          >
+                            {row.propertyTitle}
+                          </RecordLink>
                         )}
                         {row.dealId && (
-                          <>
-                            <Sep />
-                            <RecordLink href={`/deals/${row.dealId}`} icon={Briefcase}>
-                              {row.dealTitle}
-                            </RecordLink>
-                          </>
+                          <RecordLink href={`/deals/${row.dealId}`} icon={Briefcase}>
+                            {row.dealTitle}
+                          </RecordLink>
                         )}
                       </span>
                       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs lg:hidden">
@@ -332,7 +328,14 @@ export function TasksTable({
                     </div>
                   </TableCell>
 
-                  <TableCell className="hidden px-4 py-4 sm:table-cell">
+                  <TableCell className="hidden px-4 py-3 xl:table-cell">
+                    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                      {TypeIcon && <TypeIcon aria-hidden="true" className="size-3.5 shrink-0" />}
+                      {taskTypeLabel(row.taskType)}
+                    </span>
+                  </TableCell>
+
+                  <TableCell className="hidden px-4 py-3 sm:table-cell">
                     <span
                       className={cn(
                         "inline-flex items-center gap-1.5 text-xs font-medium",
@@ -344,31 +347,34 @@ export function TasksTable({
                     </span>
                     {row.dueAt && !closed && (
                       <span className="mt-1 block text-xs text-muted-foreground tabular-nums">
-                        {format(row.dueAt, "MMM d, yyyy")}
+                        {formatDate(row.dueAt)}
                       </span>
                     )}
                     {row.reminderAt && (
                       <span className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
                         <Bell aria-hidden="true" className="size-3 shrink-0" />
-                        {format(row.reminderAt, "MMM d, h:mm a")}
+                        {manilaDateTime(row.reminderAt)}
                       </span>
                     )}
                   </TableCell>
 
-                  <TableCell className="hidden px-4 py-4 md:table-cell">
+                  <TableCell className="hidden px-4 py-3 md:table-cell">
                     <TaskBadge tone={TASK_PRIORITY_TONES[row.priority] ?? "muted"}>
                       {titleCase(row.priority)}
                     </TaskBadge>
                   </TableCell>
 
-                  <TableCell className="hidden px-4 py-4 lg:table-cell">
+                  <TableCell className="hidden px-4 py-3 lg:table-cell">
                     {assignee ? (
                       <span className="flex min-w-0 items-center gap-2">
                         <InitialsAvatar
                           className="size-7 text-[10px]"
                           initials={`${row.assignedFirstName?.[0] ?? ""}${row.assignedLastName?.[0] ?? ""}`.toUpperCase()}
                         />
-                        <span className="truncate text-xs text-foreground" title={assignee}>
+                        <span
+                          className="text-xs text-foreground [overflow-wrap:anywhere]"
+                          title={assignee}
+                        >
                           {assignee}
                         </span>
                       </span>
@@ -377,16 +383,24 @@ export function TasksTable({
                     )}
                   </TableCell>
 
-                  <TableCell className="px-2 py-4 sm:px-4">
-                    {canUpdate ? (
-                      <TaskStatus id={row.id} status={row.status} />
-                    ) : (
-                      <TaskBadge tone={status.tone}>{status.label}</TaskBadge>
-                    )}
+                  <TableCell className="hidden px-4 py-3 xl:table-cell">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <User aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+                      <span className="text-xs [overflow-wrap:anywhere]">{creator}</span>
+                    </span>
                   </TableCell>
 
+                  <TableCell className="py-3 pl-2 pr-0 sm:pl-4">
+                    <div className="flex min-w-0 items-center justify-end">
+                      {canUpdate ? (
+                        <TaskStatus id={row.id} status={row.status} />
+                      ) : (
+                        <TaskBadge tone={status.tone}>{status.label}</TaskBadge>
+                      )}
+                    </div>
+                  </TableCell>
                   {editable && (
-                    <TableCell className="w-12 px-1 py-4 sm:px-2">
+                    <TableCell className="w-16 px-3 py-3 text-center">
                       <TaskForm task={row} options={options} canDelete={canDelete} />
                     </TableCell>
                   )}

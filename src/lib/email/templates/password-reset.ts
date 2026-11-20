@@ -1,3 +1,4 @@
+import { manilaToday } from "@/lib/utils/manila-time";
 type PasswordResetTemplateProps = {
   resetUrl: string;
   expiryHours?: number;
@@ -111,7 +112,7 @@ export function getPasswordResetHtmlTemplate({
       <p>If you didn't request this password reset, you can safely ignore this email. Your password will remain unchanged.</p>
     </div>
     <div class="footer">
-      <p>&copy; ${new Date().getFullYear()} ${appName}. All rights reserved.</p>
+      <p>&copy; ${manilaToday().slice(0, 4)} ${appName}. All rights reserved.</p>
       <p>This is an automated email. Please do not reply.</p>
     </div>
   </div>
@@ -140,7 +141,7 @@ Important: This link will expire in ${expiryHours} hour${expiryHours > 1 ? "s" :
 
 If you didn't request this password reset, you can safely ignore this email. Your password will remain unchanged.
 
-© ${new Date().getFullYear()} ${appName}. All rights reserved.
+© ${manilaToday().slice(0, 4)} ${appName}. All rights reserved.
 This is an automated email. Please do not reply.
   `.trim();
 }

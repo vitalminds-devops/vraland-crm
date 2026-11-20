@@ -39,8 +39,14 @@ const deal: Props["deals"][number] = {
   propertyTitle: null,
   agentFirstName: "Assigned",
   agentLastName: "Agent",
+  brokerFirstName: null,
+  brokerLastName: null,
+  agentIsBroker: false,
+  agentRoleNames: null,
+  brokerRoleNames: null,
   creatorFirstName: "Original",
   creatorLastName: "Creator",
+  creatorRoleNames: "Administrator",
   contactFirstName: "Test",
   contactMiddleName: null,
   contactLastName: "Lead",
@@ -58,9 +64,11 @@ it("credits the original lead creator separately from the assigned agent", () =>
   const html = renderToStaticMarkup(
     createElement(PipelineBoard, { stages: [stage], deals: [deal], canChangeStage: false }),
   );
-  expect(html).toContain("Entered by: Original Creator");
+  expect(html).toContain("Administrator: Original Creator");
+  expect(html).not.toContain("Entered by");
   expect(html).toContain("Agent: Assigned Agent");
   expect(html).not.toContain("Broker:");
+  expect(html).toContain("Agent: Assigned Agent");
   expect(html).not.toContain("DEAL-123");
   expect(html).toContain("Fairfield Heights");
   expect(html).toContain('href="/deals/deal"');
@@ -70,12 +78,12 @@ it("does not substitute an assignee when the original creator is unavailable", (
   const html = renderToStaticMarkup(
     createElement(PipelineBoard, {
       stages: [stage],
-      deals: [{ ...deal, creatorFirstName: null, creatorLastName: null }],
+      deals: [{ ...deal, creatorFirstName: null, creatorLastName: null, creatorRoleNames: null }],
       canChangeStage: false,
     }),
   );
-  expect(html).toContain("Entered by: Unknown user");
-  expect(html).not.toContain("Entered by: Assigned Agent");
+  expect(html).toContain("Unknown user");
+  expect(html).toContain('title="Unknown user"');
 });
 
 it("shows the client once and omits missing property and close-date placeholders", () => {
@@ -90,7 +98,8 @@ it("shows the client once and omits missing property and close-date placeholders
   expect(text.match(/Lead, Test/g)).toHaveLength(1);
   expect(html).not.toContain("lucide-calendar-clock");
   expect(html).not.toContain("<time");
-  expect(html).toContain("Entered by: Original Creator");
+  expect(html).toContain("Administrator: Original Creator");
+  expect(html).not.toContain("Entered by");
 });
 
 it("keeps real close dates, next actions and stage notes visible", () => {
@@ -168,3 +177,45 @@ it.each([false, true])(
     expect(html).not.toContain("data-opportunity-draft");
   },
 );
+
+it("names the broker beside the agent, or once when the broker is the agent", () => {
+  const render = (changes: Partial<typeof deal>) =>
+    renderToStaticMarkup(
+      createElement(PipelineBoard, {
+        stages: [stage],
+        deals: [{ ...deal, brokerFirstName: "Main", brokerLastName: "Broker", ...changes }],
+        canChangeStage: false,
+      }),
+    );
+  const separate = render({});
+  expect(separate).toContain("Agent: Assigned Agent");
+  expect(separate).toContain("Broker: Main Broker");
+  const same = render({
+    agentFirstName: "Main",
+    agentLastName: "Broker",
+    agentIsBroker: true,
+    agentRoleNames: "Broker",
+  });
+  expect(same).toContain("Broker: Main Broker");
+  expect(same).not.toContain("Agent: ");
+});
+
+it("labels the agent and broker with their own roles", () => {
+  const html = renderToStaticMarkup(
+    createElement(PipelineBoard, {
+      stages: [stage],
+      deals: [
+        {
+          ...deal,
+          agentRoleNames: "Sales Agent",
+          brokerFirstName: "Main",
+          brokerLastName: "Broker",
+          brokerRoleNames: "Master Broker",
+        },
+      ],
+      canChangeStage: false,
+    }),
+  );
+  expect(html).toContain("Sales Agent: Assigned Agent");
+  expect(html).toContain("Master Broker: Main Broker");
+});

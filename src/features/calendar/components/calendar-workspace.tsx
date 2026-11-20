@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { CalendarPlus } from "lucide-react";
 import { BackButton } from "@/components/common/back-button";
 import { PageHeader } from "@/components/common/page-header";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,8 @@ type Property = {
 };
 type Options = {
   agents: Person[];
+  /** Everyone who can be invited to an event. */
+  people: Person[];
   contacts: Person[];
   properties: Property[];
 };
@@ -37,6 +40,9 @@ export function CalendarWorkspace({
   canCreate,
   options,
   canAssign,
+  canScheduleViewings,
+  canAssignEvents,
+  canBroadcast,
   currentUserId,
 }: {
   title: string;
@@ -50,6 +56,11 @@ export function CalendarWorkspace({
   canCreate: boolean;
   options: Options;
   canAssign: boolean;
+  canScheduleViewings: boolean;
+  /** May invite others to events. */
+  canAssignEvents: boolean;
+  /** May invite everyone to an event. */
+  canBroadcast: boolean;
   currentUserId: string;
 }) {
   const [addOpen, setAddOpen] = useState(false);
@@ -84,7 +95,8 @@ export function CalendarWorkspace({
       {canCreate ? (
         <>
           <EventForm
-            agents={options.agents}
+            people={canAssignEvents ? options.people : []}
+            canInviteEveryone={canBroadcast}
             trigger={false}
             open={addOpen}
             onOpenChange={setAddOpen}
@@ -92,7 +104,8 @@ export function CalendarWorkspace({
           />
           <EventForm
             key={editing?.id ?? "none"}
-            agents={options.agents}
+            people={canAssignEvents ? options.people : []}
+            canInviteEveryone={canBroadcast}
             trigger={false}
             event={editing}
             open={editing !== null}
@@ -100,11 +113,19 @@ export function CalendarWorkspace({
               if (!open) setEditing(null);
             }}
           />
-          <Button type="button" variant="secondary" onClick={() => openAddOn(new Date(shownDate))}>
+          <Button
+            type="button"
+            variant="secondary"
+            className="gap-2"
+            onClick={() => openAddOn(new Date(shownDate))}
+          >
+            <CalendarPlus aria-hidden="true" className="size-4" />
             Add event
           </Button>
-          <ViewingForm options={options} canAssign={canAssign} currentUserId={currentUserId} />
         </>
+      ) : null}
+      {canScheduleViewings ? (
+        <ViewingForm options={options} canAssign={canAssign} currentUserId={currentUserId} />
       ) : null}
     </div>
   );

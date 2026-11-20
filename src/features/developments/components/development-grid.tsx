@@ -21,15 +21,23 @@ type DevelopmentRow = {
 type Props = {
   rows: DevelopmentRow[];
   canUpdate: boolean;
+  hasFilters?: boolean;
 };
 
 /** One row per development: its cover, what and where it is, its buildings, and buttons for the next step. */
-export function DevelopmentGrid({ rows, canUpdate }: Props) {
+export function DevelopmentGrid({ rows, canUpdate, hasFilters = false }: Props) {
   if (!rows.length) {
     return (
       <div className="grid place-items-center px-6 py-16 text-center">
         <Layers aria-hidden="true" className="size-8 text-muted-foreground/40" />
-        <h2 className="mt-3 text-sm font-medium">No developments found.</h2>
+        <h2 className="mt-3 text-sm font-medium">
+          {hasFilters ? "No matching developments" : "No developments yet"}
+        </h2>
+        <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+          {hasFilters
+            ? "Try another search or clear the filters to see all developments."
+            : "Developments and their properties will appear here once added."}
+        </p>
       </div>
     );
   }
@@ -38,10 +46,10 @@ export function DevelopmentGrid({ rows, canUpdate }: Props) {
     <div>
       <div
         aria-hidden="true"
-        className="hidden items-center gap-x-5 border-b border-border/40 bg-muted/30 px-5 py-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase sm:flex"
+        className="hidden items-center gap-x-5 border-b border-border/40 bg-muted/30 px-5 py-2 text-xs font-medium text-muted-foreground lg:flex"
       >
         <span className="flex-1">Development</span>
-        <span className="w-20 text-right">Properties</span>
+        <span className="w-28 text-right">Properties</span>
         <span className="w-56 text-right">Actions</span>
       </div>
       <ul className="divide-y divide-border/40">
@@ -51,43 +59,41 @@ export function DevelopmentGrid({ rows, canUpdate }: Props) {
           return (
             <li
               key={row.id}
-              className="group relative flex cursor-pointer flex-wrap items-center gap-x-5 gap-y-3 px-4 py-4 transition-colors before:absolute before:inset-y-3 before:left-0 before:w-[3px] before:rounded-r-full before:bg-primary before:opacity-0 before:transition-opacity hover:bg-primary/[0.03] hover:before:opacity-100 sm:px-5"
+              className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3 p-4 transition-colors hover:bg-muted/30 sm:px-5 lg:grid-cols-[auto_minmax(0,1fr)_7rem_14rem] lg:gap-x-5"
             >
-              {/* The whole row opens the development; the buttons sit above it. */}
-              <Link
-                href={`/developments/${row.id}`}
-                aria-label={`Open ${row.name}`}
-                className="absolute inset-0 z-0"
-              />
-              <div className="h-14 w-20 shrink-0 overflow-hidden rounded-xl border border-border/50 bg-muted shadow-sm transition-transform duration-300 group-hover:scale-[1.03] sm:h-[72px] sm:w-28">
+              <div className="h-14 w-20 overflow-hidden rounded-lg bg-muted sm:h-[72px] sm:w-28">
                 <DevelopmentCover
                   src={developmentCoverImageUrl(row)}
                   initial={row.name.slice(0, 1).toUpperCase()}
                 />
               </div>
 
-              <div className="min-w-0 flex-1 basis-48">
+              <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                  <h2 className="truncate text-[15px] font-semibold tracking-tight transition-colors group-hover:text-primary">
-                    {row.name}
+                  <h2 className="min-w-0 text-[15px] font-semibold tracking-tight [overflow-wrap:anywhere]">
+                    <Link
+                      href={`/developments/${row.id}`}
+                      className="rounded-sm hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+                    >
+                      {row.name}
+                    </Link>
                   </h2>
                   <DotBadge tone={statusBadgeTone(row.status)}>{label(row.status)}</DotBadge>
                 </div>
                 <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">
-                  <span className="whitespace-nowrap">
-                    Code{" "}
-                    <span className="font-mono text-[11px] text-foreground/80">{row.code}</span>
+                  <span className="min-w-0 [overflow-wrap:anywhere]">
+                    Code <span className="text-foreground/80">{row.code}</span>
                   </span>
                   <span aria-hidden="true">·</span>
                   {location ? (
                     <span className="inline-flex min-w-0 items-center gap-1">
                       <MapPin aria-hidden="true" className="size-3 shrink-0" />
-                      <span className="truncate">{location}</span>
+                      <span className="[overflow-wrap:anywhere]">{location}</span>
                     </span>
                   ) : canUpdate ? (
                     <Link
                       href={`/developments/${row.id}/edit`}
-                      className="relative z-10 font-medium text-amber-600 hover:text-amber-700 dark:text-amber-400"
+                      className="rounded-sm font-medium text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
                     >
                       Add location
                     </Link>
@@ -121,29 +127,26 @@ export function DevelopmentGrid({ rows, canUpdate }: Props) {
                     </>
                   ) : (
                     <span className="text-[11px] text-muted-foreground italic">
-                      No buildings yet
+                      No properties yet
                     </span>
                   )}
                 </div>
               </div>
 
-              <div className="hidden w-20 shrink-0 justify-end sm:flex">
-                <span
-                  className={`inline-flex min-w-10 items-center justify-center gap-1 rounded-full px-2.5 py-1 text-sm font-semibold tabular-nums ${buildings ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}
-                  title={`${buildings} ${buildings === 1 ? "building" : "buildings"}`}
-                >
+              <div className="col-span-2 flex lg:col-span-1 lg:justify-end">
+                <span className="inline-flex items-center gap-1.5 text-sm tabular-nums text-muted-foreground">
                   <Building2 aria-hidden="true" className="size-3.5" />
-                  {buildings}
+                  {buildings} {buildings === 1 ? "property" : "properties"}
                 </span>
               </div>
 
-              <div className="relative z-10 flex w-full items-center justify-end gap-2 sm:w-56">
+              <div className="col-span-2 flex flex-wrap items-center gap-2 lg:col-span-1 lg:justify-end">
                 {canUpdate && (
                   <ButtonLink
                     href={`/developments/${row.id}/edit`}
                     variant="secondary"
                     size="sm"
-                    className="gap-1.5"
+                    className="min-h-10 gap-1.5 lg:min-h-8"
                     aria-label={`Edit ${row.name}`}
                   >
                     <Pencil aria-hidden="true" className="size-3.5" />
@@ -154,7 +157,8 @@ export function DevelopmentGrid({ rows, canUpdate }: Props) {
                   href={`/developments/${row.id}`}
                   variant="primary"
                   size="sm"
-                  className="gap-1"
+                  className="min-h-10 gap-1 lg:min-h-8"
+                  aria-label={`View properties in ${row.name}`}
                 >
                   View properties
                   <ChevronRight aria-hidden="true" className="size-3.5" />

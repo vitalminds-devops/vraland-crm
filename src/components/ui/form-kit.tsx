@@ -4,8 +4,8 @@ import { NativeSelect } from "@/components/ui/native-select";
 
 const tokens = `
   .crm-form {
-    --accent: var(--primary);
-    --accent-light: color-mix(in srgb, var(--accent) 20%, transparent);
+    --form-accent: var(--primary);
+    --accent-light: color-mix(in srgb, var(--form-accent) 20%, transparent);
     --surface: var(--background);
     --surface-raised: var(--card);
     --border-strong: color-mix(in oklab, var(--foreground) 22%, transparent);
@@ -52,7 +52,7 @@ export function FormSection({
   return (
     <section id={id} className="scroll-mt-28 border-b border-[var(--border)] pb-10 last:border-0">
       <div className="mb-6 flex items-center gap-3">
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--accent)] text-sm font-medium text-white">
+        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--form-accent)] text-sm font-medium text-primary-foreground">
           {number}
         </span>
         <h2 className="text-lg font-semibold tracking-wide text-[var(--text)]">{title}</h2>

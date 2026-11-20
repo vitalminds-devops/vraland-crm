@@ -13,6 +13,7 @@ import { documentTypeLabel } from "@/features/contacts/lib/contact-options";
 import { requirePagePermission } from "@/lib/permissions/authorization";
 import { fileKind, size } from "../page";
 import styles from "./print.module.css";
+import { manilaDateTime } from "@/lib/utils/manila-time";
 export default async function DocumentPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   await requirePagePermission("documents.view");
@@ -59,7 +60,7 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
             <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <Info label="File type" value={fileKind(d.mimeType)} />
               <Info label="Size" value={size(d.fileSizeBytes)} />
-              <Info label="Created" value={d.createdAt.toLocaleString()} />
+              <Info label="Created" value={manilaDateTime(d.createdAt)} />
             </dl>
             {!shared && (
               <>

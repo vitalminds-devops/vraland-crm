@@ -8,7 +8,7 @@ import { avatarSrc } from "@/features/account/lib/avatar";
 import { getMyProfile } from "@/features/account/queries/account.queries";
 
 const day = (value: Date) =>
-  new Intl.DateTimeFormat("en-PH", { dateStyle: "medium" }).format(value);
+  new Intl.DateTimeFormat("en-PH", { dateStyle: "medium", timeZone: "Asia/Manila" }).format(value);
 
 export default async function AccountPage() {
   const user = await getMyProfile();

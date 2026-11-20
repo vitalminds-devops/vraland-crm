@@ -28,8 +28,15 @@ import { eventColor } from "../lib/event-colors";
 import type { CalendarEvent } from "../lib/event-types";
 import { manilaWall } from "../lib/calendar-helpers";
 import { MAX_OCCURRENCES, type Repeat } from "../lib/recurrence";
+import { InvitePicker } from "./invite-picker";
 
 type Person = { id: string; firstName: string; lastName: string | null };
+
+/** Who an event is for, as the picker starts: nobody chosen when it is only for its creator. */
+function invitedIds(event?: CalendarEvent | null) {
+  const ids = (event?.invitees ?? []).map((person) => person.userId);
+  return ids.length === 1 && ids[0] === event?.ownerId ? [] : ids;
+}
 
 /** The persisted values; `call` is folded into the Meeting colour by `eventColor`. */
 const EVENT_TYPES = ["general", "meeting", "call", "closing", "follow_up"];
@@ -57,7 +64,8 @@ function defaultSlot(date?: Date) {
 }
 
 export function EventForm({
-  agents,
+  people,
+  canInviteEveryone = false,
   defaultType = "general",
   defaultDate,
   open: controlledOpen,
@@ -65,7 +73,9 @@ export function EventForm({
   trigger = true,
   event,
 }: {
-  agents: Person[];
+  /** People you can invite; empty when you can't invite others. */
+  people: Person[];
+  canInviteEveryone?: boolean;
   /** The event to edit; without one the form adds a new event. */
   event?: CalendarEvent | null;
   defaultType?: string;
@@ -106,6 +116,13 @@ export function EventForm({
           endAt: f.get("endAt"),
           allDay: f.get("allDay") === "on",
           location: f.get("location"),
+          // No picker means no permission to invite: who is invited stays the same.
+          ...(f.has("invitePicker")
+            ? {
+                inviteeUserIds: f.getAll("inviteeUserIds"),
+                inviteEveryone: f.get("inviteEveryone") === "on",
+              }
+            : {}),
         });
         if (r.success) {
           setOpen(false);
@@ -124,7 +141,8 @@ export function EventForm({
         contactId: "",
         propertyId: "",
         dealId: "",
-        attendeeUserId: f.get("attendeeUserId"),
+        inviteeUserIds: f.getAll("inviteeUserIds"),
+        inviteEveryone: f.get("inviteEveryone") === "on",
         repeat,
         repeatCount: repeat === "none" ? 1 : f.get("repeatCount"),
       });
@@ -292,19 +310,19 @@ export function EventForm({
                           className={field}
                         />
                       </Field>
-
-                      <Field label="Agent">
-                        <NativeSelect name="attendeeUserId" className={cn(field, "pr-9")}>
-                          <NativeSelectOption value="">Assign to me</NativeSelectOption>
-                          {agents.map((v) => (
-                            <NativeSelectOption key={v.id} value={v.id}>
-                              {`${v.firstName} ${v.lastName ?? ""}`.trim()}
-                            </NativeSelectOption>
-                          ))}
-                        </NativeSelect>
-                      </Field>
                     </>
                   )}
+
+                  {/* Without Invite others to events, events are only for you. */}
+                  {(people.length || canInviteEveryone) && !isViewing ? (
+                    <Field label="Invite" className="sm:col-span-2">
+                      <InvitePicker
+                        people={people}
+                        canInviteEveryone={canInviteEveryone}
+                        defaultIds={invitedIds(event)}
+                      />
+                    </Field>
+                  ) : null}
 
                   <Field label="Notes" hint="Optional" className="sm:col-span-2">
                     <Textarea

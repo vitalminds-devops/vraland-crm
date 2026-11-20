@@ -33,6 +33,7 @@ import { fieldErrorsOf } from "@/lib/types/action-result.client";
 import { PermissionDetailTooltip } from "./permission-detail-tooltip";
 import type { RoleRef } from "./users/user-types";
 import { createAgentAccount, createUser } from "../actions/settings.actions";
+import { withoutEmptyFiles } from "../lib/form-files";
 
 type BrokerOption = {
   id: string;
@@ -328,6 +329,7 @@ export function CreateUserForm({
         event.preventDefault();
         const element = event.currentTarget;
         const form = new FormData(element);
+        withoutEmptyFiles(form);
         form.set("salesExecutivesPresent", "true");
         selected.forEach((id) => form.append("salesExecutiveIds", id));
         if (role.slug === "master-broker") {
@@ -437,6 +439,7 @@ export function AgentCreateForm({
         event.preventDefault();
         const element = event.currentTarget;
         const form = new FormData(element);
+        withoutEmptyFiles(form);
         action.run(async () => {
           const result = await createAgentAccount(form);
           if (result.success) {

@@ -60,7 +60,6 @@ export default async function DealPage({
                 reservationPaid={data.reservationPaid}
                 firstMonthPaid={data.firstMonthPaid}
                 stages={options.stages}
-                lostReasons={options.lostReasons}
                 canChangeStage={data.canChangeStage}
                 canDelete={data.canDelete}
                 canApproveStageChange={data.canApproveStageChange}
@@ -408,6 +407,7 @@ function formatDateTime(value: Date | string): string {
   return new Intl.DateTimeFormat("en-PH", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: "Asia/Manila",
   }).format(date);
 }
 

@@ -17,8 +17,8 @@ import {
   DialogPortal,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { AlertTriangle, ArrowRightLeft, Trash2, X } from "lucide-react";
-import { changeDealStage, markDealLost, type DealActionResult } from "../actions/deal.actions";
+import { ArrowRightLeft, Trash2, X } from "lucide-react";
+import { changeDealStage, type DealActionResult } from "../actions/deal.actions";
 import { deleteDeal } from "../actions/deal-delete.actions";
 import {
   canMoveDealToStage,
@@ -37,8 +37,7 @@ import { cn } from "@/lib/utils/cn";
 import { useRouter } from "next/navigation";
 import { OpportunityDialog } from "./opportunity-dialog";
 
-type Option = { id: string; name: string };
-type Mode = "stage" | "lost" | "delete";
+type Mode = "stage" | "delete";
 
 export function DealActions({
   dealId,
@@ -47,7 +46,6 @@ export function DealActions({
   reservationPaid,
   firstMonthPaid,
   stages,
-  lostReasons,
   canChangeStage,
   canDelete,
   canApproveStageChange,
@@ -61,7 +59,6 @@ export function DealActions({
   reservationPaid: boolean;
   firstMonthPaid: boolean;
   stages: MoveStage[];
-  lostReasons: Option[];
   canChangeStage: boolean;
   /** Holds `deals.delete`. */
   canDelete?: boolean;
@@ -142,7 +139,6 @@ export function DealActions({
     targetStage && !canApproveStageChange && targetStage.requiresApproval,
   );
   const hasStageChoice = stageChoices.length > 0;
-  const hasLostReason = lostReasons.length > 0;
 
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
@@ -150,12 +146,6 @@ export function DealActions({
         <Button variant="secondary" className="gap-2" onClick={() => open("stage")}>
           <ArrowRightLeft aria-hidden="true" className="size-4" />
           Change stage
-        </Button>
-      )}
-      {canChangeStage && (
-        <Button variant="danger" className="gap-2" onClick={() => open("lost")}>
-          <AlertTriangle aria-hidden="true" className="size-4" />
-          Mark lost
         </Button>
       )}
       {canDelete && (
@@ -262,63 +252,6 @@ export function DealActions({
                 prompt?.confirmLabel ?? (willBeParked ? "Send for approval" : "Move opportunity")
               }
               disabled={!targetStage}
-            />
-          </form>
-        </ActionDialog>
-      )}
-
-      {mode === "lost" && (
-        <ActionDialog
-          title="Mark as lost?"
-          description="This moves it to Closed - Lost."
-          onClose={close}
-        >
-          <form
-            onSubmit={(event: FormEvent<HTMLFormElement>) => {
-              event.preventDefault();
-              const form = new FormData(event.currentTarget);
-              run(() =>
-                markDealLost({
-                  dealId,
-                  lostReasonId: form.get("lostReasonId"),
-                  notes: form.get("notes"),
-                }),
-              );
-            }}
-          >
-            <div className="mt-4 grid gap-4">
-              <Field label="Loss reason">
-                <NativeSelect
-                  required
-                  name="lostReasonId"
-                  defaultValue=""
-                  disabled={!hasLostReason}
-                >
-                  <NativeSelectOption value="" disabled>
-                    Choose a reason
-                  </NativeSelectOption>
-                  {lostReasons.map((reason) => (
-                    <NativeSelectOption key={reason.id} value={reason.id}>
-                      {reason.name}
-                    </NativeSelectOption>
-                  ))}
-                </NativeSelect>
-              </Field>
-              <Field label="Notes (optional)">
-                <Textarea name="notes" rows={3} placeholder="What happened?" className={field} />
-              </Field>
-            </div>
-            {!hasLostReason && (
-              <p className="mt-3 rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                No loss reasons set up. Add them in Settings.
-              </p>
-            )}
-            <Footer
-              onCancel={close}
-              pending={pending}
-              label="Mark lost"
-              tone="danger"
-              disabled={!hasLostReason}
             />
           </form>
         </ActionDialog>

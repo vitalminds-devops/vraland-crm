@@ -48,3 +48,7 @@ export function startOfManilaWeek(date = new Date()) {
   const daysSinceMonday = (shifted(date).getUTCDay() + 6) % 7;
   return new Date(startOfManilaDay(date).getTime() - daysSinceMonday * DAY);
 }
+
+/** Whole Manila calendar days from `from` to `date`: 0 is the same day, -1 yesterday, 1 tomorrow. */
+export const manilaDaysBetween = (date: Date, from = new Date()) =>
+  (Date.parse(manilaDate(date)) - Date.parse(manilaDate(from))) / DAY;

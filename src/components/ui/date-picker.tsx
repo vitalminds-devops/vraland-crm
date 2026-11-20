@@ -16,6 +16,10 @@ import { CalendarDays, ChevronLeft, ChevronRight, Clock } from "lucide-react";
 
 import { inputClass } from "@/components/ui/input";
 import { cn } from "@/lib/utils/cn";
+import { manilaDateTimeLocal } from "@/lib/utils/manila-time";
+
+/** Manila's wall-clock now, in the same local-time form the picker uses for every date. */
+const manilaNow = () => new Date(manilaDateTimeLocal(new Date()));
 
 type DatePickerProps = Omit<React.ComponentProps<"input">, "type"> & {
   type?: "date" | "datetime-local";
@@ -78,7 +82,7 @@ export const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(fu
   const current = value === undefined ? stored : String(value ?? "");
   const selected = parse(current);
   const [open, setOpen] = React.useState(false);
-  const [month, setMonth] = React.useState(() => startOfMonth(selected ?? new Date()));
+  const [month, setMonth] = React.useState(() => startOfMonth(selected ?? manilaNow()));
 
   const setRefs = React.useCallback(
     (node: HTMLInputElement | null) => {
@@ -110,7 +114,7 @@ export const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(fu
   function openChange(next: boolean) {
     if (next) {
       readInput();
-      setMonth(startOfMonth(parse(inputRef.current?.value ?? "") ?? new Date()));
+      setMonth(startOfMonth(parse(inputRef.current?.value ?? "") ?? manilaNow()));
     } else {
       inputRef.current?.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
     }
@@ -124,7 +128,7 @@ export const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(fu
   }
   function pickTime(hour12: number, minute: number, pm: boolean) {
     const hour = (hour12 % 12) + (pm ? 12 : 0);
-    const base = selected ?? new Date();
+    const base = selected ?? manilaNow();
     commit(`${day(base)}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`);
   }
 
@@ -132,13 +136,13 @@ export const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(fu
   const maxDay = max ? String(max).slice(0, 10) : null;
   const outOfRange = (date: Date) =>
     (minDay !== null && day(date) < minDay) || (maxDay !== null && day(date) > maxDay);
-  const thisYear = new Date().getFullYear();
+  const thisYear = manilaNow().getFullYear();
   const firstYear = minDay ? Number(minDay.slice(0, 4)) : thisYear - 100;
   const lastYear = maxDay ? Number(maxDay.slice(0, 4)) : thisYear + 15;
   const years = Array.from({ length: lastYear - firstYear + 1 }, (_, index) => lastYear - index);
   const gridStart = startOfWeek(month);
   const cells = Array.from({ length: 42 }, (_, index) => addDays(gridStart, index));
-  const today = day(new Date());
+  const today = day(manilaNow());
   const hour = selected ? Number(format(selected, "h")) : 9;
   const minute = selected ? selected.getMinutes() : 0;
   const pm = selected ? selected.getHours() >= 12 : false;
@@ -319,10 +323,10 @@ export const DatePicker = React.forwardRef<HTMLInputElement, DatePickerProps>(fu
 
           <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-3">
             <div className="flex gap-1">
-              {!outOfRange(new Date()) && (
+              {!outOfRange(manilaNow()) && (
                 <button
                   type="button"
-                  onClick={() => pickDay(new Date())}
+                  onClick={() => pickDay(manilaNow())}
                   className="h-8 rounded-md px-2.5 text-sm font-medium text-primary hover:bg-primary/10"
                 >
                   Today

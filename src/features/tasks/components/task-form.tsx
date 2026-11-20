@@ -34,9 +34,6 @@ function withCurrent<T extends { id: string }>(list: T[], current: T | null): T[
   return current && !list.some((item) => item.id === current.id) ? [current, ...list] : list;
 }
 
-const field =
-  "w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-sm outline-none transition-all placeholder:text-muted-foreground/70 hover:border-border focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/25";
-
 export function TaskForm({
   options,
   task,
@@ -116,6 +113,7 @@ export function TaskForm({
           variant="ghost"
           size="icon"
           aria-label={`Edit ${task.title}`}
+          title={`Edit ${task.title}`}
           onClick={() => setOpen(true)}
         >
           <Pencil aria-hidden="true" className="size-4" />
@@ -133,9 +131,9 @@ export function TaskForm({
             <DialogPopup asChild>
               <form
                 onSubmit={handleSubmit(submit)}
-                className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-border/60 bg-card shadow-2xl"
+                className="flex max-h-[calc(100dvh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-border/60 bg-card shadow-2xl"
               >
-                <header className="flex items-start justify-between gap-4 border-b border-border/50 p-5">
+                <header className="flex shrink-0 items-start justify-between gap-4 border-b border-border/50 p-4 sm:p-5">
                   <div className="flex min-w-0 items-start gap-3">
                     <span
                       aria-hidden="true"
@@ -148,7 +146,9 @@ export function TaskForm({
                         {task ? "Edit task" : "Create task"}
                       </DialogTitle>
                       <DialogDescription className="mt-0.5 text-sm text-muted-foreground">
-                        {task ? "Change the details or delete it." : "Add a next action."}
+                        {task
+                          ? "Update the task details, assignee or timing."
+                          : "Give your task a title, then choose who will do it."}
                       </DialogDescription>
                     </div>
                   </div>
@@ -164,18 +164,19 @@ export function TaskForm({
                   </Button>
                 </header>
 
-                <div className="grid gap-4 p-5 sm:grid-cols-2">
+                <div className="grid min-h-0 gap-4 overflow-y-auto p-4 sm:grid-cols-2 sm:p-5">
                   <Field label="Title" error={errors.title?.message} className="sm:col-span-2">
                     <Input
                       {...register("title")}
                       autoFocus
                       placeholder="What needs to happen?"
-                      className={field}
+                      maxLength={220}
+                      aria-invalid={Boolean(errors.title)}
                     />
                   </Field>
 
                   <Field label="Type">
-                    <NativeSelect {...register("taskType")} className={cn(field, "pr-9")}>
+                    <NativeSelect {...register("taskType")}>
                       {TASK_TYPES.map((type) => (
                         <NativeSelectOption key={type} value={type}>
                           {titleCase(type)}
@@ -185,7 +186,7 @@ export function TaskForm({
                   </Field>
 
                   <Field label="Priority">
-                    <NativeSelect {...register("priority")} className={cn(field, "pr-9")}>
+                    <NativeSelect {...register("priority")}>
                       {TASK_PRIORITIES.map((priority) => (
                         <NativeSelectOption key={priority} value={priority}>
                           {titleCase(priority)}
@@ -194,8 +195,8 @@ export function TaskForm({
                     </NativeSelect>
                   </Field>
 
-                  <Field label="Assignee">
-                    <NativeSelect {...register("assignedUserId")} className={cn(field, "pr-9")}>
+                  <Field label="Assignee" className="sm:col-span-2">
+                    <NativeSelect {...register("assignedUserId")}>
                       <NativeSelectOption value="">Assign to me</NativeSelectOption>
                       {agents.map((agent) => (
                         <NativeSelectOption key={agent.id} value={agent.id}>
@@ -205,33 +206,42 @@ export function TaskForm({
                     </NativeSelect>
                   </Field>
 
-                  <Field label="Due" error={errors.dueAt?.message}>
-                    <DatePicker type="datetime-local" {...register("dueAt")} className={field} />
-                  </Field>
-
-                  <Field label="Reminder" error={errors.reminderAt?.message}>
+                  <Field label="Due date (optional)" error={errors.dueAt?.message}>
                     <DatePicker
                       type="datetime-local"
-                      {...register("reminderAt")}
-                      className={field}
+                      {...register("dueAt")}
+                      aria-invalid={Boolean(errors.dueAt)}
                     />
                   </Field>
 
+                  <Field label="Reminder (optional)" error={errors.reminderAt?.message}>
+                    <DatePicker
+                      type="datetime-local"
+                      {...register("reminderAt")}
+                      aria-invalid={Boolean(errors.reminderAt)}
+                    />
+                  </Field>
+                  <p className="-mt-2 text-xs text-muted-foreground sm:col-span-2">
+                    Dates and times use Philippine time (UTC+8).
+                  </p>
+
                   <Field
-                    label="Description"
+                    label="Description (optional)"
                     error={errors.description?.message}
                     className="sm:col-span-2"
                   >
                     <Textarea
                       {...register("description")}
                       rows={3}
-                      placeholder="Optional"
-                      className={field}
+                      placeholder="Add context or instructions for this task"
+                      maxLength={5000}
+                      aria-invalid={Boolean(errors.description)}
+                      className="min-h-24 resize-y"
                     />
                   </Field>
                 </div>
 
-                <footer className="flex items-center justify-end gap-2 border-t border-border/50 bg-muted/30 p-4">
+                <footer className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border/50 bg-muted/30 p-4">
                   {task && canDelete && (
                     <Button
                       type="button"
@@ -276,10 +286,16 @@ function Field({
   children: ReactNode;
 }) {
   return (
-    <label className={cn("block", className)}>
-      <span className="mb-1.5 block text-xs font-medium text-muted-foreground">{caption}</span>
-      {children}
-      {error && <span className="mt-1 block text-xs text-destructive">{error}</span>}
-    </label>
+    <div className={cn("min-w-0", className)}>
+      <label className="block">
+        <span className="mb-1.5 block text-xs font-medium text-foreground">{caption}</span>
+        {children}
+      </label>
+      {error && (
+        <span role="alert" className="mt-1 block text-xs text-destructive">
+          {error}
+        </span>
+      )}
+    </div>
   );
 }

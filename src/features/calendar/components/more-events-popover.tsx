@@ -7,6 +7,7 @@ import { EVENT_COLORS, eventKind } from "../lib/event-colors";
 import { ownerName, type CalendarEvent } from "../lib/event-types";
 import { popoverPositionFrom, type PopoverPosition } from "./event-popover";
 import { cn } from "@/lib/utils/cn";
+import { ResponseMark, declinedTitle } from "./response-mark";
 
 export function MoreEventsPopover({
   date,
@@ -90,7 +91,10 @@ export function MoreEventsPopover({
                     <span className="w-10 shrink-0 tabular-nums text-muted-foreground">
                       {timeLabel(event)}
                     </span>
-                    <span className="min-w-0 flex-1 truncate">{event.title}</span>
+                    <span className={cn("min-w-0 flex-1 truncate", declinedTitle(event))}>
+                      {event.title}
+                    </span>
+                    <ResponseMark event={event} />
                     {owner ? (
                       <span className="shrink-0 text-[11px] text-muted-foreground">{owner}</span>
                     ) : null}

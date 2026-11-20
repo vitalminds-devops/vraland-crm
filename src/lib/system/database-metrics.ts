@@ -4,6 +4,7 @@ import { and, count, gt, gte, sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/db";
 import { authSession } from "@/db/schema";
+import { startOfManilaDay } from "@/lib/utils/manila-time";
 
 type DbStatsSnapshot = { at: number; xact: number };
 
@@ -140,8 +141,7 @@ export type UserActivityMetrics = {
 export async function getUserActivityMetrics(): Promise<UserActivityMetrics> {
   const now = new Date();
   const onlineCutoff = new Date(now.getTime() - 15 * 60_000);
-  const dayStart = new Date(now);
-  dayStart.setHours(0, 0, 0, 0);
+  const dayStart = startOfManilaDay(now);
 
   const [sessions, online, logins] = await Promise.all([
     db.select({ value: count() }).from(authSession).where(gt(authSession.expiresAt, now)),

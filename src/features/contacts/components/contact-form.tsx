@@ -23,6 +23,7 @@ import {
   formTextareaClass,
 } from "@/components/ui/form-kit";
 import { notify } from "@/components/ui/toast";
+import { cn } from "@/lib/utils/cn";
 import { createDealForContact, saveDealForContact } from "@/features/deals/actions/deal.actions";
 import { contactDealSchema, type ContactDealInput } from "@/features/deals/schemas/deal.schema";
 import type { MoveStage } from "@/features/deals/lib/stage-move";
@@ -554,7 +555,7 @@ export function ContactForm({
                     key={method}
                     className={`flex min-w-0 cursor-pointer items-center justify-center gap-1 rounded-full border px-1.5 py-1.5 text-[12px] font-medium whitespace-nowrap transition-colors select-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary/35 ${
                       selected
-                        ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--text)]"
+                        ? "border-[var(--form-accent)] bg-[var(--accent-light)] text-[var(--text)]"
                         : "border-[var(--border)] bg-[var(--surface-raised)] text-[var(--text-muted)] hover:border-[var(--border-strong)] hover:text-[var(--text)]"
                     }`}
                   >
@@ -568,7 +569,7 @@ export function ContactForm({
                       aria-hidden="true"
                       className={`flex size-4 shrink-0 items-center justify-center rounded-full border transition-colors ${
                         selected
-                          ? "border-[var(--accent)] bg-[var(--accent)] text-white"
+                          ? "border-[var(--form-accent)] bg-[var(--form-accent)] text-primary-foreground"
                           : "border-[var(--border-strong)] bg-transparent"
                       }`}
                     >
@@ -625,7 +626,7 @@ export function ContactForm({
                   variant="ghost"
                   size="sm"
                   onClick={() => setPhoneSlots((count) => count + 1)}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-[var(--border-strong)] px-3 py-1.5 text-[13px] font-medium text-[var(--accent)] transition-colors hover:border-[var(--accent)] hover:bg-[var(--accent-light)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:outline-none"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-[var(--border-strong)] px-3 py-1.5 text-[13px] font-medium text-[var(--form-accent)] transition-colors hover:border-[var(--form-accent)] hover:bg-[var(--accent-light)] focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:outline-none"
                 >
                   <Plus aria-hidden="true" className="size-3.5" />
                   Add another number
@@ -862,8 +863,8 @@ export function ContactForm({
         </FormSection>
       </div>
 
-      <div className={formActionsClass}>
-        <div className="flex gap-3 sm:ml-auto">
+      <div className={cn(formActionsClass, "static bg-card")}>
+        <div className="flex w-full flex-wrap justify-end gap-3 sm:w-auto sm:ml-auto">
           <Button
             type="button"
             variant="secondary"

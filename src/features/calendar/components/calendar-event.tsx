@@ -2,7 +2,8 @@
 
 import { timeLabel } from "../lib/calendar-helpers";
 import { EVENT_COLORS, eventKind } from "../lib/event-colors";
-import { ownerName, type CalendarEvent } from "../lib/event-types";
+import { ownerName, responseLabel, type CalendarEvent } from "../lib/event-types";
+import { ResponseMark, declinedTitle } from "./response-mark";
 import { cn } from "@/lib/utils/cn";
 
 export function CalendarEventChip({
@@ -19,7 +20,8 @@ export function CalendarEventChip({
   const kind = eventKind(event);
   const colors = EVENT_COLORS[kind];
   const owner = ownerName(event);
-  const label = `${timeLabel(event, "h:mm a")} ${event.title}${owner ? ` \u00b7 ${owner}` : ""}`;
+  const response = responseLabel(event);
+  const label = `${timeLabel(event, "h:mm a")} ${event.title}${owner ? ` \u00b7 ${owner}` : ""}${response ? ` \u00b7 ${response}` : ""}`;
 
   return (
     <button
@@ -34,12 +36,24 @@ export function CalendarEventChip({
         "dark:hover:brightness-125",
         colors.chip,
         colors.accent,
-        compact ? "text-[11px]" : "",
+        compact
+          ? "flex-col items-start gap-0.5 text-[11px] sm:flex-row sm:items-center sm:gap-1.5"
+          : "",
         className,
       )}
     >
       <span className="shrink-0 font-semibold tabular-nums">{timeLabel(event)}</span>
-      <span className="truncate">{event.title}</span>
+      <span
+        className={cn(
+          compact
+            ? "line-clamp-2 w-full whitespace-normal break-words sm:line-clamp-1 sm:w-auto sm:truncate"
+            : "truncate",
+          declinedTitle(event),
+        )}
+      >
+        {event.title}
+      </span>
+      <ResponseMark event={event} className="sm:ml-auto" />
     </button>
   );
 }

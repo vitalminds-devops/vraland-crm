@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   fromManilaDateTimeLocal,
   manilaDate,
+  manilaDaysBetween,
   startOfManilaDay,
   startOfManilaMonth,
   startOfManilaWeek,
@@ -35,4 +36,12 @@ it("reads a datetime-local value as Manila time, whatever the server's zone", ()
   expect(fromManilaDateTimeLocal("2026-11-10T09:00:00Z").toISOString()).toBe(
     "2026-11-10T09:00:00.000Z",
   );
+});
+
+it("counts Manila calendar days, not UTC ones", () => {
+  // 07:00 Manila on Nov 20 is still Nov 19 in UTC; 23:30 Manila on Nov 20 is the same Manila day.
+  const morning = new Date("2026-11-19T23:00:00Z");
+  expect(manilaDaysBetween(new Date("2026-11-20T15:30:00Z"), morning)).toBe(0);
+  expect(manilaDaysBetween(new Date("2026-11-20T16:30:00Z"), morning)).toBe(1);
+  expect(manilaDaysBetween(new Date("2026-11-19T15:59:00Z"), morning)).toBe(-1);
 });

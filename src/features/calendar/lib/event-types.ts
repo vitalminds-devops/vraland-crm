@@ -1,3 +1,5 @@
+import type { AssignmentStatus, Invitee } from "./event-access";
+
 export type CalendarEvent = {
   id: string;
   title: string;
@@ -21,6 +23,15 @@ export type CalendarEvent = {
   ownerId?: string | null;
   ownerFirstName?: string | null;
   ownerLastName?: string | null;
+  /** Everyone invited, with their answer. */
+  invitees?: Invitee[];
+  /** The answer to show: the viewer's own when invited, else the group's. */
+  responseStatus?: AssignmentStatus | null;
+  /** Only the creator, or someone allowed to change others' events. */
+  canEdit?: boolean;
+  canDelete?: boolean;
+  /** The viewer is invited and can accept or decline. */
+  canRespond?: boolean;
 };
 
 /** Display name of the linked contact, or null. */
@@ -33,4 +44,16 @@ export function contactName(event: CalendarEvent): string | null {
 export function ownerName(event: CalendarEvent): string | null {
   if (!event.ownerFirstName) return null;
   return `${event.ownerFirstName} ${event.ownerLastName ?? ""}`.trim();
+}
+
+/** How an answer reads in the calendar. */
+export const RESPONSE_LABELS: Record<AssignmentStatus, string> = {
+  accepted: "Accepted",
+  declined: "Declined",
+  needs_action: "Waiting for response",
+};
+
+/** The answer to show for the event, or null when nobody else is invited. */
+export function responseLabel(event: CalendarEvent): string | null {
+  return event.viewingId || !event.responseStatus ? null : RESPONSE_LABELS[event.responseStatus];
 }

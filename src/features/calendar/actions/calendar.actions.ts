@@ -14,7 +14,6 @@ import {
 import { dealAgents as dealAgentsTable } from "@/db/schema/deals";
 import { InactiveAssigneeError, lockActiveAssignees } from "@/lib/permissions/active-assignees";
 import { canAccessResource, requirePermission } from "@/lib/permissions/authorization";
-import { hasOrganizationWideAccess } from "@/lib/permissions/policy";
 import { canEditViewing, type ViewingReference } from "@/lib/permissions/viewings";
 import {
   eventSchema,
@@ -23,6 +22,8 @@ import {
   viewingStatusSchema,
 } from "../schemas/calendar.schema";
 import { occurrences } from "../lib/recurrence";
+import { assignmentStatus, canChangeEvent } from "../lib/event-access";
+import { activeUserIds } from "../queries/invitees.queries";
 import { enrollByTrigger } from "@/features/marketing/lib/auto-enroll";
 import { z } from "zod";
 import { logError } from "@/lib/logger";
@@ -84,10 +85,15 @@ async function viewingClash(
 }
 
 /**
- * The event, when this user may change it: anyone organization-wide, else its creator or attendee.
- * A viewing follows the viewing rules (its agent, creator or deal participants).
+ * The event, when this user may change it: its creator, or someone allowed to change others'
+ * events. Being assigned to it is not enough; they accept or decline it instead. A viewing
+ * follows the viewing rules (its agent, creator or deal participants).
  */
-async function editableEvent(context: Context, id: string) {
+async function editableEvent(
+  context: Context,
+  id: string,
+  viewingPermission: "calendar.update_viewings" | "calendar.delete_viewings",
+) {
   const [row] = await db
     .select({
       id: calendarEvents.id,
@@ -133,20 +139,40 @@ async function editableEvent(context: Context, id: string) {
         dealId: row.dealId,
       },
       participants,
+      viewingPermission,
     );
     return allowed ? row : ("denied" as const);
   }
-  if (hasOrganizationWideAccess(context) || row.createdBy === context.userId) return row;
-  const [attendee] = await db
-    .select({ id: calendarEventUsers.eventId })
-    .from(calendarEventUsers)
-    .where(and(eq(calendarEventUsers.eventId, id), eq(calendarEventUsers.userId, context.userId)))
-    .limit(1);
-  return attendee ? row : ("denied" as const);
+  return canChangeEvent(context, row.createdBy) ? row : ("denied" as const);
 }
 
 const cannotChange = () =>
   failure(permissionDenied("You can only change your own events and viewings."));
+
+/**
+ * Who an event is for: everyone, the chosen people, or only you when nobody is chosen.
+ * Inviting anyone else needs Invite others to events; everyone needs Invite everyone to events.
+ */
+async function inviteList(
+  context: Context,
+  ids: string[],
+  everyone: boolean,
+  nobodyChosen = context.userId,
+) {
+  if (everyone) {
+    if (!context.permissions.has("calendar.broadcast"))
+      return failure(permissionDenied("You can't invite everyone to events."));
+    return activeUserIds(context.organizationId);
+  }
+  if (!ids.length) return [nobodyChosen];
+  if (ids.some((id) => id !== context.userId) && !context.permissions.has("calendar.assign"))
+    return failure(permissionDenied("You can only add events to your own calendar."));
+  const active = await activeUserIds(context.organizationId, ids);
+  if (active.length !== ids.length)
+    return failureFrom(ActionErrorCode.NOT_FOUND, "Someone you invited is no longer active.");
+  return active;
+}
+
 export async function createCalendarEvent(input: unknown): Promise<CalendarResult> {
   const context = await requirePermission("calendar.manage");
   const parsed = eventSchema.safeParse(input);
@@ -159,21 +185,8 @@ export async function createCalendarEvent(input: unknown): Promise<CalendarResul
   ]);
   if (!contactAccessible || !propertyAccessible || !dealAccessible)
     return failure(outOfScope("The selected contact, property or deal is not accessible to you."));
-  if (v.attendeeUserId && v.attendeeUserId !== context.userId) {
-    const [attendee] = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(
-        and(
-          eq(users.id, v.attendeeUserId),
-          eq(users.organizationId, context.organizationId),
-          eq(users.status, "active"),
-        ),
-      )
-      .limit(1);
-    if (!attendee)
-      return failureFrom(ActionErrorCode.NOT_FOUND, "The selected attendee is unavailable.");
-  }
+  const invited = await inviteList(context, v.inviteeUserIds, v.inviteEveryone);
+  if (!Array.isArray(invited)) return invited;
   // A repeating event is saved as one event per occurrence, each editable on its own.
   const series = occurrences(
     fromManilaDateTimeLocal(v.startAt),
@@ -205,11 +218,13 @@ export async function createCalendarEvent(input: unknown): Promise<CalendarResul
         .returning({ id: calendarEvents.id });
       const row = rows[0];
       await tx.insert(calendarEventUsers).values(
-        rows.map((event) => ({
-          eventId: event.id,
-          userId: v.attendeeUserId || context.userId,
-          attendeeStatus: "accepted",
-        })),
+        rows.flatMap((event) =>
+          invited.map((userId) => ({
+            eventId: event.id,
+            userId,
+            attendeeStatus: assignmentStatus(userId, context.userId),
+          })),
+        ),
       );
       if (contactId)
         await tx.insert(calendarEventContacts).values(
@@ -256,7 +271,7 @@ export async function createCalendarEvent(input: unknown): Promise<CalendarResul
   }
 }
 export async function createViewing(input: unknown): Promise<CalendarResult> {
-  const context = await requirePermission("calendar.manage");
+  const context = await requirePermission("calendar.schedule_viewings");
   const parsed = viewingSchema.safeParse(input);
   if (!parsed.success) return validationFailureFromZod(parsed.error);
   const v = parsed.data;
@@ -272,7 +287,9 @@ export async function createViewing(input: unknown): Promise<CalendarResult> {
   }
 
   // For non-organization-wide users (brokers), force agentUserId to themselves
-  const agentUserId = hasOrganizationWideAccess(context) ? v.agentUserId : context.userId;
+  const agentUserId = context.permissions.has("calendar.assign_viewings")
+    ? v.agentUserId
+    : context.userId;
 
   // If agentUserId is specified (for managers/admins), validate the agent exists
   if (agentUserId && agentUserId !== context.userId) {
@@ -379,7 +396,7 @@ export async function createViewing(input: unknown): Promise<CalendarResult> {
   }
 }
 export async function updateViewingStatus(input: unknown): Promise<CalendarResult> {
-  const context = await requirePermission("calendar.manage");
+  const context = await requirePermission("calendar.update_viewings");
   const parsed = viewingStatusSchema.safeParse(input);
   if (!parsed.success) return validationFailureFromZod(parsed.error);
   const v = parsed.data;
@@ -504,11 +521,11 @@ export async function updateViewingStatus(input: unknown): Promise<CalendarResul
 
 /** Edits one event; moving a viewing's times reschedules it. */
 export async function updateCalendarEvent(input: unknown): Promise<CalendarResult> {
-  const context = await requirePermission("calendar.manage");
+  const context = await requirePermission("calendar.view");
   const parsed = eventUpdateSchema.safeParse(input);
   if (!parsed.success) return validationFailureFromZod(parsed.error);
   const v = parsed.data;
-  const before = await editableEvent(context, v.id);
+  const before = await editableEvent(context, v.id, "calendar.update_viewings");
   if (before === "missing") return notFoundFailure("Event");
   if (before === "denied") return cannotChange();
   const startAt = fromManilaDateTimeLocal(v.startAt);
@@ -517,6 +534,27 @@ export async function updateCalendarEvent(input: unknown): Promise<CalendarResul
     return validationFailure("End time must be after the start time.");
   const moved =
     startAt.getTime() !== before.startAt.getTime() || endAt.getTime() !== before.endAt.getTime();
+
+  // Who is invited changes only when the editor could choose; people kept keep their answers.
+  let invites: { add: string[]; remove: string[]; all: string[] } | null = null;
+  if (!before.viewingId && (v.inviteeUserIds !== undefined || v.inviteEveryone)) {
+    const wanted = await inviteList(
+      context,
+      v.inviteeUserIds ?? [],
+      Boolean(v.inviteEveryone),
+      before.createdBy ?? context.userId,
+    );
+    if (!Array.isArray(wanted)) return wanted;
+    const current = (
+      await db
+        .select({ userId: calendarEventUsers.userId })
+        .from(calendarEventUsers)
+        .where(eq(calendarEventUsers.eventId, v.id))
+    ).map((row) => row.userId);
+    const add = wanted.filter((id) => !current.includes(id));
+    const remove = current.filter((id) => !wanted.includes(id));
+    if (add.length || remove.length) invites = { add, remove, all: wanted };
+  }
 
   try {
     const saved = await db.transaction(async (tx) => {
@@ -540,6 +578,35 @@ export async function updateCalendarEvent(input: unknown): Promise<CalendarResul
           updatedAt: new Date(),
         })
         .where(eq(calendarEvents.id, v.id));
+      // Newly invited people accept or decline, as on creation; removed people lose it.
+      if (invites?.remove.length)
+        await tx
+          .delete(calendarEventUsers)
+          .where(
+            and(
+              eq(calendarEventUsers.eventId, v.id),
+              inArray(calendarEventUsers.userId, invites.remove),
+            ),
+          );
+      if (invites?.add.length)
+        await tx.insert(calendarEventUsers).values(
+          invites.add.map((userId) => ({
+            eventId: v.id,
+            userId,
+            attendeeStatus: assignmentStatus(userId, before.createdBy),
+          })),
+        );
+      // A new time is a new request: everyone invited answers again.
+      if (!before.viewingId && moved)
+        await tx
+          .update(calendarEventUsers)
+          .set({ attendeeStatus: "needs_action", responseNote: null, respondedAt: null })
+          .where(
+            and(
+              eq(calendarEventUsers.eventId, v.id),
+              before.createdBy ? ne(calendarEventUsers.userId, before.createdBy) : undefined,
+            ),
+          );
       // A viewing marked rescheduled is back on the schedule once it has its new time.
       if (before.viewingId && moved && before.viewingStatus === "rescheduled")
         await tx
@@ -567,7 +634,12 @@ export async function updateCalendarEvent(input: unknown): Promise<CalendarResul
           startAt: before.startAt.toISOString(),
           endAt: before.endAt.toISOString(),
         },
-        newValues: { title: v.title, startAt: startAt.toISOString(), endAt: endAt.toISOString() },
+        newValues: {
+          title: v.title,
+          startAt: startAt.toISOString(),
+          endAt: endAt.toISOString(),
+          ...(invites ? { invited: invites.all } : {}),
+        },
       });
       return true;
     });
@@ -582,9 +654,9 @@ export async function updateCalendarEvent(input: unknown): Promise<CalendarResul
 
 /** Removes one event, and its viewing when it is one; the audit log keeps what it was. */
 export async function deleteCalendarEvent(id: string): Promise<CalendarResult> {
-  const context = await requirePermission("calendar.manage");
+  const context = await requirePermission("calendar.view");
   if (!z.uuid().safeParse(id).success) return notFoundFailure("Event");
-  const before = await editableEvent(context, id);
+  const before = await editableEvent(context, id, "calendar.delete_viewings");
   if (before === "missing") return notFoundFailure("Event");
   if (before === "denied") return cannotChange();
   if (before.viewingStatus && FINISHED_VIEWING.includes(before.viewingStatus))

@@ -33,6 +33,7 @@ paths:
 | Won | closed, closed-won |
 | Lead, Opportunity, … | stage names, only when you mean the stage |
 
+- The full list of terms is in `docs/wording.md`; use it for every new label, button, toast and permission.
 - Sentence case for labels and headings ("Gross list price", not "Gross List Price").
 - Keep UI text short: a few words. No explanations in dialogs, headers or hints.
 - Buttons say exactly what they do ("Send now", "Turn off"). Toasts confirm it ("Turned off.").

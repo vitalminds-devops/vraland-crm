@@ -43,6 +43,14 @@ function render(task = row) {
 
 it("shows who created the task separately from its assignee", () => {
   const html = render();
+  expect(html).toMatch(/<th[^>]*>Type<\/th>/);
+  expect(html).toMatch(/<th[^>]*>Created by<\/th>/);
+  const cells = html.match(/<td\b[^>]*>[\s\S]*?<\/td>/g) ?? [];
+  expect(cells).toHaveLength(7);
+  expect(cells[1]).toContain("Call");
+  expect(cells[4]).toContain("Assigned Agent");
+  expect(cells[5]).toContain("John Doe");
+  expect(cells[5]).not.toContain("Assigned Agent");
   expect(html).toContain("Created by: John Doe");
   expect(html).toContain("Assigned Agent");
   expect(html).not.toContain("Created by: Assigned Agent");

@@ -4,8 +4,12 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { format } from "date-fns";
 import { CalendarClock, Link2, MapPin, Pencil, Tag, Trash2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { StatusMark } from "./response-mark";
+import type { Invitee } from "../lib/event-access";
 import { notify } from "@/components/ui/toast";
 import { deleteCalendarEvent } from "../actions/calendar.actions";
+import { respondToCalendarEvent } from "../actions/event-response.actions";
 import { EVENT_COLORS, eventKind } from "../lib/event-colors";
 import { contactName, ownerName, type CalendarEvent } from "../lib/event-types";
 import { cn } from "@/lib/utils/cn";
@@ -43,6 +47,18 @@ export function EventPopover({
   const ref = useRef<HTMLDivElement>(null);
   const [confirming, setConfirming] = useState(false);
   const [deleting, startDelete] = useTransition();
+  const [declining, setDeclining] = useState(false);
+  const [reason, setReason] = useState("");
+  const [responding, startRespond] = useTransition();
+
+  const respond = (response: "accepted" | "declined") =>
+    startRespond(async () => {
+      const result = await respondToCalendarEvent({ eventId: event.id, response, note: reason });
+      if (result.success) {
+        notify(response === "accepted" ? "Event accepted." : "Event declined.", "success");
+        onClose();
+      } else notify(result.error.message, "error");
+    });
 
   const remove = () =>
     startDelete(async () => {
@@ -71,6 +87,11 @@ export function EventPopover({
 
   const colors = EVENT_COLORS[eventKind(event)];
   const owner = ownerName(event);
+  // A viewing has an agent; an event has the people invited to it.
+  const viewingAgent = event.viewingId
+    ? [event.agentFirstName, event.agentLastName].filter(Boolean).join(" ") || owner
+    : null;
+  const invited = (event.invitees ?? []).filter((person) => person.userId !== event.ownerId);
   const contact = contactName(event);
 
   return (
@@ -103,7 +124,7 @@ export function EventPopover({
           value={
             event.allDay
               ? `${format(event.startAt, "EEE, MMM d")} · All day`
-              : `${format(event.startAt, "EEE, MMM d \u00b7 HH:mm")} – ${format(event.endAt, "HH:mm")}`
+              : `${format(event.startAt, "EEE, MMM d \u00b7 h:mm a")} – ${format(event.endAt, "h:mm a")}`
           }
         />
         {contact ? (
@@ -124,8 +145,94 @@ export function EventPopover({
           />
         ) : null}
         {event.location ? <Detail icon={MapPin} label="Location" value={event.location} /> : null}
-        {owner ? <Detail icon={Link2} label="Agent" value={owner} /> : null}
+        {viewingAgent ? <Detail icon={Link2} label="Agent" value={viewingAgent} /> : null}
+        {!event.viewingId && owner ? <Detail icon={User} label="Created by" value={owner} /> : null}
       </dl>
+
+      {invited.length ? (
+        <section className="mt-3 grid gap-1.5 text-[13px]" aria-label="Invited">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            Invited · {answerCounts(invited)}
+          </p>
+          <ul className="grid max-h-36 gap-1 overflow-y-auto pr-1">
+            {invited.map((person) => (
+              <li key={person.userId} className="flex items-start gap-2">
+                <StatusMark status={person.status} className="mt-0.5" />
+                <span className="min-w-0">
+                  <span className="block truncate">{person.name}</span>
+                  {person.status === "declined" && person.note ? (
+                    <span className="block whitespace-pre-line text-[12px] text-muted-foreground">
+                      {person.note}
+                    </span>
+                  ) : null}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {event.canRespond ? (
+        <div className="mt-3 grid gap-2 border-t border-border/50 pt-3">
+          {declining ? (
+            <>
+              <Textarea
+                aria-label="Reason for declining"
+                placeholder="Reason"
+                value={reason}
+                maxLength={500}
+                rows={2}
+                autoFocus
+                onChange={(change) => setReason(change.target.value)}
+              />
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={responding}
+                  onClick={() => setDeclining(false)}
+                >
+                  Back
+                </Button>
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="sm"
+                  disabled={responding || !reason.trim()}
+                  onClick={() => respond("declined")}
+                >
+                  {responding ? "Declining…" : "Decline"}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="flex justify-end gap-2">
+              {event.responseStatus === "declined" ? null : (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={responding}
+                  onClick={() => setDeclining(true)}
+                >
+                  Decline
+                </Button>
+              )}
+              {event.responseStatus === "accepted" ? null : (
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={responding}
+                  onClick={() => respond("accepted")}
+                >
+                  {responding ? "Accepting…" : "Accept"}
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      ) : null}
 
       {event.viewingId ? (
         <a
@@ -136,7 +243,7 @@ export function EventPopover({
         </a>
       ) : null}
 
-      {onEdit ? (
+      {onEdit && (event.canEdit !== false || event.canDelete !== false) ? (
         <div className="mt-3 flex items-center justify-end gap-2 border-t border-border/50 pt-3">
           {confirming ? (
             <>
@@ -159,7 +266,9 @@ export function EventPopover({
           ) : (
             <>
               {/* A viewing with an outcome on record is kept; the server refuses it too. */}
-              {event.viewingStatus === "completed" || event.viewingStatus === "no_show" ? null : (
+              {event.canDelete === false ||
+              event.viewingStatus === "completed" ||
+              event.viewingStatus === "no_show" ? null : (
                 <Button
                   type="button"
                   variant="ghost"
@@ -171,16 +280,18 @@ export function EventPopover({
                   Delete
                 </Button>
               )}
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="gap-1.5"
-                onClick={onEdit}
-              >
-                <Pencil className="size-3.5" aria-hidden />
-                Edit
-              </Button>
+              {event.canEdit === false ? null : (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={onEdit}
+                >
+                  <Pencil className="size-3.5" aria-hidden />
+                  Edit
+                </Button>
+              )}
             </>
           )}
         </div>
@@ -216,4 +327,17 @@ function Detail({
       </div>
     </div>
   );
+}
+
+/** "3 accepted · 1 declined · 2 waiting", leaving out the zeros. */
+function answerCounts(people: Invitee[]) {
+  const count = (status: string) => people.filter((person) => person.status === status).length;
+  return [
+    [count("accepted"), "accepted"],
+    [count("declined"), "declined"],
+    [count("needs_action"), "waiting"],
+  ]
+    .filter(([n]) => n)
+    .map(([n, label]) => `${n} ${label}`)
+    .join(" · ");
 }

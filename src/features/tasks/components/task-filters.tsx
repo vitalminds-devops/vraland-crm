@@ -138,7 +138,7 @@ export function TaskFilters({
       </Select>
       {hasActiveFilters && (
         <Button type="button" variant="ghost" onClick={clearAll}>
-          Clear
+          Clear filters
         </Button>
       )}
     </Toolbar>

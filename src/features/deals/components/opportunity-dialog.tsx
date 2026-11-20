@@ -26,14 +26,7 @@ import {
   opportunityAddressSchema,
   type OpportunityAddress,
 } from "@/features/contacts/schemas/opportunity-contact.schema";
-import {
-  allProvinces,
-  citiesForProvince,
-  barangaysForCity,
-  getCityCodeByName,
-  postalCodeForCity,
-  COUNTRY_NAME,
-} from "@/lib/location";
+import { COUNTRY_NAME } from "@/lib/location";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { notify, notifyLoading } from "@/components/ui/toast";
 import { documentFileError, requirementFileTypes } from "@/lib/storage/document-validation";
@@ -62,8 +55,11 @@ import {
 } from "../actions/opportunity.actions";
 import type { DealActionResult } from "../actions/deal.actions";
 
+import { Field, fieldClass } from "./opportunity-field";
+import { OpportunityAddressStep } from "./opportunity-address-step";
 import { OpportunityParkingSelector } from "./opportunity-parking-selector";
-import { mergeIdAddress } from "../lib/id-address";
+import type { IdAddressField } from "../lib/id-address";
+import { applyIdAddress, clearIdAddressHint, noIdAddressHints } from "../lib/id-address-autofill";
 import { readIdAddress } from "../lib/read-id-address";
 import {
   loadOpportunityFormDraft,
@@ -75,29 +71,6 @@ import {
 
 /** Matches MAX_EXTRA_FILES on the server. */
 const MAX_EXTRAS = 3;
-
-const field =
-  "w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-sm outline-none transition-all placeholder:text-muted-foreground/70 hover:border-border focus-visible:ring-2 focus-visible:ring-primary/25";
-
-function Field({
-  label,
-  required,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="grid gap-1.5">
-      <span className="text-[13px] font-medium">
-        {label}
-        {required && <span className="text-destructive"> *</span>}
-      </span>
-      {children}
-    </label>
-  );
-}
 
 /** One document as a single row: name and status on the left, an upload button on the right. */
 function FileRow({
@@ -240,11 +213,34 @@ export function OpportunityDialog({
   const [appointmentFile, setAppointmentFile] = useState<File | null>(null);
   const idScan = useRef<AbortController | null>(null);
   const addressBeforeUpload = useRef<OpportunityAddress | undefined>(undefined);
+  /** The scan reads the latest address, not the one it started with. */
+  const latestAddress = useRef(address);
+  useEffect(() => {
+    latestAddress.current = address;
+  }, [address]);
+  /** Fields typed or picked by hand; an ID never overwrites them. */
+  const editedFields = useRef(new Set<IdAddressField>());
+  const [idHints, setIdHints] = useState(noIdAddressHints);
+  const editAddress = (next: OpportunityAddress, field: IdAddressField) => {
+    editedFields.current.add(field);
+    setAddress(next);
+    setIdHints((current) => clearIdAddressHint(current, field));
+  };
   const [scanStatus, setScanStatus] = useState<{
     state: "idle" | "reading" | "found" | "not-found" | "error";
     progress?: number;
   }>({ state: "idle" });
   const onFileId = draft?.onFile.validIdFile?.id;
+  /** An uploaded or camera-captured ID replaces the last one and is read again. */
+  const pickId = (file: File | null) => {
+    idScan.current?.abort();
+    // A new ID replaces the address; only edits made while it is read are kept (via the snapshot).
+    if (file) editedFields.current.clear();
+    addressBeforeUpload.current = file ? address : undefined;
+    setIdHints(noIdAddressHints);
+    setIdFile(file);
+    if (!file) setScanStatus({ state: "idle" });
+  };
   const scanId = useCallback(async () => {
     idScan.current?.abort();
     const controller = new AbortController();
@@ -271,7 +267,13 @@ export function OpportunityDialog({
       );
       if (controller.signal.aborted || completed.current) return;
       if (found) {
-        setAddress((current) => mergeIdAddress(current, found, beforeUpload));
+        const { address: next, ...hints } = applyIdAddress(latestAddress.current, found, {
+          beforeUpload,
+          edited: editedFields.current,
+        });
+        latestAddress.current = next;
+        setAddress(next);
+        setIdHints(hints);
         setScanStatus({ state: "found" });
       } else setScanStatus({ state: "not-found" });
     } catch {
@@ -695,7 +697,7 @@ export function OpportunityDialog({
                       required={step === 1}
                       maxLength={50}
                       placeholder="Enter the client's TIN number"
-                      className={field}
+                      className={fieldClass}
                     />
                   </Field>
                   <Field label="PRC license number">
@@ -704,7 +706,7 @@ export function OpportunityDialog({
                       defaultValue={restoredFields.prcLicenseNumber ?? draft.prcLicenseNumber}
                       maxLength={50}
                       placeholder="If applicable"
-                      className={field}
+                      className={fieldClass}
                     />
                   </Field>
                   <div className="divide-y divide-border/60 rounded-lg border border-border/60 px-3">
@@ -714,16 +716,7 @@ export function OpportunityDialog({
                         name="validId"
                         onFile={draft.onFile.validId}
                         picked={idFile?.name}
-                        onPick={(files) => {
-                          const file = files[0] ?? null;
-                          idScan.current?.abort();
-                          addressBeforeUpload.current = file ? address : undefined;
-                          setIdFile(file);
-                          if (!file) {
-                            idScan.current?.abort();
-                            setScanStatus({ state: "idle" });
-                          }
-                        }}
+                        onPick={(files) => pickId(files[0] ?? null)}
                       />
                       {(idFile || draft.onFile.validIdFile) && (
                         <div className="pb-3">
@@ -748,9 +741,9 @@ export function OpportunityDialog({
                                   : scanStatus.state === "found"
                                     ? "Address detected. Review the Address step."
                                     : scanStatus.state === "not-found"
-                                      ? "Could not detect an address. Try a closer, sharper photo or enter it in the Address step."
+                                      ? "No address found. Retake it closer, in even light, or enter it in the Address step."
                                       : scanStatus.state === "error"
-                                        ? "Could not read this ID. Upload a clearer copy or enter the address in the Address step."
+                                        ? "Could not read this ID. Retake it closer and steady, or enter the address."
                                         : "The ID address will be scanned automatically."}
                               </span>
                             </p>
@@ -814,7 +807,7 @@ export function OpportunityDialog({
                             aria-label="Document type"
                             value={nextType}
                             onChange={(event) => setNextType(event.target.value)}
-                            className={cn(field, "h-8 py-1 pr-8 text-xs")}
+                            className={cn(fieldClass, "h-8 py-1 pr-8 text-xs")}
                             wrapperClassName="min-w-0 flex-1"
                           >
                             <NativeSelectOption value="">Select type</NativeSelectOption>
@@ -859,97 +852,12 @@ export function OpportunityDialog({
 
                 <fieldset className={cn("grid gap-4", step !== 2 && "hidden")}>
                   <legend className="sr-only">Address</legend>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <Field label="Province" required>
-                      <NativeSelect
-                        name="currentProvince"
-                        required={step === 2}
-                        value={address.currentProvince ?? ""}
-                        onChange={(event) =>
-                          setAddress({
-                            ...address,
-                            currentProvince: event.target.value,
-                            currentCity: null,
-                            currentBarangay: null,
-                            currentPostalCode: null,
-                          })
-                        }
-                      >
-                        <NativeSelectOption value="">Select province</NativeSelectOption>
-                        {allProvinces.map((province) => (
-                          <NativeSelectOption key={province.id} value={province.name}>
-                            {province.name}
-                          </NativeSelectOption>
-                        ))}
-                      </NativeSelect>
-                    </Field>
-                    <Field label="City" required>
-                      <NativeSelect
-                        name="currentCity"
-                        required={step === 2}
-                        disabled={!address.currentProvince}
-                        value={address.currentCity ?? ""}
-                        onChange={(event) =>
-                          setAddress({
-                            ...address,
-                            currentCity: event.target.value,
-                            currentBarangay: null,
-                            currentPostalCode:
-                              postalCodeForCity(
-                                getCityCodeByName(event.target.value, address.currentProvince),
-                              ) ?? null,
-                          })
-                        }
-                      >
-                        <NativeSelectOption value="">Select city</NativeSelectOption>
-                        {citiesForProvince(address.currentProvince).map((city) => (
-                          <NativeSelectOption key={city.id} value={city.name}>
-                            {city.name}
-                          </NativeSelectOption>
-                        ))}
-                      </NativeSelect>
-                    </Field>
-                    <Field label="Barangay" required>
-                      <NativeSelect
-                        name="currentBarangay"
-                        required={step === 2}
-                        disabled={!address.currentCity}
-                        value={address.currentBarangay ?? ""}
-                        onChange={(event) =>
-                          setAddress({ ...address, currentBarangay: event.target.value })
-                        }
-                      >
-                        <NativeSelectOption value="">Select barangay</NativeSelectOption>
-                        {barangaysForCity(
-                          getCityCodeByName(address.currentCity, address.currentProvince),
-                        ).map((barangay) => (
-                          <NativeSelectOption key={barangay.id} value={barangay.name}>
-                            {barangay.name}
-                          </NativeSelectOption>
-                        ))}
-                      </NativeSelect>
-                    </Field>
-                    <Field label="Postal code">
-                      <Input
-                        name="currentPostalCode"
-                        value={address.currentPostalCode ?? ""}
-                        readOnly
-                        className={field}
-                      />
-                    </Field>
-                  </div>
-                  <Field label="Street">
-                    <Input
-                      name="currentAddressLine1"
-                      value={address.currentAddressLine1 ?? ""}
-                      onChange={(event) =>
-                        setAddress({ ...address, currentAddressLine1: event.target.value })
-                      }
-                      maxLength={255}
-                      placeholder="House or lot no., street, subdivision"
-                      className={field}
-                    />
-                  </Field>
+                  <OpportunityAddressStep
+                    address={address}
+                    required={step === 2}
+                    hints={idHints}
+                    onChange={editAddress}
+                  />
                 </fieldset>
 
                 <div className={cn("grid gap-4", step !== 3 && "hidden")}>
@@ -1002,7 +910,7 @@ export function OpportunityDialog({
                       <MoneyInput
                         name="annualIncome"
                         defaultValue={restoredFields.annualIncome ?? draft.interest.annualIncome}
-                        className={field}
+                        className={fieldClass}
                       />
                     </Field>
                   </div>
@@ -1020,7 +928,7 @@ export function OpportunityDialog({
                           setBuildingId(null);
                           setParkingSelection({ buildingId: null, ids: [] });
                         }}
-                        className={cn(field, "pr-9")}
+                        className={cn(fieldClass, "pr-9")}
                       >
                         <NativeSelectOption value="">Select development</NativeSelectOption>
                         {draft.developments.map((development) => (
@@ -1042,7 +950,7 @@ export function OpportunityDialog({
                         unitIds={unitIds}
                         onBuildingChange={changeBuilding}
                         onUnitsChange={setUnitIds}
-                        selectClassName={cn(field, "pr-9")}
+                        selectClassName={cn(fieldClass, "pr-9")}
                         disabled={pending}
                       />
                     )}
@@ -1087,7 +995,7 @@ export function OpportunityDialog({
                           list="opportunity-banks"
                           defaultValue={restoredFields.bankName ?? draft.bankName}
                           placeholder="e.g. BDO Unibank"
-                          className={field}
+                          className={fieldClass}
                         />
                         <datalist id="opportunity-banks">
                           {bankOptions.map((bank) => (
@@ -1105,7 +1013,7 @@ export function OpportunityDialog({
                             restoredFields.financingPreferenceOther ??
                             draft.financingPreferenceOther
                           }
-                          className={field}
+                          className={fieldClass}
                         />
                       </Field>
                     )}
@@ -1171,8 +1079,22 @@ export function OpportunityDialog({
                       <DialogClose className={buttonVariants({ variant: "ghost" })}>
                         Cancel
                       </DialogClose>
-                      <Button type="submit" disabled={!documentsReady}>
-                        Next
+                      <Button
+                        type="submit"
+                        className="gap-2"
+                        disabled={!documentsReady || scanStatus.state === "reading"}
+                      >
+                        {scanStatus.state === "reading" ? (
+                          <>
+                            <Loader2
+                              aria-hidden="true"
+                              className="size-4 animate-spin motion-reduce:animate-none"
+                            />
+                            Reading ID…
+                          </>
+                        ) : (
+                          "Next"
+                        )}
                       </Button>
                     </>
                   ) : (
