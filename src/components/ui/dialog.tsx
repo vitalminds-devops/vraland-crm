@@ -32,7 +32,7 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+>(({ className, children, onInteractOutside, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
@@ -42,6 +42,11 @@ const DialogContent = React.forwardRef<
         className,
       )}
       {...props}
+      onInteractOutside={(event) => {
+        onInteractOutside?.(event);
+        if (event.target instanceof Element && event.target.closest("[data-sonner-toaster]"))
+          event.preventDefault();
+      }}
     >
       {children}
       <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
@@ -54,7 +59,21 @@ const DialogContent = React.forwardRef<
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 // Content without the built-in overlay and close button: for dialogs that bring their own, nested inside DialogOverlay so long ones scroll.
-const DialogPopup = DialogPrimitive.Content;
+const DialogPopup = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
+>(({ onInteractOutside, ...props }, ref) => (
+  <DialogPrimitive.Content
+    {...props}
+    ref={ref}
+    onInteractOutside={(event) => {
+      onInteractOutside?.(event);
+      if (event.target instanceof Element && event.target.closest("[data-sonner-toaster]"))
+        event.preventDefault();
+    }}
+  />
+));
+DialogPopup.displayName = "DialogPopup";
 
 const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div className={cn("flex flex-col space-y-1.5 text-center sm:text-left", className)} {...props} />

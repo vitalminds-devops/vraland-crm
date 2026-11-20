@@ -53,6 +53,7 @@ export function DealActions({
   canApproveStageChange,
   canMoveBack,
   userRole,
+  resumeOpportunityId,
 }: {
   dealId: string;
   dealTitle: string;
@@ -70,11 +71,18 @@ export function DealActions({
   canMoveBack?: boolean;
   /** Decides which lanes may be left and how far back a move may unwind. */
   userRole?: MoveRole;
+  resumeOpportunityId?: string;
 }) {
   const [mode, setMode] = useState<Mode | null>(null);
   const [pending, startTransition] = useTransition();
   const [targetStageId, setTargetStageId] = useState("");
-  const [opportunityStageId, setOpportunityStageId] = useState<string | null>(null);
+  const [opportunityStageId, setOpportunityStageId] = useState<string | null>(() =>
+    resumeOpportunityId === dealId &&
+    canChangeStage &&
+    stages.find((stage) => stage.id === currentStageId)?.slug === "leads"
+      ? (stages.find((stage) => stage.slug === "opportunity")?.id ?? null)
+      : null,
+  );
   const router = useRouter();
 
   function run(action: () => Promise<DealActionResult>) {
@@ -163,15 +171,8 @@ export function DealActions({
           stageId={opportunityStageId}
           dealTitle={dealTitle}
           onClose={() => setOpportunityStageId(null)}
-          onDone={(result) => {
+          onDone={() => {
             setOpportunityStageId(null);
-            notify(
-              result.success && result.data.approvalRequested
-                ? "Move sent for approval"
-                : "Lead moved to Opportunity",
-              "success",
-              { description: result.success ? result.data.message : undefined },
-            );
             router.refresh();
           }}
         />

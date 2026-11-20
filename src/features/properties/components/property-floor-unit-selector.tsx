@@ -71,8 +71,7 @@ export function PropertyFloorUnitSelector({
   const [unitData, setUnitData] = useState<{
     key: string;
     rows: Unit[];
-    omitted: number;
-  }>({ key: "", rows: EMPTY_UNITS, omitted: 0 });
+  }>({ key: "", rows: EMPTY_UNITS });
   const [internalUnitIds, setSelectedUnitIds] = useState<string[]>([...(initialUnitIds ?? [])]);
   const selectedUnitIds = controlledUnitIds ?? internalUnitIds;
 
@@ -153,7 +152,6 @@ export function PropertyFloorUnitSelector({
         setUnitData({
           key: selectedFloorId,
           rows: data.units ?? EMPTY_UNITS,
-          omitted: data.omitted ?? 0,
         });
       } catch (error) {
         if (controller.signal.aborted) return;
@@ -161,7 +159,6 @@ export function PropertyFloorUnitSelector({
         setUnitData({
           key: selectedFloorId,
           rows: EMPTY_UNITS,
-          omitted: 0,
         });
       }
     });
@@ -174,7 +171,6 @@ export function PropertyFloorUnitSelector({
   const floors =
     selectedBuildingId && floorData.key === selectedBuildingId ? floorData.rows : EMPTY_FLOORS;
   const units = selectedFloorId && unitData.key === selectedFloorId ? unitData.rows : EMPTY_UNITS;
-  const omittedUnits = selectedFloorId && unitData.key === selectedFloorId ? unitData.omitted : 0;
 
   // Handle unit selection
   const toggleUnit = (unitId: string) => {
@@ -269,9 +265,7 @@ export function PropertyFloorUnitSelector({
             })}
           </div>
         ) : (
-          <p className="text-[13px] text-muted-foreground">
-            {omittedUnits > 0 ? "No units here are available to you." : "No units on this floor."}
-          </p>
+          <p className="text-[13px] text-muted-foreground">No units to display.</p>
         ))}
 
       {selectedUnitIds.length > 0 && (

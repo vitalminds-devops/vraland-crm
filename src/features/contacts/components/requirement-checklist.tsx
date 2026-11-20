@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
-import { notify } from "@/components/ui/toast";
+import { notify, notifyLoading } from "@/components/ui/toast";
 import { documentFileError, requirementFileTypes } from "@/lib/storage/document-validation";
 import { defaultRequirementStatus, requiredDocumentTypes } from "../lib/contact-options";
 
@@ -57,10 +57,16 @@ export function RequirementChecklist({
 
   const run = (action: () => Promise<ActionResult<unknown>>) => {
     startTransition(async () => {
+      const toastId = notifyLoading("Saving document changes…", `contact-documents-${contactId}`);
       try {
         const result = await action();
-        if (!result.success) notify(result.error.message, "error");
+        if (!result.success)
+          notify("Document changes were not saved", "error", {
+            id: toastId,
+            description: result.error.message,
+          });
         else {
+          notify("Document changes saved.", "success", toastId);
           setShowAdd(false);
           router.refresh();
         }
@@ -68,6 +74,11 @@ export function RequirementChecklist({
         setUploadError(
           "Confirmation was not received. Refresh this checklist to check whether the document was saved before trying again.",
         );
+        notify("Could not confirm document changes", "error", {
+          id: toastId,
+          description:
+            "Refresh this checklist to check whether the document was saved before trying again.",
+        });
       }
     });
   };

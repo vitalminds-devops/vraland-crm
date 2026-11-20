@@ -7,7 +7,6 @@ import { ButtonLink, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardToolbar } from "@/components/ui/card";
 import { TaskFilters } from "@/features/tasks/components/task-filters";
 import { TaskForm } from "@/features/tasks/components/task-form";
-import { TasksNav } from "@/features/tasks/components/tasks-nav";
 import { TasksTable } from "@/features/tasks/components/tasks-table";
 import { getTaskOptions, isTaskSortKey, listTasks } from "@/features/tasks/queries/task.queries";
 import { requirePagePermission } from "@/lib/permissions/authorization";
@@ -82,18 +81,13 @@ export default async function TasksPage({
     <PageContainer>
       <PageHeader title="Tasks" description="Follow-ups and to-dos." />
 
-      <TasksNav
-        current="/tasks"
-        action={
-          <div className="flex flex-wrap items-center gap-2">
-            <a href={exportHref} className={buttonVariants({ variant: "secondary" })}>
-              <Download aria-hidden="true" className="mr-2 h-4 w-4" />
-              Export
-            </a>
-            {data.canCreate ? <TaskForm options={options} /> : null}
-          </div>
-        }
-      />
+      <div className="mb-6 flex flex-wrap items-center justify-end gap-2">
+        <a href={exportHref} className={buttonVariants({ variant: "secondary" })}>
+          <Download aria-hidden="true" className="mr-2 h-4 w-4" />
+          Export
+        </a>
+        {data.canCreate ? <TaskForm options={options} /> : null}
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard

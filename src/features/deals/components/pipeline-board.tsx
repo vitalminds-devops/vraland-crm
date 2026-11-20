@@ -53,6 +53,7 @@ import {
   paymentNeededFor,
 } from "../lib/stage-move";
 import { dealLabel } from "../lib/deal-label";
+import { NO_RESERVATION_MESSAGE } from "../lib/stage-transitions";
 import { BOARD_COLUMN_LIMIT } from "../lib/board-limit";
 import { formatContactName } from "@/features/contacts";
 import { notify } from "@/components/ui/toast";
@@ -85,8 +86,8 @@ type Deal = {
   propertyTitle: string | null;
   agentFirstName: string | null;
   agentLastName: string | null;
-  brokerFirstName: string | null;
-  brokerLastName: string | null;
+  creatorFirstName: string | null;
+  creatorLastName: string | null;
   contactFirstName: string | null;
   contactMiddleName: string | null;
   contactLastName: string | null;
@@ -129,6 +130,7 @@ export function PipelineBoard({
   canApproveStageChange,
   canMoveBack,
   userRole,
+  resumeOpportunityId,
 }: {
   stages: Stage[];
   deals: Deal[];
@@ -137,6 +139,7 @@ export function PipelineBoard({
   /** Holds `deals.move_back`. */
   canMoveBack?: boolean;
   userRole?: MoveRole;
+  resumeOpportunityId?: string;
 }) {
   const [items, setItems] = useState(deals);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -147,7 +150,16 @@ export function PipelineBoard({
     dealId: string;
     stageId: string;
     dealTitle: string;
-  } | null>(null);
+  } | null>(() => {
+    const deal = deals.find((row) => row.id === resumeOpportunityId);
+    const opportunity = stages.find((stage) => stage.slug === "opportunity");
+    return canChangeStage &&
+      deal &&
+      opportunity &&
+      stages.find((stage) => stage.id === deal.stageId)?.slug === "leads"
+      ? { dealId: deal.id, stageId: opportunity.id, dealTitle: owner(deal) }
+      : null;
+  });
   const router = useRouter();
 
   const [syncedDeals, setSyncedDeals] = useState(deals);
@@ -240,16 +252,22 @@ export function PipelineBoard({
 
     // UI-level validation before the server call, mirroring the server's rules.
     if (!canMoveDealToStage(before, toStage, sortedStages, canChangeStage, userRole, canMoveBack)) {
-      notify(`Cannot move to ${toStage.name}`, "error", {
-        id: `stage-move-${dealId}`,
-        description:
-          paymentNeededFor(
-            before,
-            sortedStages.find((s) => s.id === before.stageId),
-            toStage,
-          ) ??
-          "Your permissions or the current pipeline stage prevent this move. Open the opportunity to see the available stage changes.",
-      });
+      const paymentMessage = paymentNeededFor(
+        before,
+        sortedStages.find((s) => s.id === before.stageId),
+        toStage,
+      );
+      const automaticReservation = paymentMessage === NO_RESERVATION_MESSAGE;
+      notify(
+        automaticReservation ? "Reservation is automatic" : `Cannot move to ${toStage.name}`,
+        automaticReservation ? "info" : "error",
+        {
+          id: `stage-move-${dealId}`,
+          description:
+            paymentMessage ??
+            "Your permissions or the current pipeline stage prevent this move. Open the opportunity to see the available stage changes.",
+        },
+      );
       return;
     }
 
@@ -356,15 +374,10 @@ export function PipelineBoard({
             onDone={(result) => {
               const { dealId, stageId } = opportunityRequest;
               setOpportunityRequest(null);
-              if (result.success && result.data.approvalRequested) {
-                notify("Move sent for approval", "success", { description: result.data.message });
-              } else {
+              if (result.success && !result.data.approvalRequested) {
                 setItems((current) =>
                   current.map((d) => (d.id === dealId ? { ...d, stageId } : d)),
                 );
-                notify("Lead moved to Opportunity", "success", {
-                  description: result.success ? result.data.message : undefined,
-                });
               }
               router.refresh();
             }}
@@ -514,6 +527,9 @@ function DealCard({
   });
 
   const overdue = isCloseDateOverdue(deal.expectedCloseDate, closed);
+  const place = placeOf(deal);
+  const creator =
+    [deal.creatorFirstName, deal.creatorLastName].filter(Boolean).join(" ") || "Unknown user";
 
   return (
     <article
@@ -521,26 +537,28 @@ function DealCard({
       {...listeners}
       style={{ opacity: isDragging ? 0.4 : undefined }}
       className={cn(
-        "group relative rounded-lg border border-border/50 bg-card p-2.5 shadow-xs transition-shadow",
+        "group relative rounded-xl border border-border/70 bg-card p-3 transition-colors",
         draggable && "cursor-grab touch-manipulation active:cursor-grabbing",
-        "hover:border-primary/30 hover:shadow-md",
+        "hover:border-primary/35",
       )}
     >
       <div className="flex items-start gap-1.5">
         <Link
           href={`/deals/${deal.id}`}
           draggable={false}
-          className="min-w-0 flex-1 hover:text-primary"
+          className="min-w-0 flex-1 rounded-sm outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring/40"
         >
-          <span className="block truncate text-[13px] leading-snug font-semibold text-foreground hover:underline">
+          <span className="line-clamp-2 text-[13px] leading-5 font-semibold text-foreground [overflow-wrap:anywhere] hover:underline">
             {owner(deal)}
           </span>
-          <span
-            className="mt-0.5 block truncate text-[11px] text-muted-foreground"
-            title={placeOf(deal)}
-          >
-            {placeOf(deal)}
-          </span>
+          {place && (
+            <span
+              className="mt-1 block truncate text-xs leading-relaxed text-muted-foreground"
+              title={place}
+            >
+              {place}
+            </span>
+          )}
         </Link>
         <span className="flex shrink-0 items-center gap-0.5">
           <Link
@@ -548,47 +566,52 @@ function DealCard({
             draggable={false}
             aria-label={`View ${dealLabel(deal)}`}
             title={`View ${dealLabel(deal)}`}
-            className="flex size-7 items-center justify-center rounded-md border border-border/60 bg-card text-muted-foreground shadow-xs transition-colors hover:bg-muted hover:text-foreground sm:size-6"
+            className="flex size-8 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
           >
             <Eye aria-hidden="true" className="size-3.5" />
           </Link>
         </span>
       </div>
-      <div className="mt-2 flex items-center justify-between gap-2">
-        <span className="flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
-          <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-tight tabular-nums">
-            {deal.code}
-          </span>
+      {(deal.nextAction || deal.expectedCloseDate) && (
+        <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
           {deal.nextAction && (
-            <span className="truncate text-foreground/70">Next: {deal.nextAction}</span>
+            <span className="min-w-0 truncate text-[11px] text-foreground/70">
+              Next: {deal.nextAction}
+            </span>
           )}
-        </span>
-        <span
-          className="flex shrink-0 items-center gap-2 text-[11px] text-muted-foreground"
-          title={agentName(deal) ? `Agent: ${agentName(deal)}` : "No agent"}
-        >
-          <span
-            className={cn(
-              "flex items-center gap-1 tabular-nums",
-              overdue && "text-red-600 dark:text-red-400",
-            )}
-          >
-            <CalendarClock className="size-3" />
-            {deal.expectedCloseDate || "—"}
-          </span>
-          <span
-            aria-hidden="true"
-            className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary ring-1 ring-inset ring-primary/15"
-          >
-            {initials(deal)}
-          </span>
-        </span>
-      </div>
-      {deal.brokerFirstName && (
-        <div className="mt-1.5 text-[11px] text-muted-foreground">
-          Broker: {deal.brokerFirstName} {deal.brokerLastName}
+          {deal.expectedCloseDate && (
+            <span
+              title="Expected close date"
+              className={cn(
+                "flex shrink-0 items-center gap-1 text-[11px] tabular-nums text-muted-foreground",
+                overdue && "text-red-600 dark:text-red-400",
+              )}
+            >
+              <CalendarClock aria-hidden="true" className="size-3.5" />
+              <time dateTime={deal.expectedCloseDate}>{deal.expectedCloseDate}</time>
+            </span>
+          )}
         </div>
       )}
+      <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/40 pt-2.5">
+        <span
+          className="min-w-0 truncate text-[11px] text-muted-foreground"
+          title={`Entered by: ${creator}`}
+        >
+          Entered by: {creator}
+        </span>
+        {agentName(deal) && (
+          <span title={`Agent: ${agentName(deal)}`}>
+            <span className="sr-only">Agent: {agentName(deal)}</span>
+            <span
+              aria-hidden="true"
+              className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary ring-1 ring-inset ring-primary/15"
+            >
+              {initials(deal)}
+            </span>
+          </span>
+        )}
+      </div>
       {deal.pendingApprovalStage &&
         (canApprove ? (
           <Link
@@ -607,11 +630,14 @@ function DealCard({
         ))}
       {/* Note/Reason display */}
       {(deal.lastStageNote || deal.cancellationReason) && (
-        <div className="mt-1.5 flex items-start gap-1.5">
+        <div className="mt-2.5 flex items-start gap-1.5 border-t border-border/40 pt-2">
           {deal.cancellationReason ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex items-start gap-1.5 rounded-md bg-orange-500/10 px-2 py-1 text-[10px] text-orange-700 dark:text-orange-400">
+                <div
+                  tabIndex={0}
+                  className="flex items-start gap-1.5 rounded-md bg-orange-500/10 px-2 py-1 text-xs text-orange-700 outline-none focus-visible:ring-2 focus-visible:ring-ring/40 dark:text-orange-400"
+                >
                   <XCircle className="mt-0.5 size-3 shrink-0" />
                   <span className="line-clamp-2">Cancelled: {deal.cancellationReason}</span>
                 </div>
@@ -624,9 +650,16 @@ function DealCard({
           ) : deal.lastStageNote ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex items-start gap-1.5 rounded-md bg-muted/50 px-2 py-1 text-[10px] text-muted-foreground cursor-help hover:bg-muted/80">
-                  <MessageSquare className="mt-0.5 size-3 shrink-0" />
-                  <span className="line-clamp-2">{deal.lastStageNote}</span>
+                <div
+                  tabIndex={0}
+                  className="flex min-w-0 items-start gap-2 rounded-sm text-xs text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
+                >
+                  <MessageSquare aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
+                  <span className="line-clamp-2 leading-relaxed [overflow-wrap:anywhere]">
+                    {deal.lastStageNote === "Deal opened when the contact was created"
+                      ? "Lead created"
+                      : deal.lastStageNote}
+                  </span>
                 </div>
               </TooltipTrigger>
               <TooltipContent side="top" className="max-w-xs">
@@ -650,13 +683,11 @@ function DealDragPreview({ deal }: { deal: Deal }) {
   return (
     <div className="w-[280px] max-w-[85vw] rotate-2 rounded-lg border border-primary/40 bg-card p-2.5 shadow-lg">
       <p className="line-clamp-2 text-[13px] leading-snug font-medium text-foreground">
-        {dealLabel(deal)}
+        {owner(deal)}
       </p>
-      <div className="mt-1.5 flex items-center gap-2">
-        <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium tracking-tight tabular-nums">
-          {deal.code}
-        </span>
-      </div>
+      {placeOf(deal) && (
+        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{placeOf(deal)}</p>
+      )}
     </div>
   );
 }
@@ -774,11 +805,11 @@ function agentName(deal: Deal) {
   return [deal.agentFirstName, deal.agentLastName].filter(Boolean).join(" ");
 }
 
-/** "Development · building · units" for the card's second line; the full label when the deal names none. */
+/** Only property details: the client already titles the card. */
 function placeOf(deal: Deal) {
   const units = deal.unitCodes ? `Units ${deal.unitCodes}` : null;
   const building = deal.propertyTitle !== deal.developmentName ? deal.propertyTitle : null;
-  return [deal.developmentName, building, units].filter(Boolean).join(" · ") || dealLabel(deal);
+  return [deal.developmentName, building, units].filter(Boolean).join(" · ");
 }
 
 function owner(deal: Deal) {

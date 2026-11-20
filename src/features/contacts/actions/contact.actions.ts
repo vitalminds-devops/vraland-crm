@@ -55,7 +55,12 @@ import { moveOpenDeals } from "@/features/deals/lib/move-open-deals";
 import { enrollByTrigger } from "@/features/marketing/lib/auto-enroll";
 import { openDealForApprovedContact } from "@/features/deals/lib/open-deal";
 import { buildChangeSet, isEmptyChangeSet } from "@/lib/audit/redact";
-import { contactSchema, noteSchema, type ContactInput } from "../schemas/contact.schema";
+import {
+  contactSchema,
+  contactCreateSchema,
+  noteSchema,
+  type ContactInput,
+} from "../schemas/contact.schema";
 import { logError } from "@/lib/logger";
 import { writeErrorMessage } from "../lib/contact-write-error";
 import {
@@ -286,7 +291,7 @@ async function insertContact(
   input: ContactInput,
   creationId: string,
 ): Promise<ContactActionResult> {
-  const parsed = contactSchema.safeParse(input);
+  const parsed = contactCreateSchema.safeParse(input);
   if (!parsed.success) return validationFailureFromZod(parsed.error, reviewMessage(parsed.error));
   const value = parsed.data;
   const existing = await findDuplicateMatch(context.organizationId, value);
@@ -898,7 +903,7 @@ export async function archiveContact(id: string): Promise<ContactActionResult> {
     if (archived !== true)
       return failure(
         conflict(
-          `Opportunity ${archived.blocked} holds units or payments. Close or clear it before archiving.`,
+          `Cannot archive this contact: opportunity ${archived.blocked} has selected units, parking slots, or recorded payments. Review it in Sales pipeline first.`,
         ),
       );
     revalidatePath("/contacts");

@@ -15,6 +15,7 @@ import { requirePermission } from "@/lib/permissions/authorization";
 import { grantedPropertyCondition } from "@/lib/permissions/property-access";
 import { dataScopeCondition } from "@/lib/permissions/scope";
 import { documentScope, sensitiveDocumentCondition } from "../lib/document-scope";
+import { canManageSharedFiles, sharedFileCategory } from "../lib/shared-files";
 const documentOwner = alias(users, "document_owner");
 
 export async function listDocuments(input: {
@@ -22,11 +23,14 @@ export async function listDocuments(input: {
   search?: string;
   documentType?: string;
   archived?: boolean;
+  shared?: boolean;
 }) {
   const context = await requirePermission("documents.view");
+  if (input.archived) await requirePermission("documents.archive");
   const limit = 20;
   const where = and(
     eq(documents.organizationId, context.organizationId),
+    input.shared ? eq(documents.category, sharedFileCategory) : undefined,
     // Search the file name, the client's name and the deal title.
     input.search
       ? or(
@@ -92,7 +96,10 @@ export async function listDocuments(input: {
     rows,
     total: total[0]?.value ?? 0,
     pages: Math.max(1, Math.ceil((total[0]?.value ?? 0) / limit)),
-    canManage: context.permissions.has("documents.manage"),
+    canManage: input.shared
+      ? canManageSharedFiles(context)
+      : context.permissions.has("documents.manage"),
+    canArchive: context.permissions.has("documents.archive"),
   };
 }
 export async function getDocumentOptions() {
@@ -173,6 +180,7 @@ export async function getDocument(id: string) {
       and(
         eq(documents.id, id),
         eq(documents.organizationId, context.organizationId),
+        context.permissions.has("documents.archive") ? undefined : isNull(documents.archivedAt),
         documentScope(context),
         // A non-participant cannot open a sensitive document even with its id.
         sensitiveDocumentCondition(context),
@@ -207,6 +215,7 @@ export async function getDownloadRecord(id: string) {
       id: documents.id,
       userId: documents.userId,
       name: documents.name,
+      category: documents.category,
       storageKey: documents.storageKey,
       mimeType: documents.mimeType,
     })
@@ -218,6 +227,7 @@ export async function getDownloadRecord(id: string) {
       and(
         eq(documents.id, id),
         eq(documents.organizationId, context.organizationId),
+        context.permissions.has("documents.archive") ? undefined : isNull(documents.archivedAt),
         documentScope(context),
         sensitiveDocumentCondition(context),
       ),

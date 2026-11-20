@@ -94,7 +94,7 @@ export async function seedOpportunityDetails(organizationId: string, dealId: str
       link = contact;
     }
     await client.query(
-      "update contacts set financing_preference='cash',tin_number='123-456-789',preferred_development_id=$2,preferred_unit_ids=$3 where id=$1",
+      "update contacts set financing_preference='cash',tin_number='123-456-789',current_province='Cebu',current_city='Cebu City',current_barangay='Lahug',budget_max=2299999,preferred_development_id=$2,preferred_unit_ids=$3 where id=$1",
       [link.contact_id, development.id, [unit.id]],
     );
     for (const [name, type] of [

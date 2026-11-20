@@ -19,3 +19,11 @@ it("gives every role the data access it had before it became a permission", () =
   for (const slug of Object.keys(rolePermissionDefaults) as RoleSlug[])
     expect([slug, defaultScope(slug)]).toEqual([slug, roleDataScopeDefaults[slug]]);
 });
+
+it("grants document archive permission only to administrator roles by default", () => {
+  for (const role of Object.keys(rolePermissionDefaults) as RoleSlug[]) {
+    expect(new Set<string>(rolePermissionDefaults[role]).has("documents.archive")).toBe(
+      role === "administrator" || role === "super-administrator",
+    );
+  }
+});

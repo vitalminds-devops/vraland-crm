@@ -215,7 +215,14 @@ export async function uploadRequirementDocument(
         documentId: doc.id,
       });
     });
-    revalidatePath(`/contacts/${existing.contactId}`);
+    try {
+      revalidatePath(`/contacts/${existing.contactId}`);
+    } catch (error) {
+      logError("Requirement document saved but refresh failed", error, {
+        operation: "requirement_upload_refresh",
+        requirementId: existing.id,
+      });
+    }
     return success({ id: existing.id });
   } catch (error) {
     await storage.remove(key).catch(() => undefined);

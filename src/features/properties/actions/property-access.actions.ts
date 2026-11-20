@@ -620,13 +620,15 @@ async function checkSubset(
     const heldBackUnits = await db
       .select({ id: units.id, floorId: units.floorId })
       .from(units)
-      .where(inArray(units.id, [...heldBack]));
+      .where(and(eq(units.buildingId, input.propertyId), inArray(units.id, [...heldBack])));
     const givenFloors = new Set(input.floorIds);
-    const alsoHeldBack = new Set(input.excludedUnitIds);
-    const leaked = heldBackUnits.find(
-      (unit) => givenFloors.has(unit.floorId) && !alsoHeldBack.has(unit.id),
-    );
-    if (leaked) return "Hold back the units held back from you on that floor.";
+    // Preserve exclusions without sending hidden inventory to the browser.
+    input.excludedUnitIds = [
+      ...new Set([
+        ...input.excludedUnitIds,
+        ...heldBackUnits.filter((unit) => givenFloors.has(unit.floorId)).map((unit) => unit.id),
+      ]),
+    ];
   }
 
   return null;

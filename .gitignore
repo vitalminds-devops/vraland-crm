@@ -203,3 +203,4 @@ CLAUDE.md
 !.env.test.example
 /.next-test/
 /.playwright-runs/
+/public/ocr/

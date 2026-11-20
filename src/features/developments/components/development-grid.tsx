@@ -156,7 +156,7 @@ export function DevelopmentGrid({ rows, canUpdate }: Props) {
                   size="sm"
                   className="gap-1"
                 >
-                  {buildings ? "View properties" : "Add property"}
+                  View properties
                   <ChevronRight aria-hidden="true" className="size-3.5" />
                 </ButtonLink>
               </div>

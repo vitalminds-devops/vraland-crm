@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, count, eq, isNull, sql, type SQL } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 
 import { db } from "@/db";
 import { floors, properties, units } from "@/db/schema";
@@ -169,19 +169,6 @@ export async function getUnitsForFloor(context: AuthorizationContext, floorId: s
   return rows;
 }
 
-export async function countUnitsOnFloor(
-  context: AuthorizationContext,
-  floorId: string,
-): Promise<number> {
-  const [row] = await db
-    .select({ value: count() })
-    .from(units)
-    .innerJoin(floors, eq(units.floorId, floors.id))
-    .innerJoin(properties, eq(units.buildingId, properties.id))
-    .where(and(eq(units.floorId, floorId), propertyAccessCondition(context)));
-  return row?.value ?? 0;
-}
-
 export type PropertyInventory = {
   property: {
     id: string;
@@ -196,7 +183,7 @@ export type PropertyInventory = {
     level: number;
     label: string;
     imageStorageKey: string | null;
-    /** Every unit on the floor, not only the ones the caller may see. */
+    /** Units the caller may see on this floor. */
     unitCount: number;
   }[];
   units: {
@@ -206,13 +193,11 @@ export type PropertyInventory = {
     floorId: string;
     imageStorageKey: string | null;
   }[];
-  omitted: { floors: number; units: number };
 };
 
 async function loadInventory(
   context: AuthorizationContext,
   propertyId: string,
-  options: { includeHidden: boolean },
 ): Promise<PropertyInventory> {
   const property = await findProperty(context, propertyId);
   if (!property)
@@ -220,24 +205,19 @@ async function loadInventory(
       property: null,
       floors: [],
       units: [],
-      omitted: { floors: 0, units: 0 },
     };
 
-  const floorFilter: SQL = options.includeHidden
-    ? sql`true`
-    : grantedFloorsCondition(context, {
-        propertyId: floors.buildingId,
-        floorId: floors.id,
-      });
-  const unitFilter: SQL = options.includeHidden
-    ? sql`true`
-    : grantedUnitsCondition(context, {
-        propertyId: units.buildingId,
-        floorId: units.floorId,
-        unitId: units.id,
-      });
+  const floorFilter = grantedFloorsCondition(context, {
+    propertyId: floors.buildingId,
+    floorId: floors.id,
+  });
+  const unitFilter = grantedUnitsCondition(context, {
+    propertyId: units.buildingId,
+    floorId: units.floorId,
+    unitId: units.id,
+  });
 
-  const [floorRows, unitRows, floorTotal, unitCountsByFloor] = await Promise.all([
+  const [floorRows, unitRows] = await Promise.all([
     db
       .select({
         id: floors.id,
@@ -260,16 +240,10 @@ async function loadInventory(
       .innerJoin(floors, eq(units.floorId, floors.id))
       .where(and(eq(units.buildingId, propertyId), unitFilter))
       .orderBy(asc(floors.level), asc(units.code)),
-    db.select({ value: count() }).from(floors).where(eq(floors.buildingId, propertyId)),
-    db
-      .select({ floorId: units.floorId, value: count() })
-      .from(units)
-      .where(eq(units.buildingId, propertyId))
-      .groupBy(units.floorId),
   ]);
 
-  const perFloor = new Map(unitCountsByFloor.map((row) => [row.floorId, row.value]));
-  const unitTotal = unitCountsByFloor.reduce((sum, row) => sum + row.value, 0);
+  const perFloor = new Map<string, number>();
+  for (const unit of unitRows) perFloor.set(unit.floorId, (perFloor.get(unit.floorId) ?? 0) + 1);
 
   return {
     property,
@@ -278,10 +252,6 @@ async function loadInventory(
       unitCount: perFloor.get(floor.id) ?? 0,
     })),
     units: unitRows,
-    omitted: {
-      floors: Math.max(0, (floorTotal[0]?.value ?? 0) - floorRows.length),
-      units: Math.max(0, unitTotal - unitRows.length),
-    },
   };
 }
 
@@ -289,7 +259,7 @@ export async function getPropertyInventory(
   context: AuthorizationContext,
   propertyId: string,
 ): Promise<PropertyInventory> {
-  return loadInventory(context, propertyId, { includeHidden: false });
+  return loadInventory(context, propertyId);
 }
 
 export async function getPropertyInventoryForGrants(
@@ -299,5 +269,5 @@ export async function getPropertyInventoryForGrants(
   if (!canGrantUnitAccess(context))
     throw new AuthorizationError("You do not have permission to grant access to properties.");
 
-  return loadInventory(context, propertyId, { includeHidden: true });
+  return loadInventory(context, propertyId);
 }

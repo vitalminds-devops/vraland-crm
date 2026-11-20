@@ -1,6 +1,33 @@
 import { describe, expect, it } from "vitest";
 
-import { ageOn } from "./contact-options";
+import { ageOn, financingPreferences, financingPreferenceLabels } from "./contact-options";
+import { paymentMethodLabels, paymentMethods } from "@/features/billing/schemas/billing.schema";
+
+it.each(paymentMethods)("keeps the saved %s method compatible with Billing", (method) => {
+  expect(financingPreferences).toContain(method);
+  expect(financingPreferenceLabels[method]).toBe(paymentMethodLabels[method]);
+});
+
+it("continues to accept existing financing preferences", () => {
+  for (const method of ["bank_financing", "pag_ibig", "in_house_financing", "other"]) {
+    expect(financingPreferences).toContain(method);
+  }
+});
+
+it("uses the same unique financing options in contacts, opportunities and Billing", () => {
+  expect(financingPreferences).toEqual(paymentMethods);
+  expect(new Set(paymentMethods).size).toBe(paymentMethods.length);
+  expect(paymentMethods).toEqual(
+    expect.arrayContaining([
+      "cash",
+      "bank_financing",
+      "pag_ibig",
+      "in_house_financing",
+      "other",
+      "online",
+    ]),
+  );
+});
 
 describe("ageOn", () => {
   it("counts whole years", () => {

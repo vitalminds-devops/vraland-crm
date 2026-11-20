@@ -45,6 +45,7 @@ const scope = (context: Awaited<ReturnType<typeof requirePermission>>) =>
 const fromStage = alias(pipelineStages, "from_stage");
 const toStage = alias(pipelineStages, "to_stage");
 const brokerUser = alias(users, "broker_user");
+const leadCreator = alias(users, "lead_creator");
 
 export async function getPipelineBoard() {
   const context = await requirePermission("deals.view");
@@ -113,8 +114,8 @@ export async function getPipelineBoard() {
               and u.id = any(${contacts.preferredUnitIds})))`,
         agentFirstName: users.firstName,
         agentLastName: users.lastName,
-        brokerFirstName: brokerUser.firstName,
-        brokerLastName: brokerUser.lastName,
+        creatorFirstName: leadCreator.firstName,
+        creatorLastName: leadCreator.lastName,
         contactFirstName: contacts.firstName,
         contactMiddleName: contacts.middleName,
         contactLastName: contacts.lastName,
@@ -144,12 +145,12 @@ export async function getPipelineBoard() {
       .leftJoin(units, eq(deals.unitId, units.id))
       .leftJoin(floors, eq(units.floorId, floors.id))
       .leftJoin(users, eq(deals.primaryAgentUserId, users.id))
-      .leftJoin(brokerUser, eq(deals.brokerUserId, brokerUser.id))
       .leftJoin(
         dealContacts,
         and(eq(dealContacts.dealId, deals.id), eq(dealContacts.isPrimary, true)),
       )
       .leftJoin(contacts, eq(dealContacts.contactId, contacts.id))
+      .leftJoin(leadCreator, eq(contacts.createdBy, leadCreator.id))
       // One lookup of the latest stage change, shared by the note and the date.
       .leftJoinLateral(
         sql`(select h.note, h.changed_at from deal_stage_history h

@@ -134,7 +134,7 @@ export function dropHintFor(
     return {
       text:
         needed === NO_RESERVATION_MESSAGE
-          ? "Reservation payment needed"
+          ? "Moves automatically after Billing"
           : "First monthly payment needed",
       tone: "blocked",
     };

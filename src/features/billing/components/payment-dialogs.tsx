@@ -19,17 +19,13 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { MoneyInput } from "@/components/ui/money-input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
-import { notify } from "@/components/ui/toast";
+import { notify, notifyLoading } from "@/components/ui/toast";
 import { manilaToday } from "@/lib/utils/manila-time";
 import { documentFileError, requirementFileTypes } from "@/lib/storage/document-validation";
 import { recordPayment, removePayment } from "../actions/billing.actions";
-import {
-  paymentClassificationLabels,
-  paymentClassifications,
-  paymentMethodLabels,
-  paymentMethods,
-} from "../schemas/billing.schema";
+import { paymentClassificationLabels, paymentClassifications } from "../schemas/billing.schema";
 import { peso } from "../lib/format";
+import { PaymentMethodSelect } from "./payment-method-select";
 
 export function Modal({
   open,
@@ -133,13 +129,26 @@ export function RecordPaymentButton({
             const form = new FormData(event.currentTarget);
             setError(undefined);
             start(async () => {
+              const toastId = notifyLoading("Saving payment…", "record-payment");
               try {
                 const file = form.get("transactionSlip");
                 const slip = file instanceof File && file.name ? file : undefined;
+                if (method === "online" && !slip) {
+                  setError("Upload a transaction slip before recording the payment.");
+                  notify("Transaction slip required", "error", {
+                    id: toastId,
+                    description: "Upload a transaction slip for this Online payment.",
+                  });
+                  return;
+                }
                 if (slip) {
                   const fileError = await documentFileError(slip, requirementFileTypes);
                   if (fileError) {
                     setError(fileError);
+                    notify("Transaction slip not accepted", "error", {
+                      id: toastId,
+                      description: fileError,
+                    });
                     return;
                   }
                 }
@@ -157,15 +166,24 @@ export function RecordPaymentButton({
                 );
                 if (!result.success) {
                   setError(result.error.message);
+                  notify("Payment was not saved", "error", {
+                    id: toastId,
+                    description: result.error.message,
+                  });
                   return;
                 }
                 setOpen(false);
-                notify(result.data.message || "Payment recorded.", "success");
+                notify(result.data.message || "Payment recorded.", "success", toastId);
                 router.refresh();
               } catch {
                 setError(
                   "Payment confirmation was not received. Check this bill's payments before submitting again.",
                 );
+                notify("Could not confirm payment", "error", {
+                  id: toastId,
+                  description:
+                    "Check this bill's payments before submitting again. Your entries are still here.",
+                });
               }
             });
           }}
@@ -229,47 +247,51 @@ export function RecordPaymentButton({
           <div className="grid gap-4 sm:grid-cols-2">
             <label className={field}>
               <span className={fieldLabel}>Method</span>
-              <NativeSelect
+              <PaymentMethodSelect
                 name="method"
                 required
                 value={method}
-                onChange={(event) => setMethod(event.target.value)}
-              >
-                <NativeSelectOption value="" disabled>
-                  Select method
-                </NativeSelectOption>
-                {paymentMethods.map((method) => (
-                  <NativeSelectOption key={method} value={method}>
-                    {paymentMethodLabels[method]}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
+                onValueChange={setMethod}
+                label="Method"
+                placeholder="Select method"
+                disabled={pending}
+              />
             </label>
             <label className={field}>
               <span className={fieldLabel}>Invoice no.</span>
               <Input name="referenceNo" maxLength={120} placeholder="e.g. INV-0001" />
             </label>
           </div>
-          <label className={field}>
-            <span className={fieldLabel}>Notes</span>
-            <Textarea name="notes" rows={2} maxLength={2000} placeholder="Optional" />
-          </label>
-          {method && (
+          {method === "online" && (
             <label className={field}>
               <span className={fieldLabel}>
-                Upload transaction slip{" "}
-                <span className="font-normal text-muted-foreground">(optional)</span>
+                Upload transaction slip
+                <span aria-hidden="true" className="ml-0.5 text-destructive">
+                  *
+                </span>
               </span>
               <Input
                 name="transactionSlip"
                 type="file"
+                required
                 accept=".pdf,.jpg,.jpeg,.png"
+                onInvalid={() =>
+                  notify("Transaction slip required", "error", {
+                    id: "record-payment",
+                    description:
+                      "Choose a PDF, JPG or PNG file up to 15 MB for this Online payment.",
+                  })
+                }
                 disabled={pending}
                 onChange={() => setError(undefined)}
               />
               <span className="text-xs text-muted-foreground">PDF, JPG or PNG · maximum 15 MB</span>
             </label>
           )}
+          <label className={field}>
+            <span className={fieldLabel}>Notes</span>
+            <Textarea name="notes" rows={2} maxLength={2000} placeholder="Optional" />
+          </label>
           {error && (
             <p role="alert" className="text-xs text-destructive">
               {error}

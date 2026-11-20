@@ -1,0 +1,43 @@
+@media print {
+  :global(body):has(.imageFile) {
+    background: white;
+  }
+
+  :global(.crm-shell):has(.imageFile) > aside,
+  :global(.crm-shell):has(.imageFile) > :global(.fixed),
+  :global(.crm-shell):has(.imageFile) :global(.crm-shell-header),
+  :global(body):has(.imageFile) :global([data-sonner-toaster]),
+  .imageFile header,
+  .imageFile h2,
+  .imageFile a,
+  .imageFile .information {
+    display: none !important;
+  }
+
+  :global(.crm-shell):has(.imageFile) > :global(.crm-shell-content) {
+    padding: 0;
+  }
+
+  :global(.crm-shell):has(.imageFile),
+  :global(.crm-shell):has(.imageFile) main {
+    min-height: 0;
+    background: white;
+  }
+
+  .imageFile,
+  .imageFile section,
+  .imageFile div {
+    margin: 0;
+    padding: 0;
+    max-width: none;
+    border: 0;
+    background: white;
+    overflow: visible;
+  }
+
+  .imageFile img {
+    max-height: 95vh;
+    max-width: 100%;
+    break-inside: avoid;
+  }
+}

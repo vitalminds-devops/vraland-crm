@@ -19,7 +19,14 @@ export default async function NewContactPage() {
         actions={<BackButton fallbackHref="/contacts" label="Back to contacts" />}
       />
       <div className="mt-6 flex gap-8">
-        <FormNavigation sections={contactFormSections} />
+        <FormNavigation
+          sections={contactFormSections
+            .filter((section) => section.id === "section-1" || section.id === "section-4")
+            .map((section, index) => ({
+              ...section,
+              label: `${index + 1}. ${section.id === "section-1" ? "Details" : "Deal"}`,
+            }))}
+        />
         <div className={formCardClass}>
           <ContactForm
             options={options}

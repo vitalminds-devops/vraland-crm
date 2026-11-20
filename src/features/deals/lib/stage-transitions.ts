@@ -35,7 +35,7 @@ export type PaymentProgress = {
 };
 
 export const NO_RESERVATION_MESSAGE =
-  "Before moving this opportunity to Reservation, make sure the full reservation fee is recorded in Billing. Then try the move again.";
+  "Record the full reservation fee in Billing. The opportunity moves to Reservation automatically after the payment is saved.";
 export const NO_FIRST_MONTH_MESSAGE =
   "Before moving this opportunity to Won, make sure the first monthly payment is fully recorded in Billing. Then try the move again.";
 export const MOVE_BACK_MESSAGE = "You don't have permission to move opportunities back.";

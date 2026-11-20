@@ -46,7 +46,8 @@ it("refuses while the contact's deal still holds units or payments", async () =>
   expect(await archiveContact("contact")).toMatchObject({
     success: false,
     error: {
-      message: "Opportunity DEAL-7 holds units or payments. Close or clear it before archiving.",
+      message:
+        "Cannot archive this contact: opportunity DEAL-7 has selected units, parking slots, or recorded payments. Review it in Sales pipeline first.",
     },
   });
   expect(mocks.updates).toEqual([]);

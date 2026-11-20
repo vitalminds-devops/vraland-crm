@@ -1,5 +1,6 @@
 import { brokerAccessRoleSlugs } from "@/lib/permissions/catalog";
 import { propertyTypes } from "@/features/properties/lib/constants";
+import { paymentMethodLabels, paymentMethods } from "@/features/billing/schemas/billing.schema";
 
 export const lifecycleOptions = ["active_client", "inactive"] as const;
 export const lifecycleLabels: Record<(typeof lifecycleOptions)[number], string> = {
@@ -31,20 +32,8 @@ export const purchaseTypeLabels: Record<(typeof purchaseTypes)[number], string> 
   farm: "Farm",
   other: "Other",
 };
-export const financingPreferences = [
-  "cash",
-  "bank_financing",
-  "pag_ibig",
-  "in_house_financing",
-  "other",
-] as const;
-export const financingPreferenceLabels: Record<(typeof financingPreferences)[number], string> = {
-  cash: "Cash",
-  bank_financing: "Bank financing",
-  pag_ibig: "Pag-IBIG financing",
-  in_house_financing: "In-house financing",
-  other: "Other",
-};
+export const financingPreferences = paymentMethods;
+export const financingPreferenceLabels = paymentMethodLabels;
 export const bankOptions = [
   "Asia United Bank (AUB)",
   "Bank of Commerce",

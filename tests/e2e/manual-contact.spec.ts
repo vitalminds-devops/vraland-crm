@@ -67,13 +67,9 @@ test("manual contact intake creates its deal, detects duplicates and reassigns b
   await expect(page.getByRole("checkbox", { name: "Email", exact: true })).toBeChecked();
   await page.getByRole("main").locator("[name=email]").fill(email);
   await page.getByRole("main").locator("[name=email]").blur();
-  await page.getByRole("main").locator("select[name=currentProvince]").selectOption({ index: 1 });
-  await expect(page.getByRole("main").locator("select[name=currentCity]")).toBeEnabled();
-  await page.getByRole("main").locator("select[name=currentCity]").selectOption({ index: 1 });
-  await expect(page.getByRole("main").locator("select[name=currentBarangay]")).toBeEnabled();
-  await page.getByRole("main").locator("select[name=currentBarangay]").selectOption({ index: 1 });
+  await expect(page.getByRole("main").locator("select[name=currentProvince]")).toHaveCount(0);
   await page.getByRole("main").locator("select[name=assignedAgentId]").selectOption(agent);
-  await page.getByRole("combobox", { name: /Budget range/ }).selectOption("below-2.3m");
+  await expect(page.getByRole("combobox", { name: /Budget range/ })).toHaveCount(0);
   await page.getByRole("button", { name: "Create contact", exact: true }).click();
   await expect(page).toHaveURL(/\/contacts$/);
   const contact = await withDatabase(async (c) => {

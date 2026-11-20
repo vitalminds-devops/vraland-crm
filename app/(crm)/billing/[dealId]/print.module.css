@@ -1,0 +1,240 @@
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+  :global(body):has(.bill) {
+    --background: #fff;
+    --foreground: #111;
+    --card: #fff;
+    --card-foreground: #111;
+    --muted-foreground: #444;
+    --border: #ccc;
+    color-scheme: light;
+    background: #fff;
+  }
+
+  :global(.crm-shell):has(.bill) > aside,
+  :global(.crm-shell):has(.bill) > :global(.fixed),
+  :global(.crm-shell):has(.bill) :global(.crm-shell-header),
+  :global(body):has(.bill) :global([data-sonner-toaster]),
+  .bill button,
+  .bill a {
+    display: none !important;
+  }
+
+  :global(.crm-shell):has(.bill) > :global(.crm-shell-content) {
+    padding: 0;
+  }
+
+  :global(.crm-shell):has(.bill),
+  :global(.crm-shell):has(.bill) main {
+    min-height: 0;
+  }
+
+  .bill {
+    max-width: none;
+    padding: 0;
+  }
+
+  .statement {
+    color: #18181b;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10pt;
+    line-height: 1.45;
+  }
+
+  .statement h2 {
+    margin-bottom: 3mm;
+    font-size: 9pt;
+    font-weight: 700;
+    break-after: avoid;
+  }
+
+  .letterhead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6mm;
+    padding-bottom: 5mm;
+    border-bottom: 2px solid #443086;
+    break-inside: avoid;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 4mm;
+  }
+
+  .brand img {
+    width: 16mm;
+    height: 20mm;
+    object-fit: contain;
+  }
+
+  .company {
+    font-size: 16pt;
+    font-weight: 700;
+  }
+
+  .brand p + p,
+  .reference p,
+  .customer h2,
+  .customer dt,
+  .terms dt {
+    color: #52525b;
+    font-size: 8.5pt;
+  }
+
+  .reference {
+    text-align: right;
+  }
+
+  .reference h1 {
+    margin-bottom: 1mm;
+    color: #443086;
+    font-size: 18pt;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .customer {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 10mm;
+    padding: 5mm 0 6mm;
+    overflow-wrap: anywhere;
+    break-inside: avoid;
+  }
+
+  .customer h2 {
+    margin-bottom: 1mm;
+  }
+
+  .customerName {
+    margin-bottom: 1mm;
+    font-size: 12pt;
+    font-weight: 700;
+  }
+
+  .customer dl > div,
+  .terms dl > div,
+  .totals > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 4mm;
+    padding: 1mm 0;
+  }
+
+  .customer dd {
+    max-width: 70%;
+    text-align: right;
+  }
+
+  .statement table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9pt;
+  }
+
+  .statement thead {
+    display: table-header-group;
+  }
+
+  .statement th {
+    border-top: 1px solid #a1a1aa;
+    border-bottom: 1px solid #a1a1aa;
+    font-size: 8pt;
+    font-weight: 700;
+    text-align: left;
+  }
+
+  .statement th,
+  .statement td {
+    padding: 2.5mm 2mm;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+  }
+
+  .statement td {
+    border-bottom: 1px solid #e4e4e7;
+  }
+
+  .statement tr {
+    break-inside: avoid;
+  }
+
+  .statement th:last-child,
+  .statement td:last-child,
+  .totals dd,
+  .terms dd {
+    text-align: right;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .settlement {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+    gap: 10mm;
+    margin-top: 5mm;
+    break-inside: avoid;
+  }
+
+  .terms,
+  .notes {
+    font-size: 8.5pt;
+  }
+
+  .notes {
+    margin-top: 4mm;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+  }
+
+  .totals {
+    font-size: 9pt;
+  }
+
+  .totals .billTotal {
+    margin-top: 2mm;
+    padding-top: 2mm;
+    border-top: 1px solid #a1a1aa;
+    font-weight: 700;
+  }
+
+  .totals .balance {
+    margin-top: 2mm;
+    padding-top: 2mm;
+    border-top: 2px solid #443086;
+    color: #443086;
+    font-size: 11pt;
+    font-weight: 700;
+  }
+
+  .payments {
+    margin-top: 7mm;
+  }
+
+  .payments small {
+    display: block;
+    margin-top: 1mm;
+    color: #52525b;
+    font-size: 8pt;
+    white-space: pre-line;
+  }
+
+  .statementFooter {
+    display: flex;
+    justify-content: space-between;
+    gap: 5mm;
+    margin-top: 6mm;
+    padding-top: 3mm;
+    border-top: 1px solid #d4d4d8;
+    color: #52525b;
+    font-size: 7.5pt;
+    break-inside: avoid;
+  }
+}

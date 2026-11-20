@@ -1,11 +1,13 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { setPropertyGrant } from "./property-access.actions";
+import { readGrantTargets } from "../queries/property-access.queries";
 
 const mock = vi.hoisted(() => {
   const state = {
     reads: [] as unknown[][],
     transactionReads: [] as unknown[][],
     writes: [] as unknown[],
+    unrestricted: true,
   };
   function query(rows: unknown[] = []) {
     const chain = {
@@ -45,7 +47,7 @@ vi.mock("@/lib/permissions/authorization", () => ({
 }));
 vi.mock("@/lib/permissions/policy", () => ({
   canGrantUnitAccess: () => true,
-  hasUnrestrictedInventoryAccess: () => true,
+  hasUnrestrictedInventoryAccess: () => mock.state.unrestricted,
 }));
 vi.mock("@/lib/permissions/property-access", () => ({
   grantableUserCondition: vi.fn(),
@@ -68,6 +70,43 @@ beforeEach(() => {
   ];
   mock.state.transactionReads = [];
   mock.state.writes = [];
+  mock.state.unrestricted = true;
+});
+
+it("inherits the granter's hidden exclusions when sharing a floor", async () => {
+  mock.state.unrestricted = false;
+  vi.mocked(readGrantTargets).mockResolvedValue({
+    floorIds: [floorId],
+    unitIds: [],
+    excludedUnitIds: [unitId],
+    parkingSlotIds: [],
+  });
+  mock.state.reads.push([{ id: floorId }], [unit]);
+  mock.state.transactionReads = [[], []];
+  expect(await setPropertyGrant({ propertyId, userId, floorIds: [floorId] })).toMatchObject({
+    success: true,
+  });
+  expect(mock.state.writes).toContainEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ floorId }),
+      expect.objectContaining({ unitId, isExclusion: true }),
+    ]),
+  );
+});
+
+it("still rejects explicitly sharing a unit excluded from the granter's access", async () => {
+  mock.state.unrestricted = false;
+  vi.mocked(readGrantTargets).mockResolvedValue({
+    floorIds: [floorId],
+    unitIds: [],
+    excludedUnitIds: [unitId],
+    parkingSlotIds: [],
+  });
+  mock.state.reads.push([unit]);
+  expect(await setPropertyGrant({ propertyId, userId, unitIds: [unitId] })).toMatchObject({
+    success: false,
+  });
+  expect(mock.state.writes).toEqual([]);
 });
 
 it("rejects newly selected unavailable units before writing a grant", async () => {

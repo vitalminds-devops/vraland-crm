@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useRef, useTransition, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
-import { notify } from "@/components/ui/toast";
+import { notify, notifyLoading } from "@/components/ui/toast";
+import { checkImageUpload } from "@/lib/storage/image-uploads";
 import { updateOwnAvatar } from "../actions/account.actions";
 
 /**
@@ -28,10 +29,29 @@ export function AvatarField({
 
   function save(form: FormData, done: string) {
     startTransition(async () => {
-      const result = await updateOwnAvatar(form);
-      if (!result.success) return void notify(result.error.message, "error");
-      notify(done, "success");
-      router.refresh();
+      const toastId = notifyLoading("Saving profile photo…", "save-avatar");
+      try {
+        if (form.get("remove") !== "true") {
+          const checked = await checkImageUpload(form.get("image"));
+          if (!checked.ok) {
+            notify("Profile photo not accepted", "error", {
+              id: toastId,
+              description: checked.message,
+            });
+            return;
+          }
+        }
+        const result = await updateOwnAvatar(form);
+        if (!result.success) return void notify(result.error.message, "error", toastId);
+        notify(done, "success", toastId);
+        router.refresh();
+      } catch {
+        notify("Could not confirm photo update", "error", {
+          id: toastId,
+          description:
+            "Refresh your profile to check whether the photo was saved before uploading again.",
+        });
+      }
     });
   }
 

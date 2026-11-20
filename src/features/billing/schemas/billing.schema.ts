@@ -2,7 +2,16 @@ import { z } from "zod";
 import { manilaToday } from "@/lib/utils/manila-time";
 import { billApplicantSchema } from "./bill-applicant.schema";
 
-export const paymentMethods = ["cash", "bank_transfer", "check", "online"] as const;
+export const paymentMethods = [
+  "cash",
+  "bank_financing",
+  "pag_ibig",
+  "in_house_financing",
+  "other",
+  "online",
+  "bank_transfer",
+  "check",
+] as const;
 
 /**
  * A Reservation unlocks the Reservation stage; the first Monthly unlocks Won.
@@ -85,6 +94,10 @@ export const paymentClassificationLabels: Record<
 
 export const paymentMethodLabels: Record<(typeof paymentMethods)[number], string> = {
   cash: "Cash",
+  bank_financing: "Bank financing",
+  pag_ibig: "Pag-IBIG financing",
+  in_house_financing: "In-house financing",
+  other: "Other",
   bank_transfer: "Bank transfer",
   check: "Check",
   online: "Online",

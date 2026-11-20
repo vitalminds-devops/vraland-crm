@@ -19,12 +19,19 @@ import { requirePagePermission } from "@/lib/permissions/authorization";
 
 const headClass = "border-b border-border/60 pb-3 text-[16px] font-semibold leading-none";
 
-export default async function DealPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function DealPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ opportunityDraft?: string }>;
+}) {
   const { id } = await params;
   await requirePagePermission("deals.view");
   const [data, options] = await Promise.all([getDeal(id), getDealOptions()]);
   if (!data) notFound();
   const d = data.deal;
+  const { opportunityDraft } = await searchParams;
 
   const activity = data.activities.filter((a) => a.activityType !== "deal.stage_changed");
   const hiddenActivity = data.activities.length - activity.length;
@@ -46,6 +53,7 @@ export default async function DealPage({ params }: { params: Promise<{ id: strin
             )}
             {data.canUpdate || data.canChangeStage || data.canDelete ? (
               <DealActions
+                resumeOpportunityId={opportunityDraft}
                 dealId={id}
                 dealTitle={d.title}
                 currentStageId={d.stageId}

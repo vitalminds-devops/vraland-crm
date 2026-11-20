@@ -56,7 +56,12 @@ export const permissionCatalog = {
     "marketing.send",
     "marketing.delete",
   ],
-  documents: ["documents.view", "documents.manage", "documents.view_sensitive"],
+  documents: [
+    "documents.view",
+    "documents.manage",
+    "documents.archive",
+    "documents.view_sensitive",
+  ],
   reports: ["reports.view"],
   billing: ["billing.view", "billing.manage"],
   settings: [
@@ -86,34 +91,35 @@ export const dashboardPanelKeys: PermissionKey[] = permissionCatalog.dashboard.f
 export const permissionMetadata = {
   "dashboard.view": {
     label: "View dashboard",
-    description: "See the dashboard for records in scope.",
+    description: "Open Dashboard for records you can access.",
   },
   "dashboard.view_pipeline": {
-    label: "Show pipeline distribution",
-    description: "Opportunities by stage. Needs opportunity access.",
+    label: "Show opportunities by stage",
+    description: "Show Opportunities by stage on Dashboard. Requires Sales pipeline access.",
   },
   "dashboard.view_metrics": {
-    label: "Show key figures",
-    description: "Headline cards. Each needs its record access.",
+    label: "Show dashboard figures",
+    description:
+      "Show Active contacts, Active properties, Open opportunities and Collected this month.",
   },
   "dashboard.view_revenue": {
-    label: "Show revenue & forecast",
-    description: "Closed sales vs. forecast. Needs opportunity access.",
+    label: "Show closed sales & forecast",
+    description: "Show Closed sales & forecast on Dashboard. Requires Sales pipeline access.",
   },
   "dashboard.view_summary": {
-    label: "Show at-a-glance readings",
-    description: "Quick readings. Each needs its record access.",
+    label: "Show at a glance",
+    description: "Show At a glance on Dashboard for records you can access.",
   },
   "dashboard.view_priorities": {
-    label: "Show tasks & viewings",
+    label: "Show upcoming tasks & viewings",
     description: "Due in the next 7 days. Needs task or calendar access.",
   },
   "dashboard.view_closings": {
-    label: "Show upcoming closings",
-    description: "Closings in the next 30 days. Needs opportunity access.",
+    label: "Show closing in the next 30 days",
+    description: "Show Closing in the next 30 days on Dashboard. Requires Sales pipeline access.",
   },
   "dashboard.view_task_load": {
-    label: "Show task load",
+    label: "Show open tasks by due date",
     description: "Open tasks by due date. Needs task access.",
   },
   "dashboard.view_inventory": {
@@ -122,15 +128,15 @@ export const permissionMetadata = {
   },
   "dashboard.view_activity": {
     label: "Show recent activity",
-    description: "Latest activity on records in scope.",
+    description: "Show Recent activity for records you can access.",
   },
 
   "contacts.view": {
-    label: "View contacts",
-    description: "See contacts in scope.",
+    label: "View contacts & leads",
+    description: "Open Contacts & leads and view contacts you can access.",
   },
   "contacts.create": {
-    label: "Create contacts",
+    label: "Add contacts",
     description: "Add a new contact.",
   },
   "contacts.update": {
@@ -138,12 +144,12 @@ export const permissionMetadata = {
     description: "Change a contact's details.",
   },
   "contacts.delete": {
-    label: "Delete contacts",
-    description: "Remove a contact from the CRM.",
+    label: "Archive contacts",
+    description: "Archive contacts and restore them from Archived.",
   },
   "contacts.import": {
     label: "Import contacts",
-    description: "Bulk-load contacts from a file.",
+    description: "Use Import to add contacts from a CSV file.",
   },
   "contacts.export": {
     label: "Export contacts",
@@ -165,10 +171,10 @@ export const permissionMetadata = {
 
   "properties.view": {
     label: "View properties",
-    description: "See properties in scope.",
+    description: "View properties, floors, units and parking slots you have access to.",
   },
   "properties.create": {
-    label: "Create properties",
+    label: "Add properties",
     description: "Add a new property.",
   },
   "properties.update": {
@@ -176,12 +182,12 @@ export const permissionMetadata = {
     description: "Change the details of a property.",
   },
   "properties.delete": {
-    label: "Delete properties",
-    description: "Remove a property from the CRM.",
+    label: "Archive properties",
+    description: "Archive properties and restore them from Archive.",
   },
   "properties.manage_units": {
-    label: "Manage units",
-    description: "Generate, update status of, and remove units.",
+    label: "Manage floors, units and parking",
+    description: "Add, rename, update and remove floors, units and parking slots.",
   },
   "properties.manage_unit_pictures": {
     label: "Manage unit pictures",
@@ -189,7 +195,7 @@ export const permissionMetadata = {
   },
   "properties.grant_unit_access": {
     label: "Grant property access",
-    description: "Share properties or units, up to your own access.",
+    description: "Give access to properties, floors, units and parking slots you have access to.",
   },
   "properties.view_all_access": {
     label: "See everyone's property access",
@@ -198,10 +204,10 @@ export const permissionMetadata = {
 
   "developments.view": {
     label: "View developments",
-    description: "See developments with their properties and units.",
+    description: "Open Developments and view properties, floors and units you have access to.",
   },
   "developments.create": {
-    label: "Create developments",
+    label: "Add developments",
     description: "Add a new development.",
   },
   "developments.update": {
@@ -214,11 +220,11 @@ export const permissionMetadata = {
   },
 
   "deals.view": {
-    label: "View opportunities",
-    description: "See opportunities in scope.",
+    label: "View sales pipeline",
+    description: "Open Sales pipeline and view opportunities you can access.",
   },
   "deals.create": {
-    label: "Create opportunities",
+    label: "Add opportunities",
     description: "Open a new opportunity.",
   },
   "deals.update": {
@@ -231,15 +237,15 @@ export const permissionMetadata = {
   },
   "deals.change_stage": {
     label: "Move opportunities between stages",
-    description: "Move opportunities along the pipeline, per stage rules.",
+    description: "Move opportunities between stages in Sales pipeline.",
   },
   "deals.reassign_agent": {
     label: "Reassign an opportunity's agent",
     description: "Move an opportunity and its commission to another agent.",
   },
   "deals.approve_stage_change": {
-    label: "Approve a gated stage change",
-    description: "Approve moves into stages that need approval.",
+    label: "Approve stage changes",
+    description: "Approve or reject stage change requests in Approvals.",
   },
   "deals.move_back": {
     label: "Move opportunities back",
@@ -248,7 +254,7 @@ export const permissionMetadata = {
 
   "tasks.view": {
     label: "View tasks",
-    description: "See tasks in scope.",
+    description: "Open Tasks and My tasks. View Assignee and Created by for each task.",
   },
   "tasks.create": {
     label: "Create tasks",
@@ -256,7 +262,7 @@ export const permissionMetadata = {
   },
   "tasks.update": {
     label: "Edit tasks",
-    description: "Change a task, or mark it done.",
+    description: "Edit task details or change Status to Completed.",
   },
   "tasks.delete": {
     label: "Delete tasks",
@@ -264,38 +270,43 @@ export const permissionMetadata = {
   },
 
   "calendar.view": {
-    label: "View calendar and viewings",
-    description: "See the calendar and viewings in scope.",
+    label: "View calendar & viewings",
+    description: "Open Calendar & viewings and view events you can access.",
   },
   "calendar.manage": {
-    label: "Manage calendar and viewings",
+    label: "Manage calendar & viewings",
     description: "Schedule, change and cancel viewings and events.",
   },
 
   "marketing.view": {
     label: "View marketing",
-    description: "See campaigns, automations and templates in scope.",
+    description: "View campaigns, follow-ups and templates in Marketing.",
   },
   "marketing.manage": {
     label: "Manage marketing",
-    description: "Create and edit campaigns, automations and templates.",
+    description: "Create and manage campaigns, follow-ups and templates.",
   },
   "marketing.send": {
-    label: "Send campaigns and run automations",
-    description: "Send campaigns and run automation steps.",
+    label: "Send campaigns and run follow-ups",
+    description: "Send campaigns and run follow-up steps.",
   },
   "marketing.delete": {
     label: "Delete marketing records",
-    description: "Remove campaigns, automations and templates. Sent ones are kept.",
+    description: "Delete campaigns, follow-ups and templates. Sent campaigns are kept.",
   },
 
   "documents.view": {
     label: "View documents",
-    description: "See documents on records in scope.",
+    description: "Open Documents to download, print or save shared files as PDF.",
   },
   "documents.manage": {
     label: "Manage documents",
-    description: "Upload, replace and remove documents.",
+    description:
+      "Upload documents. Shared file uploads require the Administrator or Super Administrator role.",
+  },
+  "documents.archive": {
+    label: "Archive documents",
+    description: "Open Archive, archive documents and restore archived documents.",
   },
   "documents.view_sensitive": {
     label: "View sensitive documents",
@@ -303,17 +314,18 @@ export const permissionMetadata = {
   },
 
   "reports.view": {
-    label: "View reports",
-    description: "See reports for records in scope.",
+    label: "View reports & analytics",
+    description: "Open Reports & analytics for records you can access.",
   },
 
   "billing.view": {
     label: "View billing",
-    description: "See the bills of opportunities in their data access.",
+    description:
+      "Open Billing to view Bill summary, Payments and Remaining balance, or Print bill.",
   },
   "billing.manage": {
-    label: "Record reservation fee payments",
-    description: "Record and remove payments on those bills.",
+    label: "Manage bills and payments",
+    description: "Save bill, Edit bill, Record payment and Remove payment in Billing and Payments.",
   },
 
   "settings.view": {
@@ -337,42 +349,42 @@ export const permissionMetadata = {
     description: "Restore archived users.",
   },
   "roles.manage": {
-    label: "Manage roles and permissions",
+    label: "Manage roles & permissions",
     description: "Change what each role can do and see.",
   },
   "settings.audit": {
     label: "View logs",
-    description: "Read the audit log.",
+    description: "Open Logs to view recorded changes.",
   },
 
   "records.view_own": {
     label: "See own records",
-    description: "Records they created or are assigned.",
+    description: "Records you own or are assigned, based on each page's access rules.",
   },
   "records.view_team": {
     label: "See team records",
-    description: "Their records plus their agents'.",
+    description: "Your records and your agents' records.",
   },
   "records.view_all": {
     label: "See all records",
-    description: "Every record in the organization.",
+    description: "All records in your organization.",
   },
 } satisfies Record<PermissionKey, { label: string; description: string }>;
 
 const moduleLabels: Record<string, string> = {
   dashboard: "Dashboard",
-  contacts: "Contacts",
+  contacts: "Contacts & leads",
   requirements: "Client documents",
   properties: "Properties",
   developments: "Developments",
-  deals: "Opportunities",
+  deals: "Sales pipeline",
   tasks: "Tasks",
   calendar: "Calendar & viewings",
   marketing: "Marketing",
   documents: "Documents",
-  reports: "Reports",
+  reports: "Reports & analytics",
   billing: "Billing",
-  settings: "Settings & access",
+  settings: "Settings",
   records: "Data access",
 };
 
@@ -444,10 +456,12 @@ export const roleDescriptions: Record<RoleSlug, string> = {
   "super-administrator": "Full access. Managed outside the app.",
   administrator: "Full access to everything.",
   "sales-manager": "Manages all opportunities, agents and reports.",
-  broker: "Agent access, plus leads a team of agents.",
-  "master-broker": "All records and reports. No settings, users or roles.",
-  agent: "Works their own contacts, opportunities and properties.",
-  viewer: "Read-only access to the records they can see.",
+  broker: "Manages team contacts, opportunities and tasks, and gives property access.",
+  "master-broker":
+    "All organization records and Reports & analytics, with properties they can access. No Settings, Users or Roles & permissions.",
+  agent:
+    "Works on own records in Contacts & leads, Sales pipeline and Tasks; views Properties and Documents they can access.",
+  viewer: "Views records, Properties and Documents they can access. Cannot make changes.",
   "license-broker": brokerAccessDescription,
   "network-partner-ih": brokerAccessDescription,
   "network-partner-ind": brokerAccessDescription,
@@ -461,6 +475,7 @@ export const roleDescriptions: Record<RoleSlug, string> = {
 const administratorMinusSettings = permissionKeys.filter(
   (key) =>
     !(permissionCatalog.settings as readonly string[]).includes(key) &&
+    key !== "documents.archive" &&
     !key.startsWith("billing.") &&
     key !== "properties.view_all_access",
 );
@@ -475,6 +490,7 @@ export const rolePermissionDefaults = {
       !key.startsWith("settings.") &&
       !key.startsWith("users.") &&
       key !== "roles.manage" &&
+      key !== "documents.archive" &&
       key !== "properties.grant_unit_access" &&
       key !== "deals.move_back",
   ),

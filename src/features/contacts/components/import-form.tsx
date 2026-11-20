@@ -34,6 +34,13 @@ export function ImportForm() {
   const onFile = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    if (!file.size || file.size > 2_000_000) {
+      event.target.value = "";
+      notify("CSV file not accepted", "error", {
+        description: "Choose a CSV file with content, smaller than 2 MB.",
+      });
+      return;
+    }
     const formData = new FormData();
     formData.set("file", file);
     // Clear the input so selecting the same file again re-triggers change.
@@ -52,7 +59,11 @@ export function ImportForm() {
           notify(result.error.message, "error", toastId);
         }
       } catch {
-        notify("Import failed. Try again.", "error", toastId);
+        notify("Could not confirm import", "error", {
+          id: toastId,
+          description:
+            "Check the contact list before importing again. Some rows may already have been saved.",
+        });
       }
     });
   };

@@ -3,6 +3,36 @@ import { randomUUID } from "node:crypto";
 import { seedStages } from "../helpers/database";
 test.use({ role: "agent" });
 
+test("agents can read shared files in their organization without receiving private client files", async ({
+  request,
+  identity,
+  files,
+}) => {
+  const local = await files.seed();
+  const foreign = await files.foreignOrganization();
+  const external = await files.seed(foreign.organizationId, foreign.userId);
+  await request.post("/api/auth/sign-in/email", {
+    data: { email: identity.email, password: identity.password },
+  });
+  expect((await request.get(`/api/documents/${local.document}/download`)).status()).toBe(404);
+  await files.client.query("update documents set category='shared_file' where id=any($1::uuid[])", [
+    [local.document, external.document],
+  ]);
+  const download = await request.get(`/api/documents/${local.document}/download`);
+  expect(download.status()).toBe(200);
+  expect(await download.body()).toEqual(fileBytes);
+  expect((await request.get(`/api/documents/${external.document}/download`)).status()).toBe(404);
+  const library = await request.get("/documents");
+  expect(await library.text()).toContain(local.document);
+  expect(await library.text()).not.toContain(external.document);
+  await files.client.query("update documents set archived_at=now() where id=$1", [local.document]);
+  expect((await request.get(`/api/documents/${local.document}/download`)).status()).toBe(404);
+  expect((await request.get(`/documents/${local.document}`)).status()).toBe(404);
+  await files.client.query("update documents set archived_at=null where id=$1", [local.document]);
+  await files.client.query("update documents set is_sensitive=true where id=$1", [local.document]);
+  expect((await request.get(`/api/documents/${local.document}/download`)).status()).toBe(404);
+});
+
 test("document sensitivity permission supplements rather than replaces ownership scope", async ({
   request,
   identity,

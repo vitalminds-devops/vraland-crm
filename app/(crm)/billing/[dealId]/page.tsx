@@ -15,12 +15,14 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { notFound, redirect } from "next/navigation";
+import Image from "next/image";
 import { BackButton } from "@/components/common/back-button";
 import { PageContainer } from "@/components/common/page-container";
 import { PageHeader } from "@/components/common/page-header";
 import { ButtonLink } from "@/components/ui/button";
 import { DotBadge } from "@/components/ui/dot-badge";
 import { BillForm, EditBillButton } from "@/features/billing/components/bill-form";
+import { PrintBillButton } from "@/features/billing/components/print-bill-button";
 import {
   RecordPaymentButton,
   RemovePaymentButton,
@@ -34,6 +36,7 @@ import {
 import { formatContactName } from "@/features/contacts/lib/helpers";
 import { getAuthorizationContext } from "@/lib/permissions/authorization";
 import { canViewBilling } from "@/lib/permissions/policy";
+import styles from "./print.module.css";
 
 function Row({
   label,
@@ -144,22 +147,201 @@ export default async function DealBillingPage({ params }: { params: Promise<{ de
     : "No broker";
 
   return (
-    <PageContainer className="max-w-6xl">
-      <PageHeader
-        title={leadName}
-        description={`${bill.dealCode} · ${bill.stageName} · Broker: ${broker}`}
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <ButtonLink href={`/deals/${bill.dealId}`} variant="secondary" className="gap-2">
-              <ExternalLink aria-hidden="true" className="size-4" />
-              View opportunity
-            </ButtonLink>
-            <BackButton fallbackHref="/billing" label="Back to billing" />
+    <PageContainer className={`max-w-6xl ${bill.billId ? styles.bill : ""}`}>
+      <div className="print:hidden">
+        <PageHeader
+          title={leadName}
+          description={`${bill.dealCode} · ${bill.stageName} · Broker: ${broker}`}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              {bill.billId && <PrintBillButton />}
+              <ButtonLink href={`/deals/${bill.dealId}`} variant="secondary" className="gap-2">
+                <ExternalLink aria-hidden="true" className="size-4" />
+                View opportunity
+              </ButtonLink>
+              <BackButton fallbackHref="/billing" label="Back to billing" />
+            </div>
+          }
+        />
+      </div>
+      {bill.billId && (
+        <article
+          className={`hidden print:block ${styles.statement}`}
+          aria-label="Printable billing statement"
+        >
+          <header className={styles.letterhead}>
+            <div className={styles.brand}>
+              <Image
+                src="/images/vra_logo.png"
+                alt="VRA Land logo"
+                width={64}
+                height={80}
+                unoptimized
+                loading="eager"
+              />
+              <div>
+                <p className={styles.company}>VRA Land Inc.</p>
+                <p>Real Estate</p>
+              </div>
+            </div>
+            <div className={styles.reference}>
+              <h1>Billing statement</h1>
+              <p>{bill.dealCode}</p>
+              <p>
+                {bill.stageName} · {badge.label}
+              </p>
+            </div>
+          </header>
+          <section className={styles.customer} aria-label="Customer and property details">
+            <div>
+              <h2>Customer</h2>
+              <p className={styles.customerName}>{leadName}</p>
+              {address && <p>{address}</p>}
+            </div>
+            <dl>
+              <div>
+                <dt>Project</dt>
+                <dd>{bill.developmentName || "—"}</dd>
+              </div>
+              <div>
+                <dt>Broker</dt>
+                <dd>{broker}</dd>
+              </div>
+              {floorArea > 0 && (
+                <div>
+                  <dt>Floor area</dt>
+                  <dd>{floorArea.toLocaleString("en-PH")} sqm</dd>
+                </div>
+              )}
+            </dl>
+          </section>
+          <section aria-label="Itemized charges">
+            <h2>Bill items</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Description</th>
+                  <th scope="col">Amount (PHP)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bill.lines.map((line, index) => (
+                  <tr key={index}>
+                    <td>{shortLabel(line.unitLabel)}</td>
+                    <td>{peso(line.unitPrice)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+          <div className={styles.settlement}>
+            <div>
+              {(bill.reservationFee || bill.parkingAmount || bill.monthlyAmortization) && (
+                <section className={styles.terms}>
+                  <h2>Opportunity payment terms</h2>
+                  <dl>
+                    <div>
+                      <dt>Reservation fee</dt>
+                      <dd>{peso(bill.reservationFee)}</dd>
+                    </div>
+                    <div>
+                      <dt>Parking fee</dt>
+                      <dd>{peso(bill.parkingAmount)}</dd>
+                    </div>
+                    <div>
+                      <dt>Monthly amortization</dt>
+                      <dd>{peso(bill.monthlyAmortization)}</dd>
+                    </div>
+                  </dl>
+                </section>
+              )}
+              {bill.notes && (
+                <section className={styles.notes}>
+                  <h2>Notes</h2>
+                  <p>{bill.notes}</p>
+                </section>
+              )}
+            </div>
+            <dl className={styles.totals}>
+              <div>
+                <dt>Selling price</dt>
+                <dd>{peso(sellingPrice)}</dd>
+              </div>
+              {discount > 0 && (
+                <>
+                  <div>
+                    <dt>Reservation discount</dt>
+                    <dd>−{peso(discount)}</dd>
+                  </div>
+                  <div>
+                    <dt>Net selling price</dt>
+                    <dd>{peso(netPrice)}</dd>
+                  </div>
+                </>
+              )}
+              <div>
+                <dt>Miscellaneous fee{miscPercent === null ? "" : ` (${miscPercent}%)`}</dt>
+                <dd>{peso(miscFee)}</dd>
+              </div>
+              <div className={styles.billTotal}>
+                <dt>Bill total</dt>
+                <dd>{peso(bill.total)}</dd>
+              </div>
+              <div>
+                <dt>Paid to date</dt>
+                <dd>{peso(bill.paid)}</dd>
+              </div>
+              <div className={styles.balance}>
+                <dt>Remaining balance</dt>
+                <dd>{peso(balance)}</dd>
+              </div>
+            </dl>
           </div>
-        }
-      />
+          <section className={styles.payments}>
+            <h2>Payment history</h2>
+            {bill.payments.length > 0 ? (
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Date</th>
+                    <th scope="col">Payment</th>
+                    <th scope="col">Method</th>
+                    <th scope="col">Invoice no.</th>
+                    <th scope="col">Amount (PHP)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bill.payments.map((payment) => (
+                    <tr key={payment.id}>
+                      <td>{calendarDate(payment.paidOn)}</td>
+                      <td>
+                        {paymentClassificationLabels[
+                          payment.classification as keyof typeof paymentClassificationLabels
+                        ] ?? payment.classification}
+                        {payment.notes && <small>{payment.notes}</small>}
+                      </td>
+                      <td>
+                        {paymentMethodLabels[payment.method as keyof typeof paymentMethodLabels] ??
+                          payment.method}
+                      </td>
+                      <td>{payment.referenceNo || "—"}</td>
+                      <td>{peso(payment.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p>No payments recorded yet.</p>
+            )}
+          </section>
+          <footer className={styles.statementFooter}>
+            <span>VRA Land Inc.</span>
+            <span>{bill.dealCode} · All amounts in Philippine pesos (PHP)</span>
+          </footer>
+        </article>
+      )}
 
-      <div className="mt-2 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="mt-2 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_20rem] print:hidden">
         <div className="min-w-0 space-y-6">
           <section className="@container min-w-0 rounded-xl border bg-card p-4 sm:p-5">
             <header className="flex flex-wrap items-center justify-between gap-2">
@@ -311,7 +493,7 @@ export default async function DealBillingPage({ params }: { params: Promise<{ de
           )}
         </div>
 
-        <aside className="min-w-0 rounded-xl border bg-card p-4 sm:p-5 xl:sticky xl:top-4">
+        <aside className="min-w-0 rounded-xl border bg-card p-4 sm:p-5 xl:sticky xl:top-4 print:static print:mt-6">
           <header className="flex flex-wrap items-center justify-between gap-2">
             <Heading icon={Wallet}>
               Payments

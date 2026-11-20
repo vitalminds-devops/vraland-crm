@@ -182,7 +182,8 @@ test("save a multi-unit bill, record a reservation, advance the deal, refuse the
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("combobox", { name: /^Payment for/ }).selectOption("reservation");
   await dialog.getByRole("textbox", { name: /^Amount/ }).fill("5000");
-  await dialog.getByRole("combobox", { name: "Method", exact: true }).selectOption("cash");
+  await dialog.getByRole("button", { name: "Method", exact: true }).click();
+  await page.getByRole("menuitemradio", { name: "Cash", exact: true }).click();
   await dialog.getByRole("textbox", { name: "Invoice no.", exact: true }).fill("PW-RES-001");
   await dialog.getByRole("button", { name: "Record payment", exact: true }).click();
   await expect(dialog).toBeHidden();

@@ -26,6 +26,10 @@ import {
   requiredDocumentLabel,
 } from "@/features/contacts/lib/contact-options";
 import { formatContactName } from "@/features/contacts/lib/helpers";
+import {
+  opportunityAddressSchema,
+  opportunityInterestSchema,
+} from "@/features/contacts/schemas/opportunity-contact.schema";
 import { canAccessResource, requirePermission } from "@/lib/permissions/authorization";
 import { logError } from "@/lib/logger";
 import { getDocumentStorage } from "@/lib/storage/document-storage";
@@ -86,6 +90,17 @@ async function loadDeal(dealId: string) {
       bankName: contacts.bankName,
       tinNumber: contacts.tinNumber,
       prcLicenseNumber: contacts.prcLicenseNumber,
+      currentProvince: contacts.currentProvince,
+      currentCity: contacts.currentCity,
+      currentBarangay: contacts.currentBarangay,
+      currentAddressLine1: contacts.currentAddressLine1,
+      currentPostalCode: contacts.currentPostalCode,
+      currentCountry: contacts.currentCountry,
+      budgetMin: contacts.budgetMin,
+      budgetMax: contacts.budgetMax,
+      purchaseType: contacts.purchaseType,
+      employmentType: contacts.employmentType,
+      annualIncome: contacts.annualIncome,
     })
     .from(deals)
     .leftJoin(
@@ -115,6 +130,7 @@ export async function getOpportunityDraft(dealId: string) {
   ]);
   return {
     developments: developmentRows,
+    draftKey: `${context.organizationId}:${context.userId}:${row.dealId}`,
     developmentId: row.developmentId ?? (row.firstDeal ? row.preferredDevelopmentId : null) ?? "",
     buildingId: row.buildingId,
     parkingSlots: row.parkingSlots,
@@ -126,12 +142,16 @@ export async function getOpportunityDraft(dealId: string) {
     tinNumber: row.tinNumber ?? "",
     prcLicenseNumber: row.prcLicenseNumber ?? "",
     amount: row.amount ?? "",
+    address: z.object(opportunityAddressSchema.shape).parse(row),
+    interest: z.object(opportunityInterestSchema.shape).parse(row),
     onFile,
   };
 }
 
 const detailsSchema = z
   .object({
+    ...opportunityAddressSchema.shape,
+    ...opportunityInterestSchema.shape,
     dealId: z.uuid({
       error: "This lead could not be identified. Refresh the pipeline and try again.",
     }),
@@ -156,17 +176,23 @@ const detailsSchema = z
     bankName: z.string().trim().max(180, "Bank name must be 180 characters or fewer."),
   })
   .superRefine((v, ctx) => {
+    for (const schema of [opportunityAddressSchema, opportunityInterestSchema]) {
+      const checked = schema.safeParse(v);
+      if (!checked.success)
+        for (const issue of checked.error.issues)
+          ctx.addIssue({ code: "custom", path: issue.path, message: issue.message });
+    }
     if (v.financingPreference === "bank_financing" && !v.bankName)
       ctx.addIssue({
         code: "custom",
         path: ["bankName"],
-        message: "In Details, enter the bank name for bank financing.",
+        message: "Enter the bank name for bank financing.",
       });
     if (v.financingPreference === "other" && !v.financingPreferenceOther)
       ctx.addIssue({
         code: "custom",
         path: ["financingPreferenceOther"],
-        message: "In Details, describe how the client will pay under Other financing.",
+        message: "Describe how the client will pay under Other financing.",
       });
   });
 
@@ -206,7 +232,7 @@ async function estimateSelection(
     return {
       success: false as const,
       message:
-        "One or more selected units are unavailable or not shared with you. In Details, clear the unit selection and choose available units in this building.",
+        "One or more selected units are unavailable or not shared with you. Clear the unit selection and choose available units in this building.",
     };
   if (building.parkingSpaces !== null && input.parkingSlotIds.length > building.parkingSpaces)
     return {
@@ -223,7 +249,7 @@ async function estimateSelection(
       return {
         success: false as const,
         message:
-          "One or more selected parking slots are unavailable or not shared with you. In Details, choose available parking slots or remove parking to continue.",
+          "One or more selected parking slots are unavailable or not shared with you. Choose available parking slots or remove parking to continue.",
       };
   }
   const prices = opportunityPrice(
@@ -311,6 +337,12 @@ async function checkFile(
  */
 export async function openOpportunity(formData: FormData): Promise<DealActionResult> {
   const parsed = detailsSchema.safeParse({
+    ...Object.fromEntries(
+      Object.keys(opportunityAddressSchema.shape).map((key) => [key, formData.get(key)]),
+    ),
+    ...Object.fromEntries(
+      Object.keys(opportunityInterestSchema.shape).map((key) => [key, formData.get(key)]),
+    ),
     dealId: formData.get("dealId"),
     stageId: formData.get("stageId"),
     tinNumber: formData.get("tinNumber"),
@@ -451,6 +483,12 @@ export async function openOpportunity(formData: FormData): Promise<DealActionRes
         .update(contacts)
         .set({
           tinNumber: v.tinNumber,
+          ...opportunityAddressSchema.parse(v),
+          budgetMin: v.budgetMin === null ? null : String(v.budgetMin),
+          budgetMax: v.budgetMax === null ? null : String(v.budgetMax),
+          purchaseType: v.purchaseType,
+          employmentType: v.employmentType,
+          annualIncome: v.annualIncome === null ? null : String(v.annualIncome),
           prcLicenseNumber: v.prcLicenseNumber || null,
           ...(row.firstDeal
             ? { preferredDevelopmentId: v.developmentId, preferredUnitIds: v.unitIds }
@@ -577,7 +615,7 @@ export async function openOpportunity(formData: FormData): Promise<DealActionRes
       ...result.data,
       message: result.data.approvalRequested
         ? "A manager must approve this move. The lead will stay in Leads until then."
-        : "Selected units and parking slots are reserved.",
+        : "Unit and parking selections saved. They remain available until the Reservation stage.",
     },
   };
 }
@@ -586,7 +624,7 @@ const changeSchema = opportunitySelectionSchema.extend({ dealId: z.uuid() });
 
 /**
  * Moves an open opportunity to other units, another tower or another development. The old units
- * and parking go back to Available, the new ones are reserved, and payments stay on the bill,
+ * and parking go back to Available, the new ones follow payment status, and payments stay on the bill,
  * whose lines are rebuilt for the new selection.
  */
 export async function changeOpportunityUnits(input: unknown): Promise<DealActionResult> {

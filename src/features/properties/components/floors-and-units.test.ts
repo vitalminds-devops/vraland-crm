@@ -24,8 +24,6 @@ it("lets clients preview unit photos without exposing editing controls", () => {
     createElement(FloorsAndUnits, {
       propertyId: "property",
       propertyTitle: "QA House 1",
-      floorCount: 1,
-      unitsPerFloor: 1,
       floors: [{ id: "floor", level: 1, label: "1st Floor", imageStorageKey: null, unitCount: 1 }],
       units: [
         {
@@ -52,8 +50,6 @@ it("lists every visible unit and keeps hidden units private", () => {
   const html = renderToStaticMarkup(
     createElement(FloorsAndUnits, {
       propertyId: "property",
-      floorCount: 1,
-      unitsPerFloor: 7,
       floors: [{ id: "floor", level: 1, label: "1st Floor", imageStorageKey: null, unitCount: 7 }],
       units: Array.from({ length: 5 }, (_, index) => ({
         id: `visible-${index}`,
@@ -72,4 +68,19 @@ it("lists every visible unit and keeps hidden units private", () => {
   expect(html).not.toContain("not shared");
   expect(html).not.toContain("of 7");
   expect(html).not.toContain(">7<");
+});
+
+it("does not reveal configured inventory when no floors are granted", () => {
+  const html = renderToStaticMarkup(
+    createElement(FloorsAndUnits, {
+      propertyId: "property",
+      floors: [],
+      units: [],
+    }),
+  );
+  expect(html).toContain("No floors to display.");
+  expect(html).not.toContain("configured");
+  expect(html).not.toContain("held back");
+  expect(html).not.toContain("shared with you");
+  expect(html).not.toContain("80");
 });

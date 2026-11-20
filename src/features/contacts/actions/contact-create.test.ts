@@ -144,6 +144,26 @@ it("returns the same contact for concurrent submissions", async () => {
   expect(mock.openDeal).toHaveBeenCalledOnce();
 });
 
+it("creates a contact and lead before address and property interest are collected", async () => {
+  expect(
+    (
+      await createContact(
+        {
+          ...input,
+          currentProvince: null,
+          currentCity: null,
+          currentBarangay: null,
+          budgetMin: null,
+          budgetMax: null,
+        },
+        creationId,
+      )
+    ).success,
+  ).toBe(true);
+  expect(mock.record?.id).toBe(creationId);
+  expect(mock.openDeal).toHaveBeenCalledOnce();
+});
+
 it("retries an uncommitted creation after the deal transaction rolls back", async () => {
   mock.openDeal.mockResolvedValueOnce({ success: false, error: { message: "deal failed" } });
   expect((await createContact(input, creationId)).success).toBe(false);

@@ -6,9 +6,14 @@ import { PipelineBoard } from "@/features/deals/components/pipeline-board";
 import { getPipelineBoard } from "@/features/deals/queries/deal.queries";
 import { requirePagePermission } from "@/lib/permissions/authorization";
 
-export default async function PipelinePage() {
+export default async function PipelinePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ opportunityDraft?: string }>;
+}) {
   await requirePagePermission("deals.view");
   const data = await getPipelineBoard();
+  const { opportunityDraft } = await searchParams;
   const awaitingApproval = data.deals.filter((deal) => deal.pendingApprovalStage).length;
   return (
     <PageContainer>
@@ -27,6 +32,7 @@ export default async function PipelinePage() {
       <div className="mt-6">
         {data.stages.length ? (
           <PipelineBoard
+            resumeOpportunityId={opportunityDraft}
             stages={data.stages}
             deals={data.deals}
             canChangeStage={data.canChangeStage}

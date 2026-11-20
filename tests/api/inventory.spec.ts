@@ -64,7 +64,6 @@ test("property selectors return seeded hierarchy and return empty for nonexisten
     expect(units.status()).toBe(200);
     expect(await units.json()).toMatchObject({
       units: [{ id: unit, code: "1A", status: "available" }],
-      omitted: 0,
     });
     const absent = await request.get("/api/properties", {
       params: { developmentId: randomUUID() },

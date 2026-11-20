@@ -41,25 +41,20 @@ export function FloorsAndUnits({
   propertyTitle,
   canManageUnits = false,
   canManageUnitPictures = false,
-  floorCount,
-  unitsPerFloor,
   floors,
   units,
-  omitted = { floors: 0, units: 0 },
 }: {
   propertyId: string;
   /** The property's name, shown as the building above its floors. */
   propertyTitle?: string;
   canManageUnits?: boolean;
   canManageUnitPictures?: boolean;
-  floorCount: number | null;
-  unitsPerFloor: number | null;
   floors: {
     id: string;
     level: number;
     label: string;
     imageStorageKey: string | null;
-    /** Every unit on the floor, not only the ones this caller may see. */
+    /** Units the caller may see on this floor. */
     unitCount: number;
   }[];
   units: {
@@ -69,8 +64,6 @@ export function FloorsAndUnits({
     floorId: string;
     imageStorageKey: string | null;
   }[];
-  /** What the caller's visibility rule left out, so the empty state can say so. */
-  omitted?: { floors: number; units: number };
 }) {
   const [activeFloorId, setActiveFloorId] = useState<string | null>(floors[0]?.id ?? null);
   const [pictureUnitId, setPictureUnitId] = useState<string | null>(null);
@@ -93,20 +86,9 @@ export function FloorsAndUnits({
   const previewUnit = units.find((unit) => unit.id === previewUnitId) ?? null;
 
   if (!floors.length) {
-    if (omitted.floors || omitted.units)
-      return (
-        <div className="rounded-lg border border-dashed border-border/60 bg-muted/30 px-4 py-5">
-          <p className="text-[13px] text-muted-foreground">No floors or units shared with you.</p>
-        </div>
-      );
-
     return (
       <div className="space-y-4">
-        <p className="text-[13px] text-muted-foreground">
-          {floorCount && unitsPerFloor
-            ? `${floorCount} floors × ${unitsPerFloor} units configured. No floors yet.`
-            : "No floors yet."}
-        </p>
+        <p className="text-[13px] text-muted-foreground">No floors to display.</p>
         {canManageUnits && (
           <div className="flex flex-wrap items-center gap-2">
             <AddFloorButton propertyId={propertyId} />
@@ -122,12 +104,6 @@ export function FloorsAndUnits({
         <p className="text-[13px] text-muted-foreground">
           {floors.length} {floors.length === 1 ? "floor" : "floors"} · {units.length}{" "}
           {units.length === 1 ? "unit" : "units"} · {available} available
-          {omitted.floors || omitted.units ? (
-            <span className="text-amber-700 dark:text-amber-300">
-              {" "}
-              · {omitted.floors + omitted.units} held back from you
-            </span>
-          ) : null}
         </p>
       </div>
       <div className="grid gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">

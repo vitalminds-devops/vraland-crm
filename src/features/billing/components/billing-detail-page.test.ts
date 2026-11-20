@@ -85,6 +85,7 @@ it("puts per-unit prices and fees before expandable applicant details on bill cr
   expect(html).toMatch(/<details[^>]*><summary/);
   expect(html).not.toMatch(/<details[^>]*\bopen/);
   expect(html).toContain("Save bill");
+  expect(html).not.toContain("Print bill");
   expect(html).not.toContain("Total net selling price");
 });
 
@@ -93,6 +94,10 @@ it("shows saved totals, payment history and edit controls without a create form"
   const html = await render();
   for (const text of [
     "Bill summary",
+    "Print bill",
+    "VRA Land Inc.",
+    "Billing statement",
+    "Payment history",
     "Remaining balance",
     "₱8,750,000.00",
     "Edit bill",
@@ -102,6 +107,20 @@ it("shows saved totals, payment history and edit controls without a create form"
     expect(html).toContain(text);
   expect(html).not.toContain("Create bill");
   expect(html).not.toContain("Save bill");
+  expect(html).toContain('alt="VRA Land logo"');
+  expect(html).toContain('src="/images/vra_logo.png"');
+  expect(html).toContain('aria-label="Printable billing statement"');
+});
+
+it("lets billing viewers print the branded statement without editing controls", async () => {
+  fixture.saved = true;
+  fixture.canManage = false;
+  const html = await render();
+  expect(html).toContain("Print bill");
+  expect(html).toContain("Billing statement");
+  expect(html).toContain("INV-2026-001");
+  expect(html).not.toContain("Edit bill");
+  expect(html).not.toContain("Record payment");
 });
 
 it("keeps bill creation hidden from viewers", async () => {

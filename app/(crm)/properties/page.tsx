@@ -252,10 +252,8 @@ export default async function PropertiesPage({
                           Who can see this
                         </ButtonLink>
                       )}
-                      {row.granted.visible ? (
+                      {row.granted.visible || rowActions.canManageUnits ? (
                         <RowAction href={`/properties/${row.id}`}>View property</RowAction>
-                      ) : rowActions.canManageUnits ? (
-                        <RowAction href={`/properties/${row.id}`}>Add units</RowAction>
                       ) : null}
                     </span>
                   </li>

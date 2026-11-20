@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import {
-  countUnitsOnFloor,
-  getUnitsForFloor,
-} from "@/features/properties/queries/property-floor-unit.queries";
+import { getUnitsForFloor } from "@/features/properties/queries/property-floor-unit.queries";
 import { getAuthorizationContext } from "@/lib/permissions/authorization";
 import { hasPermission } from "@/lib/permissions/policy";
 import { logError } from "@/lib/logger";
@@ -30,9 +27,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const units = await getUnitsForFloor(context, floorId);
-    const omitted = units.length ? 0 : await countUnitsOnFloor(context, floorId);
-
-    return NextResponse.json({ units, omitted });
+    return NextResponse.json({ units });
   } catch (error) {
     logError("Unit list read failed", error, {
       operation: "api_property_units",

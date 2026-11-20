@@ -15,6 +15,7 @@ import { usePathname, useRouter } from "next/navigation";
 import type { ComponentProps, ReactNode } from "react";
 
 import { EmptyState } from "@/components/ui/empty-state";
+import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import {
   Table,
   TableBody,
@@ -52,6 +53,8 @@ export type TaskRow = {
   assignedUserId: string | null;
   assignedFirstName: string | null;
   assignedLastName: string | null;
+  creatorFirstName: string | null;
+  creatorLastName: string | null;
   contactId: string | null;
   contactFirstName: string | null;
   contactMiddleName: string | null;
@@ -213,14 +216,14 @@ export function TasksTable({
   return (
     <>
       <div className="overflow-x-auto">
-        <Table className="w-full text-left text-sm">
+        <Table className="w-full table-fixed text-left text-sm">
           <TableHeader className={tableHeadClass}>
             <TableRow>
-              {sortableHeader("task", "Task", "px-4 py-3")}
+              {sortableHeader("task", "Task", "px-4 py-3 sm:w-[34%] sm:px-5")}
               {sortableHeader("due", "Due", "hidden px-4 py-3 sm:table-cell")}
-              {sortableHeader("priority", "Priority", "hidden px-4 py-3 md:table-cell")}
+              {sortableHeader("priority", "Priority", "hidden w-28 px-4 py-3 md:table-cell")}
               {sortableHeader("assignee", "Assignee", "hidden px-4 py-3 lg:table-cell")}
-              {sortableHeader("status", "Status", "w-40 px-4 py-3")}
+              {sortableHeader("status", "Status", "w-32 px-2 py-3 sm:w-36 sm:px-4")}
               {editable && (
                 <TableHead scope="col" className="w-12 px-2 py-3">
                   <span className="sr-only">Actions</span>
@@ -245,21 +248,31 @@ export function TasksTable({
               return (
                 <TableRow
                   key={row.id}
-                  className={cn(
-                    "border-b border-border/40 bg-card align-top transition-colors hover:bg-muted/40",
-                    closed && "opacity-55",
-                  )}
+                  className="border-b border-border/40 bg-card transition-colors hover:bg-muted/40 focus-within:bg-muted/40"
                 >
-                  <TableCell className="align-top px-4 py-3">
-                    <div className="flex min-w-0 flex-col gap-1">
+                  <TableCell className="px-4 py-4 sm:px-5">
+                    <div className="flex min-w-0 flex-col gap-1.5">
                       <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                        <span className="truncate font-medium text-foreground">{row.title}</span>
-                        {due.overdue && <TaskBadge tone="danger">Overdue</TaskBadge>}
+                        <span
+                          className={cn(
+                            "line-clamp-2 break-words font-semibold",
+                            closed ? "text-muted-foreground" : "text-foreground",
+                          )}
+                          title={row.title}
+                        >
+                          {row.title}
+                        </span>
                       </span>
                       <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                         <span className="inline-flex shrink-0 items-center gap-1">
                           {TypeIcon && <TypeIcon aria-hidden="true" className="size-3.5" />}
                           {taskTypeLabel(row.taskType)}
+                        </span>
+                        <Sep />
+                        <span className="min-w-0 break-words">
+                          Created by:{" "}
+                          {[row.creatorFirstName, row.creatorLastName].filter(Boolean).join(" ") ||
+                            "Unknown user"}
                         </span>
                         {!hasRecords && row.description && (
                           <>
@@ -299,10 +312,27 @@ export function TasksTable({
                           </>
                         )}
                       </span>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs lg:hidden">
+                        <span
+                          className={cn("inline-flex items-center gap-1.5 sm:hidden", due.tone)}
+                        >
+                          <CalendarClock aria-hidden="true" className="size-3.5 shrink-0" />
+                          {due.label}
+                        </span>
+                        <TaskBadge
+                          className="md:hidden"
+                          tone={TASK_PRIORITY_TONES[row.priority] ?? "muted"}
+                        >
+                          {titleCase(row.priority)}
+                        </TaskBadge>
+                        <span className="min-w-0 break-words text-muted-foreground">
+                          Assignee: {assignee ?? "Unassigned"}
+                        </span>
+                      </div>
                     </div>
                   </TableCell>
 
-                  <TableCell className="align-top hidden px-4 py-3 sm:table-cell">
+                  <TableCell className="hidden px-4 py-4 sm:table-cell">
                     <span
                       className={cn(
                         "inline-flex items-center gap-1.5 text-xs font-medium",
@@ -312,6 +342,11 @@ export function TasksTable({
                       <CalendarClock aria-hidden="true" className="size-3.5 shrink-0" />
                       {due.label}
                     </span>
+                    {row.dueAt && !closed && (
+                      <span className="mt-1 block text-xs text-muted-foreground tabular-nums">
+                        {format(row.dueAt, "MMM d, yyyy")}
+                      </span>
+                    )}
                     {row.reminderAt && (
                       <span className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
                         <Bell aria-hidden="true" className="size-3 shrink-0" />
@@ -320,28 +355,29 @@ export function TasksTable({
                     )}
                   </TableCell>
 
-                  <TableCell className="align-top hidden px-4 py-3 md:table-cell">
+                  <TableCell className="hidden px-4 py-4 md:table-cell">
                     <TaskBadge tone={TASK_PRIORITY_TONES[row.priority] ?? "muted"}>
                       {titleCase(row.priority)}
                     </TaskBadge>
                   </TableCell>
 
-                  <TableCell className="align-top hidden px-4 py-3 lg:table-cell">
+                  <TableCell className="hidden px-4 py-4 lg:table-cell">
                     {assignee ? (
                       <span className="flex min-w-0 items-center gap-2">
-                        <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary ring-1 ring-primary/15 ring-inset">
-                          {`${row.assignedFirstName?.[0] ?? ""}${
-                            row.assignedLastName?.[0] ?? ""
-                          }`.toUpperCase()}
+                        <InitialsAvatar
+                          className="size-7 text-[10px]"
+                          initials={`${row.assignedFirstName?.[0] ?? ""}${row.assignedLastName?.[0] ?? ""}`.toUpperCase()}
+                        />
+                        <span className="truncate text-xs text-foreground" title={assignee}>
+                          {assignee}
                         </span>
-                        <span className="truncate text-xs text-foreground">{assignee}</span>
                       </span>
                     ) : (
                       <span className="text-xs text-muted-foreground">Unassigned</span>
                     )}
                   </TableCell>
 
-                  <TableCell className="align-top w-40 px-4 py-3">
+                  <TableCell className="px-2 py-4 sm:px-4">
                     {canUpdate ? (
                       <TaskStatus id={row.id} status={row.status} />
                     ) : (
@@ -350,7 +386,7 @@ export function TasksTable({
                   </TableCell>
 
                   {editable && (
-                    <TableCell className="align-top w-12 px-2 py-2">
+                    <TableCell className="w-12 px-1 py-4 sm:px-2">
                       <TaskForm task={row} options={options} canDelete={canDelete} />
                     </TableCell>
                   )}

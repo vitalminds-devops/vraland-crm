@@ -11,16 +11,17 @@ export default async function ArchivePage({
   searchParams: Promise<{ page?: string }>;
 }) {
   await requirePagePermission("documents.view");
+  await requirePagePermission("documents.archive");
   const page = Math.max(1, Number((await searchParams).page) || 1);
-  const data = await listDocuments({ page, archived: true });
+  const data = await listDocuments({ page, archived: true, shared: true });
   return (
     <PageContainer>
       <PageHeader
-        title="Archive"
+        title="Shared file archive"
         actions={<BackButton fallbackHref="/documents" label="Back to documents" />}
       />
       <div className="mt-6 rounded-xl border bg-card">
-        <DocumentTable rows={data.rows} action={data.canManage ? "restore" : undefined} />
+        <DocumentTable shared rows={data.rows} action={data.canArchive ? "restore" : undefined} />
         <footer className="flex flex-wrap items-center justify-between gap-2 border-t p-4 text-sm">
           <span>
             {data.total} {data.total === 1 ? "document" : "documents"}

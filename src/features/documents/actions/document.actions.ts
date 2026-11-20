@@ -16,7 +16,11 @@ import { documentTypeLabel } from "@/features/contacts/lib/contact-options";
 import { canAccessResource, requirePermission } from "@/lib/permissions/authorization";
 import type { AuthorizationContext } from "@/lib/permissions/policy";
 import { getDocumentStorage } from "@/lib/storage/document-storage";
-import { documentFileError, documentFileTypes } from "@/lib/storage/document-validation";
+import {
+  documentFileError,
+  documentFileTypes,
+  requirementFileTypes,
+} from "@/lib/storage/document-validation";
 import { documentMetadataSchema } from "../schemas/document.schema";
 import { logError } from "@/lib/logger";
 import {
@@ -30,6 +34,7 @@ import {
 import { ActionErrorCode } from "@/lib/errors";
 import { isSensitiveDocument } from "../lib/document-sensitivity";
 import { documentScope, sensitiveDocumentCondition } from "../lib/document-scope";
+import { canManageSharedFiles, sharedFileCategory } from "../lib/shared-files";
 
 /** Result of a document action, carrying the id of the affected record. */
 export type DocumentResult = ActionResult<{ id: string }>;
@@ -62,13 +67,30 @@ export async function uploadDocument(formData: FormData): Promise<DocumentResult
   const parsed = documentMetadataSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success)
     return validationFailureFromZod(parsed.error, "Enter valid document metadata.");
+  const shared = parsed.data.library === "shared";
+  if (shared && !canManageSharedFiles(context))
+    return failureFrom(
+      ActionErrorCode.PERMISSION_DENIED,
+      "Only administrators can upload shared files.",
+    );
+  if (
+    shared &&
+    (parsed.data.contactId ||
+      parsed.data.propertyId ||
+      parsed.data.dealId ||
+      parsed.data.documentType !== "general")
+  )
+    return validationFailure("Shared files cannot be linked to client, property or deal records.");
   const file = formData.get("file");
   if (!(file instanceof File)) return validationFailure("Select a file to upload.");
-  const fileError = await documentFileError(file);
+  const fileError = await documentFileError(
+    file,
+    shared ? requirementFileTypes : documentFileTypes,
+  );
   if (fileError) return validationFailure(fileError);
   const v = parsed.data;
-  const name = v.name || documentTypeLabel(v.documentType);
-  const category = categoryForType[v.documentType] ?? "other";
+  const name = v.name || (shared ? file.name.slice(0, 220) : documentTypeLabel(v.documentType));
+  const category = shared ? sharedFileCategory : (categoryForType[v.documentType] ?? "other");
   if (
     !(await validRelation(context, "contact", v.contactId)) ||
     !(await validRelation(context, "property", v.propertyId)) ||
@@ -146,7 +168,14 @@ export async function uploadDocument(formData: FormData): Promise<DocumentResult
       });
       return row.id;
     });
-    refresh(id);
+    try {
+      refresh(id);
+    } catch (error) {
+      logError("Document saved but refresh failed", error, {
+        operation: "document_upload_refresh",
+        documentId: id,
+      });
+    }
     return success({ id });
   } catch (error) {
     await storage.remove(key).catch(() => undefined);
@@ -176,12 +205,18 @@ async function canReachDocument(context: AuthorizationContext, id: string) {
 }
 
 export async function archiveDocument(id: string): Promise<DocumentResult> {
-  const context = await requirePermission("documents.manage");
+  const context = await requirePermission("documents.archive");
+  if (!context.permissions.has("documents.view"))
+    return failureFrom(
+      ActionErrorCode.PERMISSION_DENIED,
+      "View documents is required to archive documents.",
+    );
   const [before] = await db
     .select({
       id: documents.id,
       status: documents.status,
       name: documents.name,
+      category: documents.category,
     })
     .from(documents)
     .where(and(eq(documents.id, id), eq(documents.organizationId, context.organizationId)))
@@ -236,12 +271,18 @@ export async function archiveDocument(id: string): Promise<DocumentResult> {
 
 /** Brings an archived document back to the main list as a draft. */
 export async function restoreDocument(id: string): Promise<DocumentResult> {
-  const context = await requirePermission("documents.manage");
+  const context = await requirePermission("documents.archive");
+  if (!context.permissions.has("documents.view"))
+    return failureFrom(
+      ActionErrorCode.PERMISSION_DENIED,
+      "View documents is required to restore documents.",
+    );
   const [before] = await db
     .select({
       id: documents.id,
       status: documents.status,
       name: documents.name,
+      category: documents.category,
       archivedAt: documents.archivedAt,
       contactId: documents.contactId,
       documentType: documents.documentType,

@@ -21,8 +21,7 @@ import {
   formTextareaClass,
 } from "@/components/ui/form-kit";
 import { CoverImageField } from "@/components/ui/cover-image-field";
-import { notify } from "@/components/ui/toast";
-import { getUserFacingMessage } from "@/lib/error-handler";
+import { notify, notifyLoading } from "@/components/ui/toast";
 import { fieldErrorsOf } from "@/lib/types/action-result.client";
 import {
   type Barangay,
@@ -102,6 +101,11 @@ export function DevelopmentForm({ developmentId, initial, coverImageUrl = null }
 
   function submit(values: DevelopmentInput) {
     startTransition(async () => {
+      const toastId = notifyLoading(
+        coverFile ? "Saving development and cover photo…" : "Saving development…",
+        `save-development-${developmentId ?? "new"}`,
+      );
+      let savedId: string | undefined;
       try {
         const result = developmentId
           ? await updateDevelopment(developmentId, values)
@@ -113,22 +117,38 @@ export function DevelopmentForm({ developmentId, initial, coverImageUrl = null }
                 type: "server",
                 message: messages[0],
               });
-          notify(result.error.message, "error");
+          notify(result.error.message, "error", toastId);
           return;
         }
+        savedId = result.data.id;
         if (coverFile) {
           const formData = new FormData();
           formData.set("developmentId", result.data.id);
           formData.set("image", coverFile);
           const upload = await saveDevelopmentCoverImage(formData);
           if (!upload.success)
-            notify(`Saved, but the cover photo failed: ${upload.message}`, "error");
-        }
+            notify("Development saved; cover photo was not uploaded", "error", {
+              id: toastId,
+              description: upload.message,
+            });
+          else notify("Development and cover photo saved.", "success", toastId);
+        } else notify("Development saved.", "success", toastId);
 
         router.push(`/developments/${result.data.id}`);
         router.refresh();
-      } catch (error) {
-        notify(getUserFacingMessage(error), "error");
+      } catch {
+        notify(
+          savedId
+            ? "Development saved; could not confirm the remaining changes"
+            : "Could not confirm development save",
+          "error",
+          {
+            id: toastId,
+            description: savedId
+              ? "Open the development to check its cover photo before uploading again."
+              : "Check the development list before submitting again. Your entries are still here.",
+          },
+        );
       }
     });
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, FileText, Plus, Upload, X } from "lucide-react";
+import { Check, FileText, Loader2, Plus, ScanLine, Upload, X } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -21,16 +21,34 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { MoneyInput } from "@/components/ui/money-input";
+import {
+  opportunityAddressSchema,
+  type OpportunityAddress,
+} from "@/features/contacts/schemas/opportunity-contact.schema";
+import {
+  allProvinces,
+  citiesForProvince,
+  barangaysForCity,
+  getCityCodeByName,
+  postalCodeForCity,
+  COUNTRY_NAME,
+} from "@/lib/location";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
-import { notify } from "@/components/ui/toast";
+import { notify, notifyLoading } from "@/components/ui/toast";
 import { documentFileError, requirementFileTypes } from "@/lib/storage/document-validation";
 import {
   bankOptions,
-  financingPreferenceLabels,
   extraDocumentTypes,
-  financingPreferences,
   requiredDocumentLabel,
+  budgetRanges,
+  budgetRangeFor,
+  budgetForRange,
+  purchaseTypes,
+  purchaseTypeLabels,
+  employmentTypes,
 } from "@/features/contacts/lib/contact-options";
+import { PaymentMethodSelect } from "@/features/billing/components/payment-method-select";
 import { PropertyFloorUnitSelector } from "@/features/properties";
 import { cn } from "@/lib/utils/cn";
 import { groupDigits } from "@/lib/utils/group-digits";
@@ -45,6 +63,15 @@ import {
 import type { DealActionResult } from "../actions/deal.actions";
 
 import { OpportunityParkingSelector } from "./opportunity-parking-selector";
+import { mergeIdAddress } from "../lib/id-address";
+import { readIdAddress } from "../lib/read-id-address";
+import {
+  loadOpportunityFormDraft,
+  cacheOpportunityFormDraft,
+  saveOpportunityFormDraft,
+  removeOpportunityFormDraft,
+  type OpportunityFormDraft,
+} from "../lib/opportunity-form-draft";
 
 /** Matches MAX_EXTRA_FILES on the server. */
 const MAX_EXTRAS = 3;
@@ -79,14 +106,15 @@ function FileRow({
   onFile,
   multiple,
   onPick,
+  picked = "",
 }: {
   label: string;
   name: string;
   onFile?: boolean;
   multiple?: boolean;
   onPick?: (files: File[]) => void;
+  picked?: string;
 }) {
-  const [picked, setPicked] = useState("");
   const required = onFile === false;
   return (
     <div className="flex items-center justify-between gap-3 py-2.5">
@@ -116,7 +144,6 @@ function FileRow({
           className="sr-only"
           onChange={(event) => {
             const files = Array.from(event.target.files ?? []);
-            setPicked(files.map((file) => file.name).join(", "));
             onPick?.(files);
           }}
         />
@@ -176,7 +203,7 @@ function IdPreview({
 /**
  * Collects what a lead needs to become an opportunity, then moves it. Used by the pipeline board
  * and the opportunity page whenever a deal goes from Leads to Opportunity.
- * Step 1 takes the documents, step 2 the deal details.
+ * Collects documents, address, then property interest before moving the lead.
  */
 export function OpportunityDialog({
   dealId,
@@ -193,10 +220,71 @@ export function OpportunityDialog({
 }) {
   const [draft, setDraft] = useState<OpportunityDraft | null>(null);
   const [failed, setFailed] = useState(false);
-  const [moveError, setMoveError] = useState<{ title: string; description: string } | null>(null);
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const formRef = useRef<HTMLFormElement>(null);
+  const completed = useRef(false);
+  const latestDraft = useRef<OpportunityFormDraft | null>(null);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [restoredFields, setRestoredFields] = useState<Record<string, string>>({});
+  const [draftStatus, setDraftStatus] = useState<"saving" | "saved" | "unavailable">("saving");
+  const [address, setAddress] = useState<OpportunityAddress>({
+    currentProvince: null,
+    currentCity: null,
+    currentBarangay: null,
+    currentAddressLine1: null,
+    currentPostalCode: null,
+    currentCountry: COUNTRY_NAME,
+  });
+  const [budget, setBudget] = useState("");
   const [idFile, setIdFile] = useState<File | null>(null);
-  const [hasAppointment, setHasAppointment] = useState(false);
+  const [appointmentFile, setAppointmentFile] = useState<File | null>(null);
+  const idScan = useRef<AbortController | null>(null);
+  const addressBeforeUpload = useRef<OpportunityAddress | undefined>(undefined);
+  const [scanStatus, setScanStatus] = useState<{
+    state: "idle" | "reading" | "found" | "not-found" | "error";
+    progress?: number;
+  }>({ state: "idle" });
+  const onFileId = draft?.onFile.validIdFile?.id;
+  const scanId = useCallback(async () => {
+    idScan.current?.abort();
+    const controller = new AbortController();
+    idScan.current = controller;
+    const beforeUpload = addressBeforeUpload.current;
+    setScanStatus({ state: "reading", progress: 0 });
+    try {
+      let source = idFile;
+      if (!source && onFileId) {
+        const response = await fetch(`/api/documents/${onFileId}/download`, {
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error("ID unavailable");
+        const blob = await response.blob();
+        source = new File(
+          [blob],
+          blob.type === "application/pdf" ? "valid-id.pdf" : "valid-id.jpg",
+          { type: blob.type },
+        );
+      }
+      if (!source) throw new Error("No ID selected");
+      const found = await readIdAddress(source, controller.signal, (progress) =>
+        setScanStatus({ state: "reading", progress }),
+      );
+      if (controller.signal.aborted || completed.current) return;
+      if (found) {
+        setAddress((current) => mergeIdAddress(current, found, beforeUpload));
+        setScanStatus({ state: "found" });
+      } else setScanStatus({ state: "not-found" });
+    } catch {
+      if (!controller.signal.aborted) setScanStatus({ state: "error" });
+    }
+  }, [idFile, onFileId]);
+  useEffect(() => {
+    const timer = idFile || onFileId ? setTimeout(() => void scanId(), 0) : undefined;
+    return () => {
+      clearTimeout(timer);
+      idScan.current?.abort();
+    };
+  }, [idFile, onFileId, scanId]);
   const [extras, setExtras] = useState<{ file: File; type: string }[]>([]);
   const [nextType, setNextType] = useState("");
   const [tinNumber, setTinNumber] = useState("");
@@ -226,17 +314,62 @@ export function OpportunityDialog({
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("opportunityDraft", dealId);
+    window.history.replaceState(window.history.state, "", url);
+    return () => {
+      const current = new URL(window.location.href);
+      if (current.searchParams.get("opportunityDraft") === dealId) {
+        current.searchParams.delete("opportunityDraft");
+        window.history.replaceState(window.history.state, "", current);
+      }
+    };
+  }, [dealId]);
+
+  useEffect(() => {
     let live = true;
     getOpportunityDraft(dealId)
-      .then((loaded) => {
+      .then(async (loaded) => {
         if (!live) return;
         if (!loaded) return setFailed(true);
+        let saved: OpportunityFormDraft | null = null;
+        try {
+          saved = await loadOpportunityFormDraft(loaded.draftKey);
+        } catch {
+          setDraftStatus("unavailable");
+        }
+        if (!live) return;
         setDraft(loaded);
-        setTinNumber(loaded.tinNumber);
-        setDevelopmentId(loaded.developmentId);
-        setUnitIds(loaded.unitIds);
-        setParkingSelection({ buildingId: loaded.buildingId, ids: loaded.parkingSlotIds ?? [] });
-        setFinancing(loaded.financingPreference);
+        setTinNumber(saved?.tinNumber ?? loaded.tinNumber);
+        setDevelopmentId(saved?.developmentId ?? loaded.developmentId);
+        setBuildingId(saved?.buildingId ?? loaded.buildingId);
+        setUnitIds(saved?.unitIds ?? loaded.unitIds);
+        setParkingSelection(
+          saved?.parkingSelection ?? {
+            buildingId: loaded.buildingId,
+            ids: loaded.parkingSlotIds ?? [],
+          },
+        );
+        setFinancing(saved?.financing ?? loaded.financingPreference);
+        setAddress(
+          saved?.address ?? {
+            ...loaded.address,
+            currentCountry: loaded.address.currentCountry || COUNTRY_NAME,
+          },
+        );
+        setBudget(
+          saved?.budget ??
+            budgetRangeFor(loaded.interest.budgetMin, loaded.interest.budgetMax) ??
+            "",
+        );
+        if (saved) {
+          setRestoredFields(saved.fields);
+          setIdFile(saved.idFile);
+          setAppointmentFile(saved.appointmentFile);
+          setExtras(saved.extras);
+          setNextType(saved.nextType);
+          setStep(saved.step);
+        }
       })
       .catch(() => live && setFailed(true));
     return () => {
@@ -244,10 +377,103 @@ export function OpportunityDialog({
     };
   }, [dealId]);
 
+  const formDraft = useMemo(
+    () => ({
+      step,
+      address,
+      budget,
+      tinNumber,
+      developmentId,
+      buildingId,
+      unitIds,
+      parkingSelection,
+      financing,
+      nextType,
+      idFile,
+      appointmentFile,
+      extras,
+    }),
+    [
+      step,
+      address,
+      budget,
+      tinNumber,
+      developmentId,
+      buildingId,
+      unitIds,
+      parkingSelection,
+      financing,
+      nextType,
+      idFile,
+      appointmentFile,
+      extras,
+    ],
+  );
+  const queueDraftSave = useCallback(() => {
+    if (!draft || !formRef.current || completed.current || pending) return;
+    const fields = Object.fromEntries(
+      [...new FormData(formRef.current)].filter(
+        (entry): entry is [string, string] => typeof entry[1] === "string",
+      ),
+    );
+    const snapshot = {
+      ...formDraft,
+      fields,
+      address: {
+        ...formDraft.address,
+        currentAddressLine1: fields.currentAddressLine1 ?? formDraft.address.currentAddressLine1,
+      },
+      tinNumber: fields.tinNumber ?? formDraft.tinNumber,
+    };
+    latestDraft.current = snapshot;
+    try {
+      cacheOpportunityFormDraft(draft.draftKey, snapshot);
+    } catch {
+      // The IndexedDB write below can still recover the draft if session storage is blocked.
+    }
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      if (completed.current) return;
+      setDraftStatus("saving");
+      void saveOpportunityFormDraft(draft.draftKey, snapshot)
+        .then(() => {
+          if (latestDraft.current === snapshot) setDraftStatus("saved");
+        })
+        .catch(() => setDraftStatus("unavailable"));
+    }, 250);
+  }, [draft, formDraft, pending]);
+  useEffect(() => {
+    queueDraftSave();
+  }, [queueDraftSave]);
+  useEffect(() => {
+    if (draft && latestDraft.current && !completed.current)
+      void saveOpportunityFormDraft(draft.draftKey, latestDraft.current).catch(() =>
+        setDraftStatus("unavailable"),
+      );
+  }, [draft, idFile, appointmentFile, extras]);
+  useEffect(() => {
+    if (!draft) return;
+    const flush = () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      if (latestDraft.current && !completed.current)
+        void saveOpportunityFormDraft(draft.draftKey, latestDraft.current).catch(() => {});
+    };
+    const onVisibility = () => {
+      if (document.hidden) flush();
+    };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      flush();
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [draft]);
+
   const selectionKey = JSON.stringify([developmentId, buildingId, unitIds, parkingSlotIds]);
   const currentEstimate = estimate?.key === selectionKey ? estimate.result : null;
   useEffect(() => {
-    if (step !== 2 || !buildingId || !unitIds.length) return;
+    if (step !== 4 || !buildingId || !unitIds.length) return;
     let live = true;
     getOpportunityEstimate({ developmentId, buildingId, unitIds, parkingSlotIds }, dealId)
       .then((result) => {
@@ -272,22 +498,49 @@ export function OpportunityDialog({
     Boolean(draft) &&
     Boolean(tinNumber.trim()) &&
     (draft!.onFile.validId || Boolean(idFile)) &&
-    (draft!.onFile.appointmentForm || hasAppointment) &&
+    (draft!.onFile.appointmentForm || Boolean(appointmentFile)) &&
     extras.every((extra) => extra.type);
 
-  function showMoveError(title: string, description: string) {
-    setMoveError({ title, description });
-    notify(title, "error", { description });
+  function showMoveError(title: string, description: string, toastId?: string | number) {
+    notify(title, "error", { id: toastId, description });
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setMoveError(null);
     if (step === 1) {
       if (documentsReady) setStep(2);
       return;
     }
+    if (step === 2) {
+      const checked = opportunityAddressSchema.safeParse(address);
+      if (!checked.success) {
+        showMoveError("Complete the address", checked.error.issues[0].message);
+        return;
+      }
+      setStep(3);
+      return;
+    }
+    if (step === 3) {
+      if (budget) setStep(4);
+      return;
+    }
+    if (!buildingId || !unitIds.length || !currentEstimate?.success) {
+      showMoveError(
+        "Select a unit",
+        "Choose an available unit before moving this lead to Opportunity.",
+      );
+      return;
+    }
     const form = new FormData(event.currentTarget);
+    for (const [key, value] of Object.entries(address)) form.set(key, value ?? "");
+    const range = budgetForRange(budget);
+    form.set("budgetMin", range.budgetMin === null ? "" : String(range.budgetMin));
+    form.set("budgetMax", range.budgetMax === null ? "" : String(range.budgetMax));
+    // Send the retained files, not empty file inputs from the hidden Documents step.
+    form.delete("validId");
+    form.delete("appointmentForm");
+    if (idFile) form.set("validId", idFile);
+    if (appointmentFile) form.set("appointmentForm", appointmentFile);
     form.set("dealId", dealId);
     form.set("stageId", stageId);
     form.set("buildingId", buildingId ?? "");
@@ -298,13 +551,17 @@ export function OpportunityDialog({
       form.append("additionalType", extra.type);
     }
     startTransition(async () => {
+      const toastId = notifyLoading(
+        "Saving opportunity and documents…",
+        `save-opportunity-${dealId}`,
+      );
       let result: DealActionResult;
       try {
         for (const entry of form.values()) {
           if (!(entry instanceof File) || !entry.name) continue;
           const error = await documentFileError(entry, requirementFileTypes);
           if (error) {
-            showMoveError("Document was not accepted", error);
+            showMoveError("Document was not accepted", error, toastId);
             setStep(1);
             return;
           }
@@ -314,6 +571,7 @@ export function OpportunityDialog({
         showMoveError(
           "Could not confirm the move",
           "We did not receive a confirmation. Refresh the pipeline to check whether the lead is in Opportunity before trying again.",
+          toastId,
         );
         return;
       }
@@ -326,10 +584,32 @@ export function OpportunityDialog({
             ? messages.join("\n")
             : result.error.message ||
                 "Please try again. If it still fails, contact your administrator.",
+          toastId,
         );
         if (fieldErrors.tinNumber || fieldErrors.prcLicenseNumber) setStep(1);
+        else if (Object.keys(fieldErrors).some((key) => key in opportunityAddressSchema.shape))
+          setStep(2);
+        else if (
+          fieldErrors.budgetMin ||
+          fieldErrors.budgetMax ||
+          fieldErrors.annualIncome ||
+          fieldErrors.purchaseType ||
+          fieldErrors.employmentType
+        )
+          setStep(3);
         return;
       }
+      notify(
+        result.data.approvalRequested ? "Move sent for approval" : "Lead moved to Opportunity",
+        "success",
+        {
+          id: toastId,
+          description: result.data.message,
+        },
+      );
+      completed.current = true;
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      await removeOpportunityFormDraft(draft!.draftKey).catch(() => {});
       onDone(result);
     });
   }
@@ -360,39 +640,47 @@ export function OpportunityDialog({
             ) : !draft ? (
               <p className="mt-5 text-sm text-muted-foreground">Loading…</p>
             ) : (
-              <form onSubmit={submit} className="mt-4 grid gap-4">
-                {moveError && (
-                  <div
-                    role="alert"
-                    className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm"
-                  >
-                    <p className="font-medium text-destructive">{moveError.title}</p>
-                    <p className="mt-1 whitespace-pre-line break-words text-foreground">
-                      {moveError.description}
-                    </p>
-                  </div>
-                )}
-                <ol className="flex items-center gap-2 text-xs font-medium">
-                  {(["Documents", "Details"] as const).map((label, index) => {
-                    const current = step === index + 1;
-                    return (
-                      <li key={label} className="flex items-center gap-2">
-                        {index > 0 && <span aria-hidden="true" className="h-px w-6 bg-border" />}
-                        <span
-                          aria-current={current ? "step" : undefined}
-                          className={cn(
-                            "grid size-5 place-content-center rounded-full",
-                            current
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted text-muted-foreground",
+              <form
+                ref={formRef}
+                onSubmit={submit}
+                onChangeCapture={queueDraftSave}
+                className="mt-4 grid gap-4"
+              >
+                <p role="status" className="text-xs text-muted-foreground">
+                  {draftStatus === "saved"
+                    ? "Draft saved on this browser"
+                    : draftStatus === "unavailable"
+                      ? "Draft could not be saved. Keep this tab open to preserve your entries."
+                      : "Saving draft…"}
+                </p>
+                <ol className="grid grid-cols-2 gap-2 text-xs font-medium sm:flex sm:items-center">
+                  {(["Documents", "Address", "Property interest", "Unit selection"] as const).map(
+                    (label, index) => {
+                      const current = step === index + 1;
+                      return (
+                        <li key={label} className="flex items-start gap-2 sm:items-center">
+                          {index > 0 && (
+                            <span
+                              aria-hidden="true"
+                              className="hidden h-px w-6 bg-border sm:block"
+                            />
                           )}
-                        >
-                          {index + 1}
-                        </span>
-                        <span className={current ? "" : "text-muted-foreground"}>{label}</span>
-                      </li>
-                    );
-                  })}
+                          <span
+                            aria-current={current ? "step" : undefined}
+                            className={cn(
+                              "grid size-5 shrink-0 place-content-center rounded-full",
+                              current
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted text-muted-foreground",
+                            )}
+                          >
+                            {index + 1}
+                          </span>
+                          <span className={current ? "" : "text-muted-foreground"}>{label}</span>
+                        </li>
+                      );
+                    },
+                  )}
                 </ol>
 
                 {/* Step 1 stays mounted while hidden so its files are still submitted. */}
@@ -413,7 +701,7 @@ export function OpportunityDialog({
                   <Field label="PRC license number">
                     <Input
                       name="prcLicenseNumber"
-                      defaultValue={draft.prcLicenseNumber}
+                      defaultValue={restoredFields.prcLicenseNumber ?? draft.prcLicenseNumber}
                       maxLength={50}
                       placeholder="If applicable"
                       className={field}
@@ -425,11 +713,48 @@ export function OpportunityDialog({
                         label={requiredDocumentLabel("valid_id")}
                         name="validId"
                         onFile={draft.onFile.validId}
-                        onPick={(files) => setIdFile(files[0] ?? null)}
+                        picked={idFile?.name}
+                        onPick={(files) => {
+                          const file = files[0] ?? null;
+                          idScan.current?.abort();
+                          addressBeforeUpload.current = file ? address : undefined;
+                          setIdFile(file);
+                          if (!file) {
+                            idScan.current?.abort();
+                            setScanStatus({ state: "idle" });
+                          }
+                        }}
                       />
                       {(idFile || draft.onFile.validIdFile) && (
                         <div className="pb-3">
                           <IdPreview file={idFile} onFile={draft.onFile.validIdFile} />
+                          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+                            <p
+                              role="status"
+                              aria-atomic="true"
+                              className="inline-flex items-start gap-1.5 text-xs text-muted-foreground"
+                            >
+                              {scanStatus.state === "reading" ? (
+                                <Loader2
+                                  aria-hidden="true"
+                                  className="size-3.5 animate-spin motion-reduce:animate-none"
+                                />
+                              ) : (
+                                <ScanLine aria-hidden="true" className="size-3.5" />
+                              )}
+                              <span>
+                                {scanStatus.state === "reading"
+                                  ? `Reading ID address… ${scanStatus.progress || 0}%`
+                                  : scanStatus.state === "found"
+                                    ? "Address detected. Review the Address step."
+                                    : scanStatus.state === "not-found"
+                                      ? "Could not detect an address. Try a closer, sharper photo or enter it in the Address step."
+                                      : scanStatus.state === "error"
+                                        ? "Could not read this ID. Upload a clearer copy or enter the address in the Address step."
+                                        : "The ID address will be scanned automatically."}
+                              </span>
+                            </p>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -437,7 +762,8 @@ export function OpportunityDialog({
                       label={requiredDocumentLabel("client_appointment_form")}
                       name="appointmentForm"
                       onFile={draft.onFile.appointmentForm}
-                      onPick={(files) => setHasAppointment(files.length > 0)}
+                      picked={appointmentFile?.name}
+                      onPick={(files) => setAppointmentFile(files[0] ?? null)}
                     />
                     <div className="grid gap-2 py-2.5">
                       <span className="text-sm">
@@ -531,169 +857,313 @@ export function OpportunityDialog({
                   </div>
                 </fieldset>
 
-                {step === 2 && (
-                  <div className="grid gap-4">
-                    <div className="grid gap-3">
-                      <Field label="Development" required>
-                        <NativeSelect
-                          required
-                          name="developmentId"
-                          value={developmentId}
-                          onChange={(event) => {
-                            setDevelopmentId(event.target.value);
-                            setUnitIds([]);
-                            setBuildingId(null);
-                            setParkingSelection({ buildingId: null, ids: [] });
-                          }}
-                          className={cn(field, "pr-9")}
-                        >
-                          <NativeSelectOption value="">Select development</NativeSelectOption>
-                          {draft.developments.map((development) => (
-                            <NativeSelectOption key={development.id} value={development.id}>
-                              {development.name}
-                            </NativeSelectOption>
-                          ))}
-                        </NativeSelect>
-                      </Field>
-                      {developmentId && (
-                        <PropertyFloorUnitSelector
-                          key={developmentId}
-                          developmentId={developmentId}
-                          initialUnitIds={developmentId === draft.developmentId ? unitIds : []}
-                          initialBuildingId={
-                            buildingId ??
-                            (developmentId === draft.developmentId ? draft.buildingId : null)
-                          }
-                          unitIds={unitIds}
-                          onBuildingChange={changeBuilding}
-                          onUnitsChange={setUnitIds}
-                          selectClassName={cn(field, "pr-9")}
-                          disabled={pending}
-                        />
-                      )}
-                    </div>
-
-                    <section
-                      className="space-y-2 rounded-xl border border-border/60 bg-card p-3"
-                      aria-label="Parking Slots (Optional)"
-                    >
-                      <h3 className="text-[13px] font-medium">Parking Slots (Optional)</h3>
-                      {buildingId ? (
-                        <OpportunityParkingSelector
-                          key={buildingId}
-                          developmentId={developmentId}
-                          buildingId={buildingId}
-                          selectedIds={parkingSlotIds}
-                          heldIds={draft.parkingSlotIds ?? []}
-                          onChange={(ids) => setParkingSelection({ buildingId, ids })}
-                          disabled={pending}
-                        />
-                      ) : (
-                        <p className="text-sm text-muted-foreground">
-                          Select a building to choose parking slots.
-                        </p>
-                      )}
-                    </section>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <Field label="Financing" required>
-                        <NativeSelect
-                          required
-                          name="financingPreference"
-                          value={financing}
-                          onChange={(event) => setFinancing(event.target.value)}
-                          className={cn(field, "pr-9")}
-                        >
-                          <NativeSelectOption value="">Select financing</NativeSelectOption>
-                          {financingPreferences.map((value) => (
-                            <NativeSelectOption key={value} value={value}>
-                              {financingPreferenceLabels[value]}
-                            </NativeSelectOption>
-                          ))}
-                        </NativeSelect>
-                      </Field>
-                      {financing === "bank_financing" && (
-                        <Field label="Bank" required>
-                          <Input
-                            required
-                            name="bankName"
-                            list="opportunity-banks"
-                            defaultValue={draft.bankName}
-                            placeholder="e.g. BDO Unibank"
-                            className={field}
-                          />
-                          <datalist id="opportunity-banks">
-                            {bankOptions.map((bank) => (
-                              <option key={bank} value={bank} />
-                            ))}
-                          </datalist>
-                        </Field>
-                      )}
-                      {financing === "other" && (
-                        <Field label="Other financing" required>
-                          <Input
-                            required
-                            name="financingPreferenceOther"
-                            defaultValue={draft.financingPreferenceOther}
-                            className={field}
-                          />
-                        </Field>
-                      )}
-                    </div>
-                    <div
-                      className="rounded-lg border border-primary/20 bg-primary/5 p-4"
-                      aria-live="polite"
-                    >
-                      <h3 className="text-sm font-semibold">Expected amount</h3>
-                      {currentEstimate?.success ? (
-                        <dl className="mt-3 grid gap-2 text-sm">
-                          <div className="flex justify-between gap-3">
-                            <dt>
-                              {unitIds.length} {unitIds.length === 1 ? "unit" : "units"} ×{" "}
-                              {formatPrice(currentEstimate.unitPrice, currentEstimate.currency)}
-                            </dt>
-                            <dd className="tabular-nums">
-                              {formatPrice(currentEstimate.units, currentEstimate.currency)}
-                            </dd>
-                          </div>
-                          <div className="flex justify-between gap-3">
-                            <dt>
-                              {parkingSlots} parking {parkingSlots === 1 ? "slot" : "slots"}
-                              {parkingSlots > 0 && currentEstimate.parkingPrice
-                                ? ` × ${formatPrice(currentEstimate.parkingPrice, currentEstimate.currency)}`
-                                : ""}
-                            </dt>
-                            <dd className="tabular-nums">
-                              {formatPrice(currentEstimate.parking, currentEstimate.currency)}
-                            </dd>
-                          </div>
-                          <div className="mt-1 flex justify-between gap-3 border-t border-primary/20 pt-3 text-base font-semibold">
-                            <dt>Total</dt>
-                            <dd className="text-primary tabular-nums">
-                              {formatPrice(currentEstimate.total, currentEstimate.currency)}
-                            </dd>
-                          </div>
-                        </dl>
-                      ) : (
-                        <p
-                          className={cn(
-                            "mt-2 text-sm",
-                            currentEstimate ? "text-destructive" : "text-muted-foreground",
-                          )}
-                        >
-                          {currentEstimate && !currentEstimate.success
-                            ? currentEstimate.message
-                            : buildingId && unitIds.length
-                              ? "Calculating…"
-                              : "Select a building and unit to see the total."}
-                        </p>
-                      )}
-                      <p className="mt-3 text-xs text-muted-foreground">
-                        Based on unit and parking prices. Moving to Opportunity reserves your
-                        selection.
-                      </p>
-                    </div>
+                <fieldset className={cn("grid gap-4", step !== 2 && "hidden")}>
+                  <legend className="sr-only">Address</legend>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="Province" required>
+                      <NativeSelect
+                        name="currentProvince"
+                        required={step === 2}
+                        value={address.currentProvince ?? ""}
+                        onChange={(event) =>
+                          setAddress({
+                            ...address,
+                            currentProvince: event.target.value,
+                            currentCity: null,
+                            currentBarangay: null,
+                            currentPostalCode: null,
+                          })
+                        }
+                      >
+                        <NativeSelectOption value="">Select province</NativeSelectOption>
+                        {allProvinces.map((province) => (
+                          <NativeSelectOption key={province.id} value={province.name}>
+                            {province.name}
+                          </NativeSelectOption>
+                        ))}
+                      </NativeSelect>
+                    </Field>
+                    <Field label="City" required>
+                      <NativeSelect
+                        name="currentCity"
+                        required={step === 2}
+                        disabled={!address.currentProvince}
+                        value={address.currentCity ?? ""}
+                        onChange={(event) =>
+                          setAddress({
+                            ...address,
+                            currentCity: event.target.value,
+                            currentBarangay: null,
+                            currentPostalCode:
+                              postalCodeForCity(
+                                getCityCodeByName(event.target.value, address.currentProvince),
+                              ) ?? null,
+                          })
+                        }
+                      >
+                        <NativeSelectOption value="">Select city</NativeSelectOption>
+                        {citiesForProvince(address.currentProvince).map((city) => (
+                          <NativeSelectOption key={city.id} value={city.name}>
+                            {city.name}
+                          </NativeSelectOption>
+                        ))}
+                      </NativeSelect>
+                    </Field>
+                    <Field label="Barangay" required>
+                      <NativeSelect
+                        name="currentBarangay"
+                        required={step === 2}
+                        disabled={!address.currentCity}
+                        value={address.currentBarangay ?? ""}
+                        onChange={(event) =>
+                          setAddress({ ...address, currentBarangay: event.target.value })
+                        }
+                      >
+                        <NativeSelectOption value="">Select barangay</NativeSelectOption>
+                        {barangaysForCity(
+                          getCityCodeByName(address.currentCity, address.currentProvince),
+                        ).map((barangay) => (
+                          <NativeSelectOption key={barangay.id} value={barangay.name}>
+                            {barangay.name}
+                          </NativeSelectOption>
+                        ))}
+                      </NativeSelect>
+                    </Field>
+                    <Field label="Postal code">
+                      <Input
+                        name="currentPostalCode"
+                        value={address.currentPostalCode ?? ""}
+                        readOnly
+                        className={field}
+                      />
+                    </Field>
                   </div>
-                )}
+                  <Field label="Street">
+                    <Input
+                      name="currentAddressLine1"
+                      value={address.currentAddressLine1 ?? ""}
+                      onChange={(event) =>
+                        setAddress({ ...address, currentAddressLine1: event.target.value })
+                      }
+                      maxLength={255}
+                      placeholder="House or lot no., street, subdivision"
+                      className={field}
+                    />
+                  </Field>
+                </fieldset>
+
+                <div className={cn("grid gap-4", step !== 3 && "hidden")}>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="Budget range" required>
+                      <NativeSelect
+                        required={step === 3}
+                        value={budget}
+                        onChange={(event) => setBudget(event.target.value)}
+                      >
+                        <NativeSelectOption value="">Select budget</NativeSelectOption>
+                        {budgetRanges.map((range) => (
+                          <NativeSelectOption key={range.value} value={range.value}>
+                            {range.label}
+                          </NativeSelectOption>
+                        ))}
+                      </NativeSelect>
+                    </Field>
+                    <Field label="Property type">
+                      <NativeSelect
+                        name="purchaseType"
+                        defaultValue={
+                          restoredFields.purchaseType ?? draft.interest.purchaseType ?? ""
+                        }
+                      >
+                        <NativeSelectOption value="">Not specified</NativeSelectOption>
+                        {purchaseTypes.map((type) => (
+                          <NativeSelectOption key={type} value={type}>
+                            {purchaseTypeLabels[type]}
+                          </NativeSelectOption>
+                        ))}
+                      </NativeSelect>
+                    </Field>
+                    <Field label="Employment">
+                      <NativeSelect
+                        name="employmentType"
+                        defaultValue={
+                          restoredFields.employmentType ?? draft.interest.employmentType ?? ""
+                        }
+                      >
+                        <NativeSelectOption value="">Not specified</NativeSelectOption>
+                        {employmentTypes.map((type) => (
+                          <NativeSelectOption key={type} value={type}>
+                            {type}
+                          </NativeSelectOption>
+                        ))}
+                      </NativeSelect>
+                    </Field>
+                    <Field label="Annual income">
+                      <MoneyInput
+                        name="annualIncome"
+                        defaultValue={restoredFields.annualIncome ?? draft.interest.annualIncome}
+                        className={field}
+                      />
+                    </Field>
+                  </div>
+                </div>
+                <div className={cn("grid gap-4", step !== 4 && "hidden")}>
+                  <div className="grid gap-3">
+                    <Field label="Development" required>
+                      <NativeSelect
+                        required={step === 4}
+                        name="developmentId"
+                        value={developmentId}
+                        onChange={(event) => {
+                          setDevelopmentId(event.target.value);
+                          setUnitIds([]);
+                          setBuildingId(null);
+                          setParkingSelection({ buildingId: null, ids: [] });
+                        }}
+                        className={cn(field, "pr-9")}
+                      >
+                        <NativeSelectOption value="">Select development</NativeSelectOption>
+                        {draft.developments.map((development) => (
+                          <NativeSelectOption key={development.id} value={development.id}>
+                            {development.name}
+                          </NativeSelectOption>
+                        ))}
+                      </NativeSelect>
+                    </Field>
+                    {developmentId && (
+                      <PropertyFloorUnitSelector
+                        key={developmentId}
+                        developmentId={developmentId}
+                        initialUnitIds={developmentId === draft.developmentId ? unitIds : []}
+                        initialBuildingId={
+                          buildingId ??
+                          (developmentId === draft.developmentId ? draft.buildingId : null)
+                        }
+                        unitIds={unitIds}
+                        onBuildingChange={changeBuilding}
+                        onUnitsChange={setUnitIds}
+                        selectClassName={cn(field, "pr-9")}
+                        disabled={pending}
+                      />
+                    )}
+                  </div>
+
+                  <section
+                    className="space-y-2 rounded-xl border border-border/60 bg-card p-3"
+                    aria-label="Parking Slots (Optional)"
+                  >
+                    <h3 className="text-[13px] font-medium">Parking Slots (Optional)</h3>
+                    {buildingId ? (
+                      <OpportunityParkingSelector
+                        key={buildingId}
+                        developmentId={developmentId}
+                        buildingId={buildingId}
+                        selectedIds={parkingSlotIds}
+                        heldIds={draft.parkingSlotIds ?? []}
+                        onChange={(ids) => setParkingSelection({ buildingId, ids })}
+                        disabled={pending}
+                      />
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Select a building to choose parking slots.
+                      </p>
+                    )}
+                  </section>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Financing" required>
+                      <PaymentMethodSelect
+                        required={step === 4}
+                        name="financingPreference"
+                        value={financing}
+                        onValueChange={setFinancing}
+                        disabled={pending}
+                      />
+                    </Field>
+                    {financing === "bank_financing" && (
+                      <Field label="Bank" required>
+                        <Input
+                          required={step === 4}
+                          name="bankName"
+                          list="opportunity-banks"
+                          defaultValue={restoredFields.bankName ?? draft.bankName}
+                          placeholder="e.g. BDO Unibank"
+                          className={field}
+                        />
+                        <datalist id="opportunity-banks">
+                          {bankOptions.map((bank) => (
+                            <option key={bank} value={bank} />
+                          ))}
+                        </datalist>
+                      </Field>
+                    )}
+                    {financing === "other" && (
+                      <Field label="Other financing" required>
+                        <Input
+                          required={step === 4}
+                          name="financingPreferenceOther"
+                          defaultValue={
+                            restoredFields.financingPreferenceOther ??
+                            draft.financingPreferenceOther
+                          }
+                          className={field}
+                        />
+                      </Field>
+                    )}
+                  </div>
+                  <div
+                    className="rounded-lg border border-primary/20 bg-primary/5 p-4"
+                    aria-live="polite"
+                  >
+                    <h3 className="text-sm font-semibold">Expected amount</h3>
+                    {currentEstimate?.success ? (
+                      <dl className="mt-3 grid gap-2 text-sm">
+                        <div className="flex justify-between gap-3">
+                          <dt>
+                            {unitIds.length} {unitIds.length === 1 ? "unit" : "units"} ×{" "}
+                            {formatPrice(currentEstimate.unitPrice, currentEstimate.currency)}
+                          </dt>
+                          <dd className="tabular-nums">
+                            {formatPrice(currentEstimate.units, currentEstimate.currency)}
+                          </dd>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <dt>
+                            {parkingSlots} parking {parkingSlots === 1 ? "slot" : "slots"}
+                            {parkingSlots > 0 && currentEstimate.parkingPrice
+                              ? ` × ${formatPrice(currentEstimate.parkingPrice, currentEstimate.currency)}`
+                              : ""}
+                          </dt>
+                          <dd className="tabular-nums">
+                            {formatPrice(currentEstimate.parking, currentEstimate.currency)}
+                          </dd>
+                        </div>
+                        <div className="mt-1 flex justify-between gap-3 border-t border-primary/20 pt-3 text-base font-semibold">
+                          <dt>Total</dt>
+                          <dd className="text-primary tabular-nums">
+                            {formatPrice(currentEstimate.total, currentEstimate.currency)}
+                          </dd>
+                        </div>
+                      </dl>
+                    ) : (
+                      <p
+                        className={cn(
+                          "mt-2 text-sm",
+                          currentEstimate ? "text-destructive" : "text-muted-foreground",
+                        )}
+                      >
+                        {currentEstimate && !currentEstimate.success
+                          ? currentEstimate.message
+                          : buildingId && unitIds.length
+                            ? "Calculating…"
+                            : "Select a building and unit to see the total."}
+                      </p>
+                    )}
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      Based on unit and parking prices. Units and parking stay available until this
+                      opportunity moves to Reservation.
+                    </p>
+                  </div>
+                </div>
 
                 <div className="flex justify-end gap-2 pt-1">
                   {step === 1 ? (
@@ -710,14 +1180,21 @@ export function OpportunityDialog({
                       <Button
                         type="button"
                         variant="ghost"
-                        onClick={() => setStep(1)}
+                        onClick={() => setStep((step - 1) as 1 | 2 | 3)}
                         disabled={pending}
                       >
                         Back
                       </Button>
-                      <Button type="submit" disabled={pending || !currentEstimate?.success}>
-                        {pending ? "Saving…" : "Move to Opportunity"}
-                      </Button>
+                      {step < 4 ? (
+                        <Button type="submit">Next</Button>
+                      ) : (
+                        <Button
+                          type="submit"
+                          disabled={pending || !unitIds.length || !currentEstimate?.success}
+                        >
+                          {pending ? "Saving…" : "Move to Opportunity"}
+                        </Button>
+                      )}
                     </>
                   )}
                 </div>

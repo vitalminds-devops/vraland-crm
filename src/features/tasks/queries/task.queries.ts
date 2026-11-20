@@ -1,9 +1,9 @@
 import "server-only";
 import { and, asc, count, desc, eq, ilike, isNull, or, sql, type SQL } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db";
 import { contacts, deals, properties, tasks, users } from "@/db/schema";
 import { requirePermission } from "@/lib/permissions/authorization";
-import { grantedPropertyCondition } from "@/lib/permissions/property-access";
 import { dataScopeCondition, scopedAgentCondition } from "@/lib/permissions/scope";
 import { taskDueToday, taskOverdue, taskUpcoming } from "../lib/task-predicates";
 
@@ -18,6 +18,7 @@ export function isTaskSortKey(value: string | undefined): value is TaskSortKey {
 const PRIORITY_RANK = sql`case ${tasks.priority} when 'urgent' then 0 when 'high' then 1 when 'medium' then 2 else 3 end`;
 const STATUS_RANK = sql`case ${tasks.status} when 'todo' then 0 when 'in_progress' then 1 when 'completed' then 2 else 3 end`;
 const OPEN_FIRST = sql`case when ${tasks.status} in ('completed','cancelled') then 1 else 0 end`;
+const creator = alias(users, "task_creator");
 
 export async function listTasks(input: {
   page: number;
@@ -83,6 +84,8 @@ export async function listTasks(input: {
         assignedUserId: tasks.assignedUserId,
         assignedFirstName: users.firstName,
         assignedLastName: users.lastName,
+        creatorFirstName: creator.firstName,
+        creatorLastName: creator.lastName,
         contactId: contacts.id,
         contactFirstName: contacts.firstName,
         contactMiddleName: contacts.middleName,
@@ -94,6 +97,7 @@ export async function listTasks(input: {
       })
       .from(tasks)
       .leftJoin(users, eq(tasks.assignedUserId, users.id))
+      .leftJoin(creator, eq(tasks.createdBy, creator.id))
       .leftJoin(contacts, eq(tasks.contactId, contacts.id))
       .leftJoin(properties, eq(tasks.propertyId, properties.id))
       .leftJoin(deals, eq(tasks.dealId, deals.id))
@@ -121,87 +125,23 @@ export async function listTasks(input: {
     canDelete: context.permissions.has("tasks.delete"),
   };
 }
-function taskOptionScopes(context: Awaited<ReturnType<typeof requirePermission>>) {
-  return {
-    contacts: dataScopeCondition(context, {
-      organizationId: contacts.organizationId,
-      ownerUserId: contacts.assignedUserId,
-      brokerUserId: contacts.brokerUserId,
-    }),
-    deals: dataScopeCondition(context, {
-      organizationId: deals.organizationId,
-      ownerUserId: deals.primaryAgentUserId,
-      brokerUserId: deals.brokerUserId,
-    }),
-    agents: scopedAgentCondition(context),
-  };
-}
-
 export async function getTaskOptions() {
   const context = await requirePermission("tasks.view");
-  const {
-    contacts: contactScope,
-    deals: dealScope,
-    agents: agentScope,
-  } = taskOptionScopes(context);
-  const [agents, contactRows, propertyRows, dealRows] = await Promise.all([
-    db
-      .select({
-        id: users.id,
-        firstName: users.firstName,
-        lastName: users.lastName,
-      })
-      .from(users)
-      .where(
-        and(
-          eq(users.organizationId, context.organizationId),
-          eq(users.status, "active"),
-          isNull(users.deletedAt),
-          agentScope,
-        ),
-      )
-      .orderBy(asc(users.lastName)),
-    db
-      .select({
-        id: contacts.id,
-        firstName: contacts.firstName,
-        lastName: contacts.lastName,
-      })
-      .from(contacts)
-      .where(
-        and(
-          eq(contacts.organizationId, context.organizationId),
-          isNull(contacts.deletedAt),
-          contactScope,
-        ),
-      )
-      .orderBy(asc(contacts.lastName))
-      .limit(500),
-    db
-      .select({ id: properties.id, title: properties.title })
-      .from(properties)
-      .where(
-        and(
-          eq(properties.organizationId, context.organizationId),
-          isNull(properties.deletedAt),
-          grantedPropertyCondition(context, { propertyId: properties.id }),
-        ),
-      )
-      .orderBy(asc(properties.title))
-      .limit(500),
-    db
-      .select({ id: deals.id, title: deals.title })
-      .from(deals)
-      .where(
-        and(eq(deals.organizationId, context.organizationId), isNull(deals.deletedAt), dealScope),
-      )
-      .orderBy(asc(deals.title))
-      .limit(500),
-  ]);
-  return {
-    agents,
-    contacts: contactRows,
-    properties: propertyRows,
-    deals: dealRows,
-  };
+  const agents = await db
+    .select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+    })
+    .from(users)
+    .where(
+      and(
+        eq(users.organizationId, context.organizationId),
+        eq(users.status, "active"),
+        isNull(users.deletedAt),
+        scopedAgentCondition(context),
+      ),
+    )
+    .orderBy(asc(users.lastName));
+  return { agents };
 }

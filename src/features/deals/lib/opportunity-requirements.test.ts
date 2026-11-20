@@ -3,7 +3,7 @@ import { missingOpportunityDetails } from "./opportunity-requirements";
 
 vi.mock("@/db", () => ({ db: {} }));
 
-function transaction(tinNumber: string | null) {
+function transaction(tinNumber: string | null, overrides: Record<string, unknown> = {}) {
   const files = [{ documentType: "valid_id" }, { documentType: "client_appointment_form" }];
   const query = {
     from: vi.fn().mockReturnThis(),
@@ -17,6 +17,12 @@ function transaction(tinNumber: string | null) {
         contactId: "contact",
         financing: "cash",
         tinNumber,
+        currentProvince: "Cebu",
+        currentCity: "Cebu City",
+        currentBarangay: "Lahug",
+        budgetMin: null,
+        budgetMax: "2299999",
+        ...overrides,
       },
     ]),
   };
@@ -41,4 +47,15 @@ it.each([null, "", "   "])(
 
 it("allows a stage change with a TIN and the other requirements", async () => {
   expect(await missingOpportunityDetails(transaction("123-456-789"), "deal")).toBeNull();
+});
+
+it("rejects a direct stage change that bypasses the Address step", async () => {
+  expect(
+    await missingOpportunityDetails(transaction("123-456-789", { currentCity: null }), "deal"),
+  ).toBe("Add the address first.");
+});
+it("rejects a direct stage change that bypasses property interest", async () => {
+  expect(
+    await missingOpportunityDetails(transaction("123-456-789", { budgetMax: null }), "deal"),
+  ).toBe("Add the budget range first.");
 });

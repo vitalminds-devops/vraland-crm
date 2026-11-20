@@ -100,7 +100,11 @@ vi.mock("../lib/opportunity-requirements", () => ({ missingOpportunityDetails: a
 vi.mock("../lib/record-commissions", () => ({ recordDealCommissions: async () => {} }));
 vi.mock("@/features/billing/lib/billing-inventory", async (original) => ({
   ...(await original<typeof import("@/features/billing/lib/billing-inventory")>()),
-  readDealPayments: vi.fn(async () => ({ total: 1000, paid: fixture.paid })),
+  readDealPayments: vi.fn(async () => ({
+    total: 1000,
+    paid: fixture.paid,
+    reservationPaid: fixture.paid > 0,
+  })),
 }));
 vi.mock("../lib/deal-inventory", async (original) => ({
   ...(await original<typeof import("../lib/deal-inventory")>()),
@@ -117,7 +121,7 @@ beforeEach(() => {
   fixture.paid = 0;
 });
 
-it("reserves all selected units and parking inside the successful opportunity move", async () => {
+it("leaves selected units and parking available when moving an unpaid lead to Opportunity", async () => {
   expect((await changeDealStage({ dealId, stageId: ids[1] })).success).toBe(true);
   expect(syncDealInventory).toHaveBeenCalledWith(
     expect.anything(),
@@ -125,7 +129,7 @@ it("reserves all selected units and parking inside the successful opportunity mo
       dealId,
       unitIds: ["unit-1", "unit-2"],
       parkingSlotIds: ["parking-1"],
-      status: "deposit_paid",
+      status: "available",
     }),
   );
 });
@@ -159,6 +163,32 @@ it("does not reserve anything for a pending approval", async () => {
   expect(syncDealInventory).not.toHaveBeenCalled();
 });
 
+it("locks units and parking only when the move to Reservation succeeds", async () => {
+  fixture.from = 1;
+  fixture.paid = 100;
+  expect((await changeDealStage({ dealId, stageId: ids[2] })).success).toBe(true);
+  expect(syncDealInventory).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({
+      status: "deposit_paid",
+      unitIds: ["unit-1", "unit-2"],
+      parkingSlotIds: ["parking-1"],
+    }),
+  );
+});
+
+it("releases paid inventory when moved back from Reservation to Opportunity", async () => {
+  fixture.from = 2;
+  fixture.paid = 100;
+  expect(
+    (await changeDealStage({ dealId, stageId: ids[1], note: "Review selection" })).success,
+  ).toBe(true);
+  expect(syncDealInventory).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({ status: "available" }),
+  );
+});
+
 it("keeps fully paid units sold when moving to Reservation", async () => {
   fixture.from = 1;
   fixture.paid = 1000;
@@ -169,7 +199,7 @@ it("keeps fully paid units sold when moving to Reservation", async () => {
   );
 });
 
-it("keeps paid reservations reserved when returning to Leads", async () => {
+it("releases paid inventory when returning to Leads", async () => {
   fixture.from = 1;
   fixture.paid = 100;
   expect((await changeDealStage({ dealId, stageId: ids[0], note: "Review details" })).success).toBe(
@@ -177,7 +207,7 @@ it("keeps paid reservations reserved when returning to Leads", async () => {
   );
   expect(syncDealInventory).toHaveBeenCalledWith(
     expect.anything(),
-    expect.objectContaining({ status: "deposit_paid" }),
+    expect.objectContaining({ status: "available" }),
   );
 });
 it("rejects stale selection saves before updating the stage or inventory", async () => {

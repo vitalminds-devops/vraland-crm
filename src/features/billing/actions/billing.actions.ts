@@ -221,11 +221,13 @@ export async function recordPayment(
   const parsed = paymentSchema.safeParse(input);
   if (!parsed.success) return validationFailureFromZod(parsed.error);
   const value = parsed.data;
-  if (transactionSlip !== undefined) {
+  if (value.method === "online") {
     if (!(transactionSlip instanceof File))
-      return validationFailure("Choose a transaction slip file.");
+      return validationFailure("Upload a transaction slip before recording the payment.");
     const error = await documentFileError(transactionSlip, requirementFileTypes);
     if (error) return validationFailure(error);
+  } else if (transactionSlip !== undefined) {
+    return validationFailure("Transaction slips are only accepted for Online payments.");
   }
   let storedKey: string | undefined;
   let savedPaymentId: string | undefined;

@@ -29,8 +29,6 @@ import { taskSchema, type TaskInput } from "../schemas/task.schema";
 import type { TaskRow } from "./tasks-table";
 
 type Person = { id: string; firstName: string; lastName: string | null };
-type Named = { id: string; title: string };
-
 /** Keeps a task's current link selectable when it falls outside the capped option list. */
 function withCurrent<T extends { id: string }>(list: T[], current: T | null): T[] {
   return current && !list.some((item) => item.id === current.id) ? [current, ...list] : list;
@@ -49,9 +47,6 @@ export function TaskForm({
   canDelete?: boolean;
   options: {
     agents: Person[];
-    contacts: Person[];
-    properties: Named[];
-    deals: Named[];
   };
 }) {
   const [open, setOpen] = useState(false);
@@ -64,24 +59,6 @@ export function TaskForm({
           lastName: task.assignedLastName,
         }
       : null,
-  );
-  const contacts = withCurrent(
-    options.contacts,
-    task?.contactId
-      ? {
-          id: task.contactId,
-          firstName: task.contactFirstName ?? "",
-          lastName: task.contactLastName,
-        }
-      : null,
-  );
-  const properties = withCurrent(
-    options.properties,
-    task?.propertyId ? { id: task.propertyId, title: task.propertyTitle ?? "" } : null,
-  );
-  const deals = withCurrent(
-    options.deals,
-    task?.dealId ? { id: task.dealId, title: task.dealTitle ?? "" } : null,
   );
   const [pending, startTransition] = useTransition();
   const router = useRouter();
@@ -238,39 +215,6 @@ export function TaskForm({
                       {...register("reminderAt")}
                       className={field}
                     />
-                  </Field>
-
-                  <Field label="Contact">
-                    <NativeSelect {...register("contactId")} className={cn(field, "pr-9")}>
-                      <NativeSelectOption value="">None</NativeSelectOption>
-                      {contacts.map((contact) => (
-                        <NativeSelectOption key={contact.id} value={contact.id}>
-                          {`${contact.firstName} ${contact.lastName ?? ""}`.trim()}
-                        </NativeSelectOption>
-                      ))}
-                    </NativeSelect>
-                  </Field>
-
-                  <Field label="Property">
-                    <NativeSelect {...register("propertyId")} className={cn(field, "pr-9")}>
-                      <NativeSelectOption value="">None</NativeSelectOption>
-                      {properties.map((property) => (
-                        <NativeSelectOption key={property.id} value={property.id}>
-                          {property.title}
-                        </NativeSelectOption>
-                      ))}
-                    </NativeSelect>
-                  </Field>
-
-                  <Field label="Opportunity">
-                    <NativeSelect {...register("dealId")} className={cn(field, "pr-9")}>
-                      <NativeSelectOption value="">None</NativeSelectOption>
-                      {deals.map((deal) => (
-                        <NativeSelectOption key={deal.id} value={deal.id}>
-                          {deal.title}
-                        </NativeSelectOption>
-                      ))}
-                    </NativeSelect>
                   </Field>
 
                   <Field

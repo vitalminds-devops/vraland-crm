@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { canMoveDealToStage, type MoveStage } from "./stage-move";
+import { canMoveDealToStage, dropHintFor, type MoveStage } from "./stage-move";
 
 const stage = (slug: string, position: number): MoveStage => ({
   id: slug,
@@ -21,6 +21,15 @@ it("hides moving back from anyone without the permission, admins included", () =
   expect(back("admin")).toBe(false);
   expect(back("agent", true)).toBe(true);
   expect(back("admin", true)).toBe(true);
+});
+
+it("directs an unpaid Opportunity to Billing for its automatic Reservation move", () => {
+  const unpaid = { stageId: "opportunity", reservationPaid: false };
+  expect(canMoveDealToStage(unpaid, stages[2], stages, true, "admin")).toBe(false);
+  expect(dropHintFor(unpaid, stages[2], stages, true, "admin", true)).toEqual({
+    text: "Moves automatically after Billing",
+    tone: "blocked",
+  });
 });
 
 it("lets a holder of the permission reopen a won deal, but only admins change its outcome", () => {

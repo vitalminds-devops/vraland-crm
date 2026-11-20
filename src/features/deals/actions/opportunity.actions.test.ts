@@ -1,5 +1,6 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import type { DealActionResult } from "./deal.actions";
+import { paymentMethods } from "@/features/billing/schemas/billing.schema";
 import {
   getOpportunityEstimate,
   getOpportunityParking,
@@ -122,13 +123,36 @@ function leadForm() {
   form.set("financingPreference", "cash");
   form.set("parkingSlotIds", id);
   form.set("amount", "1");
+  form.set("currentProvince", "Cebu");
+  form.set("currentCity", "Cebu City");
+  form.set("currentBarangay", "Lahug");
+  form.set("currentAddressLine1", "Test street");
+  form.set("budgetMin", "2300000");
+  form.set("budgetMax", "2499999");
   return form;
 }
+
+it.each(paymentMethods)(
+  "accepts Billing's %s method and saves it on the client",
+  async (method) => {
+    const form = leadForm();
+    form.set("financingPreference", method);
+    if (method === "bank_financing") form.set("bankName", "BDO Unibank");
+    if (method === "other") form.set("financingPreferenceOther", "Custom financing");
+    expect(await openOpportunity(form)).toMatchObject({ success: true });
+    expect(inventory.updates).toContainEqual(
+      expect.objectContaining({ financingPreference: method }),
+    );
+  },
+);
 
 it("saves the building, parking quantity, and authoritative total before moving", async () => {
   expect(await openOpportunity(leadForm())).toMatchObject({
     success: true,
-    data: { message: "Selected units and parking slots are reserved." },
+    data: {
+      message:
+        "Unit and parking selections saved. They remain available until the Reservation stage.",
+    },
   });
   expect(inventory.updates).toContainEqual(
     expect.objectContaining({
@@ -142,6 +166,68 @@ it("saves the building, parking quantity, and authoritative total before moving"
       currency: "PHP",
     }),
   );
+});
+
+it("blocks a lead without a newly selected unit before saving files or changing stage", async () => {
+  const form = leadForm();
+  form.delete("unitIds");
+  expect(await openOpportunity(form)).toMatchObject({
+    success: false,
+    error: { message: "Select at least one unit." },
+  });
+  expect(inventory.put).not.toHaveBeenCalled();
+  expect(inventory.updates).toEqual([]);
+});
+
+it("reuses documents on the contact for another lead without empty replacement uploads", async () => {
+  expect(await openOpportunity(leadForm())).toMatchObject({ success: true });
+  expect(inventory.put).not.toHaveBeenCalled();
+});
+
+it("saves the address and property interest with the opportunity", async () => {
+  const form = leadForm();
+  form.set("purchaseType", "condominium");
+  form.set("employmentType", "Self-Employed");
+  form.set("annualIncome", "1000000");
+  expect((await openOpportunity(form)).success).toBe(true);
+  expect(inventory.updates).toContainEqual(
+    expect.objectContaining({
+      currentProvince: "Cebu",
+      currentCity: "Cebu City",
+      currentBarangay: "Lahug",
+      currentAddressLine1: "Test street",
+      budgetMin: "2300000",
+      budgetMax: "2499999",
+      purchaseType: "condominium",
+      employmentType: "Self-Employed",
+      annualIncome: "1000000",
+    }),
+  );
+});
+
+it.each(["currentProvince", "currentCity", "currentBarangay", "budgetMax"])(
+  "requires %s before moving",
+  async (field) => {
+    const form = leadForm();
+    form.delete(field);
+    if (field === "budgetMax") form.delete("budgetMin");
+    expect(await openOpportunity(form)).toMatchObject({
+      success: false,
+      error: { details: { fieldErrors: { [field]: expect.any(Array) } } },
+    });
+    expect(inventory.updates).toEqual([]);
+  },
+);
+
+it("rejects units that are no longer available before uploading or saving", async () => {
+  const form = leadForm();
+  inventory.queryRows[1] = [];
+  expect(await openOpportunity(form)).toMatchObject({
+    success: false,
+    error: { message: expect.stringContaining("selected units are unavailable") },
+  });
+  expect(inventory.put).not.toHaveBeenCalled();
+  expect(inventory.updates).toEqual([]);
 });
 
 it("explains that approval is still needed instead of claiming the lead moved", async () => {
@@ -190,7 +276,7 @@ it("names the missing bank in the toast message", async () => {
   form.set("financingPreference", "bank_financing");
   expect(await openOpportunity(form)).toMatchObject({
     success: false,
-    error: { message: "In Details, enter the bank name for bank financing." },
+    error: { message: "Enter the bank name for bank financing." },
   });
   expect(inventory.updates).toEqual([]);
 });

@@ -12,6 +12,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - "Delete opportunities" now works: an opportunity entered by mistake can be deleted from its page, unless it is Won, has payments, holds units or parking, or is the contact's only opportunity.
 - "Reassign agent" on an opportunity's page moves it to another agent, with a reason. On a Won opportunity the commission moves too.
 
+- Bills can be printed as a billing statement with the letterhead, bill items, payment terms, totals and payment history ("Print bill" on a bill's page).
+- Documents is now a shared library of forms and templates. Administrators and Super Administrators upload PDF, JPG or PNG files; everyone with "View documents" can open, download or print them.
+- A document's page has "Print / Save as PDF" for PDF and image files.
+- New permission "Archive documents" opens Archive and archives or restores documents. Migration 0054 gives it to Administrators and Super Administrators.
+- Moving a lead to Opportunity now goes in four steps: Documents, Address, Property interest and Unit selection.
+- The opportunity form keeps a draft in the browser and reopens where you left off after a reload or a closed tab.
+- After an ID is uploaded, its address is read on the device and filled into the Address step for review.
+- Payment method can be Bank financing, Pag-IBIG financing, In-house financing or Other.
+- Pipeline cards show who entered the lead and the next action.
+- The task list shows who created each task and its assignee.
+- Saving payments, uploads, photos, developments, account details and opportunities shows a progress message that turns into the result.
+
 ### Changed
 - A restored user comes back inactive; activate them to let them sign in.
 - Deploying no longer runs database migrations; run them by hand before deploying.
@@ -24,12 +36,31 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A scheduled campaign that can't send (a social campaign, or no email or SMS provider set up) goes back to draft instead of blocking newer campaigns. The reason is in the logs.
 - Each permission's info button, on the Roles page and a user's Permissions, now explains what it allows and every condition that limits it. Permissions no feature uses yet say "Not used yet". The filter searches these details too.
 
+- A new contact asks only for Details and Deal. Address and property interest are asked when the lead moves to Opportunity.
+- Units and parking are held only from the Reservation stage. Selecting them on a lead or an opportunity, even with a payment, leaves them Available.
+- Migration 0055 releases units and parking held by opportunities that have no payments and aren't Won.
+- Migration 0056 releases units and parking held by leads and opportunities that haven't reached Reservation.
+- Dragging an opportunity to Reservation explains that it moves there automatically once the reservation fee is recorded in Billing.
+- Online payments need a transaction slip, and only Online payments accept one.
+- Archiving and restoring documents needs "Archive documents" instead of "Manage documents". The Archive page lists shared files only.
+- Permission names and descriptions use the page and button names users see, for example "View sales pipeline" and "Manage bills and payments".
+- Messages appear at the bottom right with a close button and pause while the tab is hidden. Clicking a message no longer closes the dialog behind it.
+- Pictures (profile, cover, unit) and contact CSV files are checked before upload, with a clear reason if they're refused.
+- Signing in with wrong details says "Invalid email or password".
+- Archiving a contact blocked by an opportunity explains why: selected units, parking or recorded payments.
+- Properties no longer show how many floors or units are hidden from you. Giving property access keeps your own held-back units held back instead of showing an error.
+- Shared files download with their file extension.
+
 ### Removed
 - Lead source is no longer asked for or shown: it's gone from the contact form, the opportunity page and the report filters, along with the "Conversion by lead source" table and its export.
 - Commercial contacts no longer ask "Who is buying?", Owner name or Representative, and the contact page no longer shows Business details. Contact CSV import and export drop those columns.
 - Migration 0052 deletes the stored lead sources and the commercial buyer fields from the database.
 
 - The "Approve contacts" and "Manage settings" permissions. Neither ever did anything: contacts are approved automatically, and there are no organization settings to manage.
+
+- Tasks can no longer be linked to a contact, property or opportunity from the task form.
+- The All tasks / My tasks switch on the Tasks pages.
+- The document type filter on Documents.
 
 ### Fixed
 - When a user is deactivated or archived, only an active agent or broker can take over their work, and records they only broker can only go to someone who can be a broker.
@@ -44,6 +75,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A Reservation payment below the reservation fee is refused instead of leaving the opportunity stuck; paying more is still allowed.
 
 - Buttons for actions a user can't complete are hidden: Add contact, Edit, notes and Add details on contacts; Reassign broker without "Reassign a contact's broker"; Edit, Archive and unit controls on properties outside the user's reach. Only Super Administrators see the option to override the won-sale lock.
+
+- A document or requirement upload no longer reports a failure when the file was saved but the page couldn't refresh.
+- A picture whose contents can't be read now gets a clear message instead of a generic error.
 
 ### Security
 - Updated Next.js from 16.4.2 to 16.4.6 to fix a published security advisory.

@@ -12,6 +12,20 @@ it("adds and removes a user's own permissions on top of their roles", () => {
   expect([...effective].sort()).toEqual(["deals.move_back", "deals.view"]);
 });
 
+it("can grant or revoke document archive access for an individual", () => {
+  expect(
+    applyPermissionOverrides(["documents.view"], [{ key: "documents.archive", granted: true }]).has(
+      "documents.archive",
+    ),
+  ).toBe(true);
+  expect(
+    applyPermissionOverrides(
+      ["documents.view", "documents.archive"],
+      [{ key: "documents.archive", granted: false }],
+    ).has("documents.archive"),
+  ).toBe(false);
+});
+
 it("records only what differs from the roles", () => {
   const roles = ["deals.view", "deals.change_stage"];
   expect(overridesFor(roles, new Set(roles))).toEqual([]);

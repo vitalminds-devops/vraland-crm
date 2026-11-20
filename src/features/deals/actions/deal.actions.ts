@@ -609,8 +609,6 @@ async function applyStageChange(
 
       const status = dealStatusForStage(stage);
       const actualCloseDate = closeDateFor(status, before, manilaToday());
-      const opportunityPosition =
-        stageRows.find((row) => row.slug === "opportunity")?.position ?? Infinity;
       const inventoryProperties = await syncDealInventory(tx, {
         organizationId: context.organizationId,
         actorUserId: context.userId,
@@ -618,10 +616,7 @@ async function applyStageChange(
         buildingId: before.propertyId,
         unitIds: before.unitIds.length ? before.unitIds : before.unitId ? [before.unitId] : [],
         parkingSlotIds: before.parkingSlotIds,
-        status: inventoryStatusForDeal(
-          { ...stage, opportunityPosition },
-          await readDealPayments(tx, dealId),
-        ),
+        status: inventoryStatusForDeal(stage, await readDealPayments(tx, dealId)),
       });
       await tx
         .update(deals)

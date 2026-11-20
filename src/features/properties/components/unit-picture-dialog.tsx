@@ -13,7 +13,8 @@ import {
   DialogPortal,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { notify } from "@/components/ui/toast";
+import { notify, notifyLoading } from "@/components/ui/toast";
+import { checkImageUpload } from "@/lib/storage/image-uploads";
 import { removeUnitImage, saveUnitImage } from "../actions/unit.actions";
 
 /** What the upload input offers, and what the action accepts. */
@@ -45,23 +46,44 @@ export function UnitPictureDialog({
 
   const choose = (file: File | undefined) => {
     if (!file) return;
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPreviewUrl(URL.createObjectURL(file));
 
     const formData = new FormData();
     formData.set("unitId", unitId);
     formData.set("image", file);
 
     startTransition(async () => {
-      const result = await saveUnitImage(formData);
-      if (!result.success) {
-        notify(result.message, "error");
-        return;
+      const toastId = notifyLoading("Uploading unit picture…", `upload-unit-picture-${unitId}`);
+      try {
+        const checked = await checkImageUpload(file);
+        if (!checked.ok) {
+          notify("Unit picture not accepted", "error", {
+            id: toastId,
+            description: checked.message,
+          });
+          if (inputRef.current) inputRef.current.value = "";
+          return;
+        }
+        setPreviewUrl(URL.createObjectURL(file));
+        const result = await saveUnitImage(formData);
+        if (!result.success) {
+          setPreviewUrl(null);
+          if (inputRef.current) inputRef.current.value = "";
+          notify(result.message, "error", toastId);
+          return;
+        }
+        setPreviewUrl(null);
+        if (inputRef.current) inputRef.current.value = "";
+        notify(result.message, "success", toastId);
+        router.refresh();
+      } catch {
+        setPreviewUrl(null);
+        if (inputRef.current) inputRef.current.value = "";
+        notify("Could not confirm picture upload", "error", {
+          id: toastId,
+          description:
+            "Refresh this unit to check whether the picture was saved before uploading again.",
+        });
       }
-      setPreviewUrl(null);
-      if (inputRef.current) inputRef.current.value = "";
-      notify(result.message, "success");
-      router.refresh();
     });
   };
 

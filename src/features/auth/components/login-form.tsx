@@ -57,15 +57,25 @@ export function LoginForm() {
       });
 
       if (result.error) {
-        notify(result.error.message || "Wrong email or password.", "error");
+        notify(
+          result.error.code === "INVALID_EMAIL_OR_PASSWORD"
+            ? "Invalid email or password"
+            : result.error.message || "Couldn't sign in. Try again.",
+          "error",
+          "sign-in",
+        );
         return;
       }
 
-      notify("Signed in.", "success");
+      notify("Signed in.", "success", "sign-in");
       router.replace("/dashboard");
       router.refresh();
     } catch (err) {
-      notify(err instanceof Error ? err.message : "Something went wrong. Try again.", "error");
+      notify(
+        err instanceof Error ? err.message : "Couldn't sign in. Try again.",
+        "error",
+        "sign-in",
+      );
     } finally {
       setPending(false);
     }

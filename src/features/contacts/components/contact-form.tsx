@@ -37,7 +37,7 @@ import {
 } from "../actions/contact.actions";
 import { detailsOf, fieldErrorsOf } from "@/lib/types/action-result.client";
 import { formatContactName } from "../lib/helpers";
-import { contactSchema, type ContactInput } from "../schemas/contact.schema";
+import { contactSchema, contactCreateSchema, type ContactInput } from "../schemas/contact.schema";
 import { getUserFacingMessage } from "@/lib/error-handler";
 import {
   allProvinces,
@@ -116,8 +116,6 @@ function seedPhoneSlots(initial?: Partial<ContactInput>): number {
   return slots;
 }
 
-export { contactFormSections } from "../lib/contact-form-sections";
-
 type ContactFormProps = {
   contactId?: string;
   initial?: Partial<ContactInput>;
@@ -175,7 +173,7 @@ export function ContactForm({
     setError,
     formState: { errors },
   } = useForm<ContactInput>({
-    resolver: zodResolver(contactSchema) as never,
+    resolver: zodResolver(contactId ? contactSchema : contactCreateSchema) as never,
     defaultValues: {
       lifecycleStage: "active_client",
       purchaseType: "house_and_lot",
@@ -661,134 +659,140 @@ export function ContactForm({
           })}
         </FormSection>
 
-        <FormSection id="section-2" number={2} title="Address">
-          <FormRow>
-            <FormField label="Province" required error={errors.currentProvince?.message}>
-              <FormSelect
-                {...register("currentProvince", {
-                  onChange: () => handleProvinceChange(),
-                })}
-              >
-                <option value="">Select province</option>
-                {allProvinces.map((province) => (
-                  <option key={province.id} value={province.name}>
-                    {province.name}
-                  </option>
-                ))}
-              </FormSelect>
-            </FormField>
-            <FormField
-              label="City"
-              required
-              hint={cityOptions.length === 0 ? "Select a province first" : undefined}
-              error={errors.currentCity?.message}
-            >
-              <FormSelect
-                {...register("currentCity", {
-                  onChange: (event) => handleCityChange(event.target.value),
-                })}
-                disabled={cityOptions.length === 0}
-              >
-                <option value="">Select city</option>
-                {cityOptions.map((city) => (
-                  <option key={city.id} value={city.name}>
-                    {city.name}
-                  </option>
-                ))}
-              </FormSelect>
-            </FormField>
-          </FormRow>
-          <FormRow>
-            <FormField
-              label="Barangay"
-              required
-              hint={barangayOptions.length === 0 ? "Select a city first" : undefined}
-              error={errors.currentBarangay?.message}
-            >
-              <FormSelect {...register("currentBarangay")} disabled={barangayOptions.length === 0}>
-                <option value="">Select barangay</option>
-                {barangayOptions.map((barangay) => (
-                  <option key={barangay.id} value={barangay.name}>
-                    {barangay.name}
-                  </option>
-                ))}
-              </FormSelect>
-            </FormField>
-            <FormField
-              label="Postal code"
-              hint="Set from the city"
-              error={errors.currentPostalCode?.message}
-            >
-              <Input
-                {...register("currentPostalCode")}
-                readOnly
-                className={`${formInputClass} bg-[var(--surface)] text-[var(--text-muted)] cursor-not-allowed`}
-              />
-            </FormField>
-          </FormRow>
-          <FormField label="Street" error={errors.currentAddressLine1?.message}>
-            <Input
-              {...register("currentAddressLine1")}
-              className={formInputClass}
-              placeholder="House or lot no., street, subdivision"
-            />
-          </FormField>
-        </FormSection>
-
-        <FormSection id="section-3" number={3} title="Property interest">
-          <FormRow>
-            <FormField label="Budget range" required error={errors.budgetMax?.message}>
-              <FormSelect value={budgetRange ?? ""} onChange={handleBudgetRangeChange}>
-                <option value="">Select budget</option>
-                {budgetRanges.map((range) => (
-                  <option key={range.value} value={range.value}>
-                    {range.label}
-                  </option>
-                ))}
-              </FormSelect>
-            </FormField>
-            <FormField label="Property type" error={errors.purchaseType?.message}>
-              <FormSelect {...register("purchaseType")}>
-                {initial?.purchaseType === "residential" && (
-                  <option value="residential">Residential</option>
-                )}
-                {propertyTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {purchaseTypeLabels[type]}
-                  </option>
-                ))}
-              </FormSelect>
-            </FormField>
-          </FormRow>
-          <FormRow>
-            <FormField label="Employment" error={errors.employmentType?.message}>
-              <FormSelect {...register("employmentType")}>
-                <option value="">Not specified</option>
-                {employmentTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </FormSelect>
-            </FormField>
-            <FormField label="Annual income" error={errors.annualIncome?.message}>
-              <Controller
-                control={control}
-                name="annualIncome"
-                render={({ field }) => (
-                  <MoneyInput
-                    value={field.value as string | number | null | undefined}
-                    onValueChange={field.onChange}
-                    onBlur={field.onBlur}
-                    className={formInputClass}
+        {contactId && (
+          <>
+            <FormSection id="section-2" number={2} title="Address">
+              <FormRow>
+                <FormField label="Province" required error={errors.currentProvince?.message}>
+                  <FormSelect
+                    {...register("currentProvince", {
+                      onChange: () => handleProvinceChange(),
+                    })}
+                  >
+                    <option value="">Select province</option>
+                    {allProvinces.map((province) => (
+                      <option key={province.id} value={province.name}>
+                        {province.name}
+                      </option>
+                    ))}
+                  </FormSelect>
+                </FormField>
+                <FormField
+                  label="City"
+                  required
+                  hint={cityOptions.length === 0 ? "Select a province first" : undefined}
+                  error={errors.currentCity?.message}
+                >
+                  <FormSelect
+                    {...register("currentCity", {
+                      onChange: (event) => handleCityChange(event.target.value),
+                    })}
+                    disabled={cityOptions.length === 0}
+                  >
+                    <option value="">Select city</option>
+                    {cityOptions.map((city) => (
+                      <option key={city.id} value={city.name}>
+                        {city.name}
+                      </option>
+                    ))}
+                  </FormSelect>
+                </FormField>
+              </FormRow>
+              <FormRow>
+                <FormField
+                  label="Barangay"
+                  required
+                  hint={barangayOptions.length === 0 ? "Select a city first" : undefined}
+                  error={errors.currentBarangay?.message}
+                >
+                  <FormSelect
+                    {...register("currentBarangay")}
+                    disabled={barangayOptions.length === 0}
+                  >
+                    <option value="">Select barangay</option>
+                    {barangayOptions.map((barangay) => (
+                      <option key={barangay.id} value={barangay.name}>
+                        {barangay.name}
+                      </option>
+                    ))}
+                  </FormSelect>
+                </FormField>
+                <FormField
+                  label="Postal code"
+                  hint="Set from the city"
+                  error={errors.currentPostalCode?.message}
+                >
+                  <Input
+                    {...register("currentPostalCode")}
+                    readOnly
+                    className={`${formInputClass} bg-[var(--surface)] text-[var(--text-muted)] cursor-not-allowed`}
                   />
-                )}
-              />
-            </FormField>
-          </FormRow>
-        </FormSection>
+                </FormField>
+              </FormRow>
+              <FormField label="Street" error={errors.currentAddressLine1?.message}>
+                <Input
+                  {...register("currentAddressLine1")}
+                  className={formInputClass}
+                  placeholder="House or lot no., street, subdivision"
+                />
+              </FormField>
+            </FormSection>
 
-        <FormSection id="section-4" number={4} title="Deal">
+            <FormSection id="section-3" number={3} title="Property interest">
+              <FormRow>
+                <FormField label="Budget range" required error={errors.budgetMax?.message}>
+                  <FormSelect value={budgetRange ?? ""} onChange={handleBudgetRangeChange}>
+                    <option value="">Select budget</option>
+                    {budgetRanges.map((range) => (
+                      <option key={range.value} value={range.value}>
+                        {range.label}
+                      </option>
+                    ))}
+                  </FormSelect>
+                </FormField>
+                <FormField label="Property type" error={errors.purchaseType?.message}>
+                  <FormSelect {...register("purchaseType")}>
+                    {initial?.purchaseType === "residential" && (
+                      <option value="residential">Residential</option>
+                    )}
+                    {propertyTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {purchaseTypeLabels[type]}
+                      </option>
+                    ))}
+                  </FormSelect>
+                </FormField>
+              </FormRow>
+              <FormRow>
+                <FormField label="Employment" error={errors.employmentType?.message}>
+                  <FormSelect {...register("employmentType")}>
+                    <option value="">Not specified</option>
+                    {employmentTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </FormSelect>
+                </FormField>
+                <FormField label="Annual income" error={errors.annualIncome?.message}>
+                  <Controller
+                    control={control}
+                    name="annualIncome"
+                    render={({ field }) => (
+                      <MoneyInput
+                        value={field.value as string | number | null | undefined}
+                        onValueChange={field.onChange}
+                        onBlur={field.onBlur}
+                        className={formInputClass}
+                      />
+                    )}
+                  />
+                </FormField>
+              </FormRow>
+            </FormSection>
+          </>
+        )}
+        <FormSection id="section-4" number={contactId ? 4 : 2} title="Deal">
           <p className="text-[13px] text-[var(--text-muted)]">
             {!canEditDeal
               ? initialDeal

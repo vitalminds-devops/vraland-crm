@@ -24,7 +24,7 @@ test("selectors enforce no grant, floor grant, exclusions, revocation and organi
   const units = () => request.get("/api/properties/units", { params: { floorId: ids.floor } });
   expect(await (await properties()).json()).toEqual([]);
   expect(await (await floors()).json()).toEqual([]);
-  expect(await (await units()).json()).toEqual({ units: [], omitted: 0 });
+  expect(await (await units()).json()).toEqual({ units: [] });
   const grant = randomUUID();
   await files.client.query(
     "insert into property_access_grants(id,user_id,property_id) values($1,$2,$3)",
@@ -55,13 +55,12 @@ test("selectors enforce no grant, floor grant, exclusions, revocation and organi
   ]);
   expect(await (await units()).json()).toMatchObject({
     units: [{ id: ids.unit, code: "1A" }],
-    omitted: 0,
   });
   await files.client.query(
     "insert into property_access_grant_targets(grant_id,unit_id,is_exclusion) values($1,$2,true)",
     [grant, ids.unit],
   );
-  expect(await (await units()).json()).toEqual({ units: [], omitted: 1 });
+  expect(await (await units()).json()).toEqual({ units: [] });
   expect(
     await (
       await request.get("/api/properties", { params: { developmentId: foreignIds.development } })
@@ -76,7 +75,7 @@ test("selectors enforce no grant, floor grant, exclusions, revocation and organi
     await (
       await request.get("/api/properties/units", { params: { floorId: foreignIds.floor } })
     ).json(),
-  ).toEqual({ units: [], omitted: 0 });
+  ).toEqual({ units: [] });
   await files.client.query("delete from property_access_grants where id=$1", [grant]);
   expect(await (await properties()).json()).toEqual([]);
 });

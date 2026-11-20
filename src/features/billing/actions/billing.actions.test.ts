@@ -165,7 +165,7 @@ const paymentInput = {
   billId: input.dealId,
   amount: 100,
   paidOn: "2026-11-09",
-  method: "cash",
+  method: "online",
   classification: "monthly",
 };
 
@@ -180,7 +180,7 @@ it.each(["save", "record", "remove"])(
         [{ id: "bill", dealId: input.dealId, total: "1000" }],
         [{ paid: "0" }],
       ];
-      result = await recordPayment(paymentInput);
+      result = await recordPayment(paymentInput, transactionSlip());
     } else {
       mock.reads = [[{ billId: "bill", dealId: input.dealId }], [{ id: "bill" }]];
       result = await removePayment({ id: input.dealId });
@@ -205,7 +205,7 @@ it.each(["save", "record", "remove"])(
         [{ id: "bill", dealId: input.dealId, total: "1000" }],
         [{ paid: "0" }],
       ];
-      result = await recordPayment(paymentInput);
+      result = await recordPayment(paymentInput, transactionSlip());
     } else {
       mock.reads = [[{ billId: "bill", dealId: input.dealId }], [{ id: "bill" }]];
       result = await removePayment({ id: input.dealId });
@@ -222,7 +222,7 @@ it.each(["save", "record", "remove"])(
 it("refuses a payment on a lost deal", async () => {
   mock.closed = true;
   mock.reads = [[{ dealId: input.dealId }]];
-  expect(await recordPayment(paymentInput)).toMatchObject({
+  expect(await recordPayment(paymentInput, transactionSlip())).toMatchObject({
     success: false,
     error: { message: "This opportunity is lost or cancelled. Reopen it to record a payment." },
   });
@@ -288,10 +288,12 @@ it.each([
     [{ paid: "0" }],
     stages,
   ];
-  expect(await recordPayment({ ...paymentInput, classification })).toMatchObject({
-    success: true,
-    data: { message: `Payment recorded. Moved to ${name}.` },
-  });
+  expect(await recordPayment({ ...paymentInput, classification }, transactionSlip())).toMatchObject(
+    {
+      success: true,
+      data: { message: `Payment recorded. Moved to ${name}.` },
+    },
+  );
   expect(changeDealStage).toHaveBeenCalledWith({ dealId: input.dealId, stageId });
 });
 
@@ -307,7 +309,10 @@ it.each([
     [{ paid: prior, reservationFee: "500", reservationPaid: prior }],
     stages,
   ];
-  const result = await recordPayment({ ...paymentInput, amount, classification: "reservation" });
+  const result = await recordPayment(
+    { ...paymentInput, amount, classification: "reservation" },
+    transactionSlip(),
+  );
   expect(result.success).toBe(ok);
   if (!ok)
     expect(result).toMatchObject({
@@ -325,7 +330,7 @@ const fullPaymentReads = () => [
 
 it("takes a full payment from Opportunity to Won, one stage at a time", async () => {
   mock.reads = fullPaymentReads();
-  expect(await recordPayment(fullPayment)).toMatchObject({
+  expect(await recordPayment(fullPayment, transactionSlip())).toMatchObject({
     data: { message: "Payment recorded. Moved to Won." },
   });
   expect(vi.mocked(changeDealStage).mock.calls).toEqual([
@@ -340,7 +345,7 @@ it("stops a full payment's moves at a stage sent for approval", async () => {
     success: true,
     data: { id: "deal", approvalRequested: true },
   });
-  expect(await recordPayment(fullPayment)).toMatchObject({
+  expect(await recordPayment(fullPayment, transactionSlip())).toMatchObject({
     data: { message: "Payment recorded. Sent to Reservation for approval." },
   });
   expect(changeDealStage).toHaveBeenCalledOnce();
@@ -352,7 +357,10 @@ it.each([
 ])("keeps the payment when the move is refused: %s", async (refusal, message) => {
   mock.reads = fullPaymentReads();
   vi.mocked(changeDealStage).mockResolvedValueOnce(failureFrom("INVALID_INPUT", refusal));
-  expect(await recordPayment(fullPayment)).toMatchObject({ success: true, data: { message } });
+  expect(await recordPayment(fullPayment, transactionSlip())).toMatchObject({
+    success: true,
+    data: { message },
+  });
   expect(changeDealStage).toHaveBeenCalledOnce();
 });
 
@@ -361,7 +369,7 @@ it("reports the stage reached when a later move is refused", async () => {
   vi.mocked(changeDealStage)
     .mockResolvedValueOnce({ success: true, data: { id: "deal" } })
     .mockResolvedValueOnce(failureFrom("INVALID_INPUT", NO_FIRST_MONTH_MESSAGE));
-  expect(await recordPayment(fullPayment)).toMatchObject({
+  expect(await recordPayment(fullPayment, transactionSlip())).toMatchObject({
     data: {
       message: "Payment recorded. Moved to Reservation. Monthly amortization not fully paid yet.",
     },
@@ -375,7 +383,7 @@ it("leaves the stage alone when the payment does not match the deal's stage", as
     [{ paid: "0" }],
     stages,
   ];
-  expect(await recordPayment(paymentInput)).toMatchObject({
+  expect(await recordPayment(paymentInput, transactionSlip())).toMatchObject({
     success: true,
     data: { message: "Payment recorded." },
   });
@@ -386,7 +394,7 @@ it("refuses bills and payments on opportunities outside the user's data access",
   mock.inScope = false;
   expect(await saveBill(input)).toMatchObject({ success: false });
   mock.reads = [[{ dealId: input.dealId }]];
-  expect(await recordPayment(paymentInput)).toMatchObject({ success: false });
+  expect(await recordPayment(paymentInput, transactionSlip())).toMatchObject({ success: false });
   mock.reads = [[{ billId: "bill", dealId: input.dealId }]];
   expect(await removePayment({ id: input.dealId })).toMatchObject({ success: false });
   expect(mock.writes).toEqual([]);
@@ -394,6 +402,46 @@ it("refuses bills and payments on opportunities outside the user's data access",
 });
 
 const transactionSlip = () => new File(["%PDF-1.7\n"], "transfer.pdf", { type: "application/pdf" });
+
+it.each(["online"])(
+  "requires a transaction slip for %s before saving a payment",
+  async (method) => {
+    expect(await recordPayment({ ...paymentInput, method })).toMatchObject({
+      success: false,
+      error: { message: "Upload a transaction slip before recording the payment." },
+    });
+    expect(mock.transaction).not.toHaveBeenCalled();
+    expect(mock.put).not.toHaveBeenCalled();
+  },
+);
+
+it.each([
+  "cash",
+  "bank_financing",
+  "pag_ibig",
+  "in_house_financing",
+  "other",
+  "bank_transfer",
+  "check",
+])("records %s without a transaction slip", async (method) => {
+  mock.reads = fullPaymentReads();
+  expect((await recordPayment({ ...paymentInput, method })).success).toBe(true);
+  expect(
+    mock.writes.find((write) => write.table === payments)?.values.transactionSlipDocumentId,
+  ).toBeNull();
+  expect(mock.put).not.toHaveBeenCalled();
+});
+
+it("rejects an attachment for a payment method other than Online", async () => {
+  expect(await recordPayment({ ...paymentInput, method: "cash" }, transactionSlip())).toMatchObject(
+    {
+      success: false,
+      error: { message: "Transaction slips are only accepted for Online payments." },
+    },
+  );
+  expect(mock.transaction).not.toHaveBeenCalled();
+  expect(mock.put).not.toHaveBeenCalled();
+});
 
 it("stores the transaction slip and links it to the payment in the same transaction", async () => {
   mock.reads = fullPaymentReads();

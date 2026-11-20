@@ -50,7 +50,6 @@ beforeEach(() => {
     {
       key: "floor",
       rows: [{ id: "unit", code: "1A", status: "available", imageStorageKey: null }],
-      omitted: 0,
     },
     ["unit-on-another-floor"],
   ];
@@ -97,7 +96,6 @@ it("keeps compact unavailable unit choices disabled and existing selections remo
       { id: "reserved", code: "1C", status: "deposit_paid", imageStorageKey: null },
       { id: "unit-on-another-floor", code: "1D", status: "sold", imageStorageKey: null },
     ],
-    omitted: 0,
   };
   const tree = PropertyFloorUnitSelector({ developmentId: "development", onUnitsChange: vi.fn() });
   expect(button(tree, (props) => props["aria-label"] === "Unit 1B, Sold out")?.disabled).toBe(true);

@@ -4,6 +4,7 @@ import { contacts, dealAgents, deals, documents, properties } from "@/db/schema"
 import type { AuthorizationContext } from "@/lib/permissions/policy";
 import { grantedPropertyCondition } from "@/lib/permissions/property-access";
 import { dataScopeCondition } from "@/lib/permissions/scope";
+import { sharedFileCategory } from "./shared-files";
 
 export function documentScope(context: AuthorizationContext) {
   const linkedToContact = and(
@@ -43,7 +44,16 @@ export function documentScope(context: AuthorizationContext) {
     }),
   )!;
 
-  return or(linkedToContact, linkedToDeal, linkedToProperty, unlinked)!;
+  const shared = and(
+    eq(documents.organizationId, context.organizationId),
+    eq(documents.category, sharedFileCategory),
+    eq(documents.isSensitive, false),
+    isNull(documents.contactId),
+    isNull(documents.dealId),
+    isNull(documents.propertyId),
+    isNull(documents.userId),
+  );
+  return or(shared, linkedToContact, linkedToDeal, linkedToProperty, unlinked)!;
 }
 
 const sensitiveReaderRoles = ["sales-manager", "administrator", "super-administrator"] as const;

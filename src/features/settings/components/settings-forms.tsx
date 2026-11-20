@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
-import { notify } from "@/components/ui/toast";
+import { notify, notifyLoading } from "@/components/ui/toast";
 import { documentFileError } from "@/lib/storage/document-validation";
 import {
   isAdministratorRoleSlug,
@@ -29,6 +29,7 @@ import {
 } from "@/lib/permissions/catalog";
 import { permissionDetails, type PermissionDetail } from "@/lib/permissions/permission-details";
 import type { ActionResult } from "@/lib/types/action-result";
+import { fieldErrorsOf } from "@/lib/types/action-result.client";
 import { PermissionDetailTooltip } from "./permission-detail-tooltip";
 import type { RoleRef } from "./users/user-types";
 import { createAgentAccount, createUser } from "../actions/settings.actions";
@@ -258,16 +259,24 @@ function useAction() {
   const [pending, start] = useTransition();
   const run = (fn: () => Promise<ActionResult<unknown>>) =>
     start(async () => {
+      const toastId = notifyLoading("Saving account and documents…", "save-account");
       try {
         const result = await fn();
         notify(
-          result.success ? "Saved." : result.error.message || "Couldn't save.",
+          result.success ? "Account saved." : "Account was not saved",
           result.success ? "success" : "error",
+          {
+            id: toastId,
+            description: result.success
+              ? undefined
+              : Object.values(fieldErrorsOf(result)).flat().join("\n") || result.error.message,
+          },
         );
       } catch {
         notify(
           "Save confirmation was not received. Check the user list before submitting again.",
           "error",
+          toastId,
         );
       }
     });

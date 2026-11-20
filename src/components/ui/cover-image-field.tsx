@@ -5,7 +5,8 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { storedImageAccept } from "@/lib/storage/image-uploads";
+import { checkImageUpload, storedImageAccept } from "@/lib/storage/image-uploads";
+import { notify } from "@/components/ui/toast";
 
 type Props = {
   label: string;
@@ -43,8 +44,14 @@ export function CoverImageField({
 
   const shownUrl = previewUrl ?? currentUrl;
 
-  const choose = (file: File | undefined) => {
+  const choose = async (file: File | undefined) => {
     if (!file) return;
+    const checked = await checkImageUpload(file);
+    if (!checked.ok) {
+      notify("Cover photo not accepted", "error", { description: checked.message });
+      if (inputRef.current) inputRef.current.value = "";
+      return;
+    }
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(URL.createObjectURL(file));
     onSelect(file);

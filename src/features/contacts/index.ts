@@ -1,5 +1,6 @@
 // Components
-export { ContactForm, contactFormSections } from "./components/contact-form";
+export { ContactForm } from "./components/contact-form";
+export { contactFormSections } from "./lib/contact-form-sections";
 export { ContactsTable } from "./components/contacts-table";
 export { ContactFilters } from "./components/contact-filters";
 export { InfoCard } from "./components/info-card";

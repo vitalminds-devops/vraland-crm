@@ -190,11 +190,8 @@ export default async function PropertyDetailPage({
               propertyTitle={p.title}
               canManageUnits={!presenting && actions.canManageUnits}
               canManageUnitPictures={!presenting && actions.canManageUnitPictures}
-              floorCount={p.floorCount}
-              unitsPerFloor={p.unitsPerFloor}
               floors={inventory.floors}
               units={inventory.units}
-              omitted={inventory.omitted}
             />
           </Section>
 

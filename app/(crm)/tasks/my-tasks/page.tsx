@@ -6,7 +6,6 @@ import { StatCard } from "@/components/common/stat-card";
 import { ButtonLink, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardToolbar } from "@/components/ui/card";
 import { TaskFilters } from "@/features/tasks/components/task-filters";
-import { TasksNav } from "@/features/tasks/components/tasks-nav";
 import { TasksTable } from "@/features/tasks/components/tasks-table";
 import { getTaskOptions, isTaskSortKey, listTasks } from "@/features/tasks/queries/task.queries";
 import { requirePagePermission } from "@/lib/permissions/authorization";
@@ -82,15 +81,12 @@ export default async function MyTasksPage({
     <PageContainer>
       <PageHeader title="My tasks" description="Assigned to you." />
 
-      <TasksNav
-        current="/tasks/my-tasks"
-        action={
-          <a href={exportHref} className={buttonVariants({ variant: "secondary" })}>
-            <Download aria-hidden="true" className="mr-2 h-4 w-4" />
-            Export
-          </a>
-        }
-      />
+      <div className="mb-6 flex justify-end">
+        <a href={exportHref} className={buttonVariants({ variant: "secondary" })}>
+          <Download aria-hidden="true" className="mr-2 h-4 w-4" />
+          Export
+        </a>
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard

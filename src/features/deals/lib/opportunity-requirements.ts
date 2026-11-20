@@ -3,6 +3,10 @@ import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
 import { contacts, dealContacts, deals, documents } from "@/db/schema";
 import { requiredDocumentLabel } from "@/features/contacts/lib/contact-options";
+import {
+  opportunityAddressSchema,
+  opportunityInterestSchema,
+} from "@/features/contacts/schemas/opportunity-contact.schema";
 
 type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -57,6 +61,11 @@ export async function missingOpportunityDetails(
       contactId: contacts.id,
       financing: contacts.financingPreference,
       tinNumber: contacts.tinNumber,
+      currentProvince: contacts.currentProvince,
+      currentCity: contacts.currentCity,
+      currentBarangay: contacts.currentBarangay,
+      budgetMin: contacts.budgetMin,
+      budgetMax: contacts.budgetMax,
     })
     .from(deals)
     .leftJoin(
@@ -67,6 +76,8 @@ export async function missingOpportunityDetails(
     .where(eq(deals.id, dealId));
   const missing: string[] = [];
   if (!row?.tinNumber?.trim()) missing.push("TIN number");
+  if (!opportunityAddressSchema.safeParse(row).success) missing.push("address");
+  if (!opportunityInterestSchema.safeParse(row).success) missing.push("budget range");
   if (!row?.developmentId) missing.push("development");
   if (!row?.buildingId) missing.push("building");
   if (!row?.unitId) missing.push("unit");

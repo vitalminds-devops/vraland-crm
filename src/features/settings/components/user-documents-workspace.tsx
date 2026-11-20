@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
-import { notify } from "@/components/ui/toast";
+import { notify, notifyLoading } from "@/components/ui/toast";
 import { documentFileError } from "@/lib/storage/document-validation";
 import { cn } from "@/lib/utils/cn";
 
@@ -198,12 +198,13 @@ export function UserDocumentsWorkspace({
   const uploadCertificate = (form: FormData, element: HTMLFormElement) => {
     form.set("userId", user.id);
     startTransition(async () => {
+      const toastId = notifyLoading("Uploading certificate…", `certificate-${user.id}`);
       try {
         const file = form.get("file");
         const error =
           file instanceof File ? await documentFileError(file) : "Select a certificate file.";
         if (error) {
-          notify(error, "error");
+          notify("Certificate not accepted", "error", { id: toastId, description: error });
           return;
         }
         const result = await saveUserCertificate(form);
@@ -212,6 +213,7 @@ export function UserDocumentsWorkspace({
             ? "Certificate uploaded."
             : result.error.message || "Couldn't upload certificate.",
           result.success ? "success" : "error",
+          toastId,
         );
         if (result.success) {
           element.reset();
@@ -222,6 +224,7 @@ export function UserDocumentsWorkspace({
         notify(
           "Upload confirmation was not received. Refresh the document list before uploading again.",
           "error",
+          toastId,
         );
       }
     });
@@ -238,10 +241,14 @@ export function UserDocumentsWorkspace({
     form.set("file", file);
     const verb = documentId ? "replace" : "upload";
     startTransition(async () => {
+      const toastId = notifyLoading(
+        documentId ? "Replacing document…" : "Uploading document…",
+        `user-document-${user.id}`,
+      );
       try {
         const error = await documentFileError(file);
         if (error) {
-          notify(error, "error");
+          notify("Document not accepted", "error", { id: toastId, description: error });
           return;
         }
         const result = await saveUserDocument(form);
@@ -250,12 +257,14 @@ export function UserDocumentsWorkspace({
             ? `Document ${verb}d.`
             : result.error.message || `Couldn't ${verb} document.`,
           result.success ? "success" : "error",
+          toastId,
         );
         if (result.success) router.refresh();
       } catch {
         notify(
           "Upload confirmation was not received. Refresh the document list before uploading again.",
           "error",
+          toastId,
         );
       }
     });

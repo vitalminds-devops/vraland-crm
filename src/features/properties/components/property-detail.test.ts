@@ -60,7 +60,6 @@ const fixture = vi.hoisted(() => ({
     units: [
       { id: "unit", code: "1A", floorId: "floor", status: "available", imageStorageKey: null },
     ],
-    omitted: { floors: 0, units: 0 },
   },
 }));
 

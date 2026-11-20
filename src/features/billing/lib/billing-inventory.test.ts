@@ -14,6 +14,7 @@ vi.mock("@/features/deals/lib/deal-inventory", () => ({
 }));
 
 const stage = {
+  slug: "opportunity",
   isWonStage: false,
   isLostStage: false,
   isCancelledStage: false,
@@ -21,7 +22,6 @@ const stage = {
   opportunityPosition: 2,
 };
 const deal = {
-  slug: "opportunity",
   ...stage,
   id: "deal",
   propertyId: "building",
@@ -51,11 +51,13 @@ function transaction(rows: unknown[]) {
 beforeEach(() => vi.clearAllMocks());
 
 it.each([
-  { stage, total: 1000, paid: 1000, expected: "sold" },
-  { stage, total: 1000, paid: 100, expected: "deposit_paid" },
-  { stage, total: 1000, paid: 0, expected: "deposit_paid" },
+  { stage, total: 1000, paid: 1000, expected: "available" },
+  { stage, total: 1000, paid: 100, expected: "available" },
+  { stage, total: 1000, paid: 0, expected: "available" },
+  { stage: { ...stage, slug: "reservation" }, total: 1000, paid: 100, expected: "deposit_paid" },
+  { stage: { ...stage, slug: "reservation" }, total: 1000, paid: 1000, expected: "sold" },
   { stage: { ...stage, position: 1 }, total: 1000, paid: 0, expected: "available" },
-  { stage: { ...stage, position: 1 }, total: 1000, paid: 100, expected: "deposit_paid" },
+  { stage: { ...stage, slug: "leads" }, total: 1000, paid: 100, expected: "available" },
   { stage: { ...stage, isWonStage: true }, total: 1000, paid: 0, expected: "sold" },
   { stage: { ...stage, isLostStage: true }, total: 1000, paid: 1000, expected: "available" },
   { stage: { ...stage, isCancelledStage: true }, total: 1000, paid: 1000, expected: "available" },
@@ -68,7 +70,10 @@ it.each([
 );
 
 it("reads only active payments and defaults a missing bill to no payments", async () => {
-  expect(await readDealPayments(transaction([]).tx, "deal")).toEqual({ total: 0, paid: 0 });
+  expect(await readDealPayments(transaction([]).tx, "deal")).toEqual({
+    total: 0,
+    paid: 0,
+  });
   expect(
     await readDealPayments(transaction([{ total: "123.45", paid: "23.45" }]).tx, "deal"),
   ).toEqual({ total: 123.45, paid: 23.45 });
@@ -94,9 +99,13 @@ it("locks the persisted deal snapshot before billing or inventory writes", async
 
 it("marks all persisted units and parking sold after a settled payment", async () => {
   const { tx } = transaction([{ total: "1000", paid: "1000" }]);
-  expect(await syncBillingInventory(tx, { organizationId: "org", userId: "actor" }, deal)).toEqual([
-    "building",
-  ]);
+  expect(
+    await syncBillingInventory(
+      tx,
+      { organizationId: "org", userId: "actor" },
+      { ...deal, slug: "reservation" },
+    ),
+  ).toEqual(["building"]);
   expect(syncDealInventory).toHaveBeenCalledWith(tx, {
     organizationId: "org",
     actorUserId: "actor",
@@ -109,11 +118,11 @@ it("marks all persisted units and parking sold after a settled payment", async (
 });
 
 it("uses the legacy primary unit when there is no saved unit array", async () => {
-  const { tx } = transaction([{ total: "1000", paid: "100" }]);
+  const { tx } = transaction([{ total: "1000", paid: "100", reservationPaid: true }]);
   await syncBillingInventory(
     tx,
     { organizationId: "org", userId: "actor" },
-    { ...deal, unitIds: [] },
+    { ...deal, slug: "reservation", unitIds: [] },
   );
   expect(syncDealInventory).toHaveBeenCalledWith(
     tx,
@@ -121,15 +130,30 @@ it("uses the legacy primary unit when there is no saved unit array", async () =>
   );
 });
 
-it("releases Leads inventory after its last payment is removed", async () => {
-  const { tx } = transaction([{ total: "1000", paid: "0" }]);
-  await syncBillingInventory(
-    tx,
-    { organizationId: "org", userId: "actor" },
-    { ...deal, position: 1 },
-  );
-  expect(syncDealInventory).toHaveBeenCalledWith(
-    tx,
-    expect.objectContaining({ status: "available" }),
-  );
-});
+it.each([100, 1000])(
+  "keeps Opportunity inventory available after recording a payment of %s",
+  async (paid) => {
+    const { tx } = transaction([{ total: "1000", paid: String(paid) }]);
+    await syncBillingInventory(tx, { organizationId: "org", userId: "actor" }, deal);
+    expect(syncDealInventory).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({ status: "available" }),
+    );
+  },
+);
+
+it.each([1, 2, 3])(
+  "releases inventory after its last payment is removed at stage %s",
+  async (position) => {
+    const { tx } = transaction([{ total: "1000", paid: "0" }]);
+    await syncBillingInventory(
+      tx,
+      { organizationId: "org", userId: "actor" },
+      { ...deal, position },
+    );
+    expect(syncDealInventory).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({ status: "available" }),
+    );
+  },
+);

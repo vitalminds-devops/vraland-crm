@@ -25,7 +25,6 @@ export async function lockDealForInventory(
       isCancelledStage: pipelineStages.isCancelledStage,
       position: pipelineStages.position,
       slug: pipelineStages.slug,
-      opportunityPosition: sql<number>`coalesce((select position from pipeline_stages where organization_id = ${organizationId} and slug = 'opportunity' limit 1), 2147483647)`,
     })
     .from(deals)
     .innerJoin(pipelineStages, eq(deals.stageId, pipelineStages.id))
@@ -44,7 +43,10 @@ export async function readDealPayments(tx: Transaction, dealId: string) {
     })
     .from(bills)
     .where(eq(bills.dealId, dealId));
-  return { total: Number(bill?.total ?? 0), paid: Number(bill?.paid ?? 0) };
+  return {
+    total: Number(bill?.total ?? 0),
+    paid: Number(bill?.paid ?? 0),
+  };
 }
 
 export function isFullyPaid(payment: { total: number; paid: number }): boolean {
@@ -53,19 +55,17 @@ export function isFullyPaid(payment: { total: number; paid: number }): boolean {
 
 export function inventoryStatusForDeal(
   stage: {
+    slug: string;
     isWonStage: boolean;
     isLostStage: boolean;
     isCancelledStage: boolean;
-    position: number;
-    opportunityPosition: number;
   },
   payment: { total: number; paid: number },
 ): "available" | "deposit_paid" | "sold" {
   if (stage.isLostStage || stage.isCancelledStage) return "available";
-  if (stage.isWonStage || isFullyPaid(payment)) return "sold";
-  return payment.paid > 0 || stage.position >= stage.opportunityPosition
-    ? "deposit_paid"
-    : "available";
+  if (stage.isWonStage) return "sold";
+  if (stage.slug !== "reservation") return "available";
+  return isFullyPaid(payment) ? "sold" : "deposit_paid";
 }
 
 export async function syncBillingInventory(
