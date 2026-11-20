@@ -5,6 +5,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+- The server build no longer fails while installing dependencies.
+
 ## [0.4.0] - 2026-11-20
 
 ### Added
