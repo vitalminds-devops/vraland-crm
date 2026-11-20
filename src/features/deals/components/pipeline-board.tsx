@@ -58,6 +58,7 @@ import { BOARD_COLUMN_LIMIT } from "../lib/board-limit";
 import { formatContactName } from "@/features/contacts";
 import { notify } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
+import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
 import { OpportunityDialog } from "./opportunity-dialog";
@@ -541,7 +542,7 @@ function DealCard({
   const broker = [deal.brokerFirstName, deal.brokerLastName].filter(Boolean).join(" ");
   const agentLabel = `${deal.agentRoleNames ?? "Agent"}: ${agentName(deal)}`;
   const brokerLabel = `${deal.brokerRoleNames ?? "Broker"}: ${broker}`;
-  const creatorLabel = deal.creatorRoleNames ? `${deal.creatorRoleNames}: ${creator}` : creator;
+  const creatorLabel = `Created by: ${creator}`;
 
   return (
     <article
@@ -560,7 +561,7 @@ function DealCard({
           draggable={false}
           className="min-w-0 flex-1 rounded-sm outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring/40"
         >
-          <span className="line-clamp-2 text-[13px] leading-5 font-semibold text-foreground [overflow-wrap:anywhere] hover:underline">
+          <span className="pt-1.5 line-clamp-2 text-[13px] leading-5 font-semibold text-foreground [overflow-wrap:anywhere] hover:underline">
             {owner(deal)}
           </span>
           {place && (
@@ -605,30 +606,29 @@ function DealCard({
           )}
         </div>
       )}
-      <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/40 pt-2.5">
-        <span className="flex min-w-0 flex-col gap-0.5 text-[11px]">
-          <span className="truncate text-muted-foreground" title={creatorLabel}>
-            {creatorLabel}
-          </span>
-          {agentName(deal) && (
-            <span className="truncate text-foreground/80" title={agentLabel}>
-              {agentLabel}
-            </span>
-          )}
-          {broker && !deal.agentIsBroker && (
-            <span className="truncate text-muted-foreground" title={brokerLabel}>
-              {brokerLabel}
-            </span>
-          )}
+      <div className="mt-2.5 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 text-xs leading-5">
+        <span
+          className="col-span-2 truncate text-[11px] text-muted-foreground"
+          title={creatorLabel}
+        >
+          {creatorLabel}
         </span>
         {agentName(deal) && (
-          <span title={agentLabel}>
-            <span
-              aria-hidden="true"
-              className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary ring-1 ring-inset ring-primary/15"
-            >
-              {initials(deal)}
-            </span>
+          <span className="truncate font-medium text-foreground" title={agentLabel}>
+            {agentLabel}
+          </span>
+        )}
+        {agentName(deal) && (
+          <div title={agentLabel} aria-hidden="true">
+            <InitialsAvatar initials={initials(deal)} className="size-6 text-[10px]" />
+          </div>
+        )}
+        {broker && !deal.agentIsBroker && (
+          <span
+            className="col-span-2 truncate text-[11px] text-muted-foreground"
+            title={brokerLabel}
+          >
+            {brokerLabel}
           </span>
         )}
       </div>

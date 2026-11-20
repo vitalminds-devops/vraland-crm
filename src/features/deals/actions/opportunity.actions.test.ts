@@ -151,7 +151,7 @@ it("saves the building, parking quantity, and authoritative total before moving"
     success: true,
     data: {
       message:
-        "Unit and parking selections saved. They remain available until the Reservation stage.",
+        "Selected units and parking spaces remain available to others until Reservation.",
     },
   });
   expect(inventory.updates).toContainEqual(

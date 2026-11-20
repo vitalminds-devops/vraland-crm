@@ -615,7 +615,7 @@ export async function openOpportunity(formData: FormData): Promise<DealActionRes
       ...result.data,
       message: result.data.approvalRequested
         ? "A manager must approve this move. The lead will stay in Leads until then."
-        : "Unit and parking selections saved. They remain available until the Reservation stage.",
+        : "Selected units and parking spaces remain available to others until Reservation.",
     },
   };
 }

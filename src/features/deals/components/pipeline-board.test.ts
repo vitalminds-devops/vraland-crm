@@ -64,7 +64,8 @@ it("credits the original lead creator separately from the assigned agent", () =>
   const html = renderToStaticMarkup(
     createElement(PipelineBoard, { stages: [stage], deals: [deal], canChangeStage: false }),
   );
-  expect(html).toContain("Administrator: Original Creator");
+  expect(html).toContain("Created by: Original Creator");
+  expect(html).not.toContain("Administrator: Original Creator");
   expect(html).not.toContain("Entered by");
   expect(html).toContain("Agent: Assigned Agent");
   expect(html).not.toContain("Broker:");
@@ -83,7 +84,7 @@ it("does not substitute an assignee when the original creator is unavailable", (
     }),
   );
   expect(html).toContain("Unknown user");
-  expect(html).toContain('title="Unknown user"');
+  expect(html).toContain('title="Created by: Unknown user"');
 });
 
 it("shows the client once and omits missing property and close-date placeholders", () => {
@@ -98,7 +99,7 @@ it("shows the client once and omits missing property and close-date placeholders
   expect(text.match(/Lead, Test/g)).toHaveLength(1);
   expect(html).not.toContain("lucide-calendar-clock");
   expect(html).not.toContain("<time");
-  expect(html).toContain("Administrator: Original Creator");
+  expect(html).toContain("Created by: Original Creator");
   expect(html).not.toContain("Entered by");
 });
 
