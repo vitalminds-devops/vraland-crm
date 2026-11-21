@@ -21,7 +21,11 @@ import {
   NO_FIRST_MONTH_MESSAGE,
   NO_RESERVATION_MESSAGE,
 } from "@/features/deals/lib/stage-transitions";
-import { lockDealForInventory, syncBillingInventory } from "../lib/billing-inventory";
+import {
+  inventoryHeldElsewhere,
+  lockDealForInventory,
+  syncBillingInventory,
+} from "../lib/billing-inventory";
 import {
   dealFirstMonthPaid,
   dealMonthlyAmortization,
@@ -100,6 +104,8 @@ export async function saveBill(input: unknown): Promise<ActionResult<{ id: strin
       const deal = await lockDealForInventory(tx, context.organizationId, value.dealId);
       if (!deal) return { kind: "missing" as const };
       if (deal.slug === "leads") return { kind: "lead" as const };
+      const held = await inventoryHeldElsewhere(tx, deal);
+      if (held) return { kind: "held" as const, message: held };
 
       const [existing] = await tx
         .select({
@@ -200,6 +206,7 @@ export async function saveBill(input: unknown): Promise<ActionResult<{ id: strin
 
     if (outcome.kind === "missing") return notFoundFailure("Opportunity");
     if (outcome.kind === "lead") return validationFailure(LEAD_NOT_BILLABLE);
+    if (outcome.kind === "held") return validationFailure(outcome.message);
     if (outcome.kind === "discount-too-large")
       return validationFailure("The reservation discount cannot exceed the selling price.");
     if (outcome.kind === "zero-total")
@@ -254,6 +261,8 @@ export async function recordPayment(
       if (!deal) return { kind: "missing" as const };
       if (deal.isLostStage || deal.isCancelledStage) return { kind: "closed" as const };
       if (deal.slug === "leads") return { kind: "lead" as const };
+      const held = await inventoryHeldElsewhere(tx, deal);
+      if (held) return { kind: "held" as const, message: held };
       // All billing changes lock deal, bill, then inventory in the same order as stage moves.
       const [bill] = await tx
         .select({
@@ -384,6 +393,7 @@ export async function recordPayment(
 
     if (outcome.kind === "missing") return notFoundFailure("Bill");
     if (outcome.kind === "lead") return validationFailure(LEAD_NOT_BILLABLE);
+    if (outcome.kind === "held") return validationFailure(outcome.message);
     if (outcome.kind === "closed")
       return validationFailure(
         "This opportunity is lost or cancelled. Reopen it to record a payment.",

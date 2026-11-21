@@ -1,8 +1,8 @@
 import "server-only";
 
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import type { db } from "@/db";
-import { bills, deals, pipelineStages } from "@/db/schema";
+import { bills, deals, pipelineStages, propertyParkingSlots, units } from "@/db/schema";
 import { syncDealInventory } from "@/features/deals/lib/deal-inventory";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -33,6 +33,37 @@ export async function lockDealForInventory(
     )
     .for("update", { of: deals });
   return deal;
+}
+
+/**
+ * The refusal when another opportunity already holds one of this deal's units or parking slots:
+ * the first to pay takes the inventory, and the others can't be billed for it. Null when free.
+ */
+export async function inventoryHeldElsewhere(
+  tx: Transaction,
+  deal: NonNullable<Awaited<ReturnType<typeof lockDealForInventory>>>,
+): Promise<string | null> {
+  const unitIds = deal.unitIds.length ? deal.unitIds : deal.unitId ? [deal.unitId] : [];
+  for (const [table, ids, label] of [
+    [units, unitIds, "Unit"],
+    [propertyParkingSlots, deal.parkingSlotIds, "Parking slot"],
+  ] as const) {
+    if (!ids.length) continue;
+    const [held] = await tx
+      .select({ code: table.code })
+      .from(table)
+      .where(
+        and(
+          inArray(table.id, ids),
+          isNotNull(table.reservedDealId),
+          ne(table.reservedDealId, deal.id),
+        ),
+      )
+      .limit(1);
+    if (held)
+      return `${label} ${held.code} is already reserved by another opportunity. Pick another ${label.toLowerCase()}.`;
+  }
+  return null;
 }
 
 export async function readDealPayments(tx: Transaction, dealId: string) {

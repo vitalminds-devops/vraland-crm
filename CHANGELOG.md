@@ -5,6 +5,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.4.5] - 2026-11-21
+
+### Fixed
+- An opportunity can't be billed or paid for a unit or parking slot another opportunity already reserved.
+
 ## [0.4.4] - 2026-11-21
 
 ### Changed

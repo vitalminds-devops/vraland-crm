@@ -21,6 +21,7 @@ const mock = vi.hoisted(() => ({
   won: false,
   slug: "opportunity",
   inScope: true,
+  held: null as string | null,
   writes: [] as { table: unknown; values: Record<string, unknown> }[],
   put: vi.fn(),
   remove: vi.fn(),
@@ -56,6 +57,7 @@ vi.mock("../lib/billing-inventory", () => ({
       slug: mock.slug,
     };
   },
+  inventoryHeldElsewhere: async () => mock.held,
   syncBillingInventory: vi.fn(async () => {
     mock.locks.push("inventory");
     if (mock.unavailable) throw new InventoryUnavailable("Selected unit is no longer available.");
@@ -78,6 +80,7 @@ beforeEach(() => {
   mock.won = false;
   mock.slug = "opportunity";
   mock.inScope = true;
+  mock.held = null;
   mock.locks = [];
   mock.reads = [[{ id: "bill", reservationDiscount: "0" }], [{ paid: "0" }]];
   mock.transaction.mockImplementation(async (work) => {
@@ -242,6 +245,19 @@ it.each(["save", "record"])(
       error: { message: "Move this lead to Opportunity before billing it." },
     });
     expect(mock.writes).toEqual([]);
+  },
+);
+
+it.each(["save", "record"])(
+  "refuses to %s billing when another opportunity holds the unit",
+  async (op) => {
+    mock.held = "Unit 5A is already reserved by another opportunity. Pick another unit.";
+    mock.reads = [[{ dealId: input.dealId }]];
+    const result =
+      op === "save" ? await saveBill(input) : await recordPayment(paymentInput, transactionSlip());
+    expect(result).toMatchObject({ success: false, error: { message: mock.held } });
+    expect(mock.writes).toEqual([]);
+    expect(syncBillingInventory).not.toHaveBeenCalled();
   },
 );
 
