@@ -232,7 +232,7 @@ async function estimateSelection(
     return {
       success: false as const,
       message:
-        "One or more selected units are unavailable or not shared with you. Clear the unit selection and choose available units in this building.",
+        "One or more selected units are unavailable or not shared with you. Clear the unit selection and choose available units in this property.",
     };
   if (building.parkingSpaces !== null && input.parkingSlotIds.length > building.parkingSpaces)
     return {

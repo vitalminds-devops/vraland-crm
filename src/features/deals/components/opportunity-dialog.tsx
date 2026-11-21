@@ -958,9 +958,9 @@ export function OpportunityDialog({
 
                   <section
                     className="space-y-2 rounded-xl border border-border/60 bg-card p-3"
-                    aria-label="Parking Slots (Optional)"
+                    aria-label="Parking slots (optional)"
                   >
-                    <h3 className="text-[13px] font-medium">Parking Slots (Optional)</h3>
+                    <h3 className="text-[13px] font-medium">Parking slots (optional)</h3>
                     {buildingId ? (
                       <OpportunityParkingSelector
                         key={buildingId}
@@ -973,7 +973,7 @@ export function OpportunityDialog({
                       />
                     ) : (
                       <p className="text-sm text-muted-foreground">
-                        Select a building to choose parking slots.
+                        Select a property to choose parking slots.
                       </p>
                     )}
                   </section>
@@ -1063,7 +1063,7 @@ export function OpportunityDialog({
                           ? currentEstimate.message
                           : buildingId && unitIds.length
                             ? "Calculating…"
-                            : "Select a building and unit to see the total."}
+                            : "Select a property and unit to see the total."}
                       </p>
                     )}
                     <p className="mt-3 text-xs text-muted-foreground">

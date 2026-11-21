@@ -80,206 +80,222 @@ export default async function BillingPage({
         }
       />
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Not billed"
-          value={data.summary.unbilled.toLocaleString()}
-          detail="Opportunities with no bill yet."
-          icon={FileClock}
-          href={href({ status: "unbilled" })}
-          active={status === "unbilled"}
-        />
-        <StatCard
-          label="Billed"
-          value={peso(data.summary.billedAmount)}
-          detail={`${data.summary.billed.toLocaleString()} ${data.summary.billed === 1 ? "bill" : "bills"} issued.`}
-          icon={ReceiptText}
-        />
-        <StatCard
-          label="Collected"
-          value={peso(data.summary.collected)}
-          detail="Payments recorded against bills."
-          icon={CircleDollarSign}
-        />
-        <StatCard
-          label="Balance"
-          value={peso(balance)}
-          detail="Billed but not yet paid."
-          icon={Wallet}
-        />
-      </div>
+      {/* On phones the bill list comes first; the totals follow it. */}
+      <div className="mt-6 flex flex-col gap-6">
+        <div className="grid gap-4 max-sm:order-last sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label="Not billed"
+            value={data.summary.unbilled.toLocaleString()}
+            detail="Opportunities with no bill yet."
+            icon={FileClock}
+            href={href({ status: "unbilled" })}
+            active={status === "unbilled"}
+          />
+          <StatCard
+            label="Billed"
+            value={peso(data.summary.billedAmount)}
+            detail={`${data.summary.billed.toLocaleString()} ${data.summary.billed === 1 ? "bill" : "bills"} issued.`}
+            icon={ReceiptText}
+          />
+          <StatCard
+            label="Collected"
+            value={peso(data.summary.collected)}
+            detail="Payments recorded against bills."
+            icon={CircleDollarSign}
+          />
+          <StatCard
+            label="Balance"
+            value={peso(balance)}
+            detail="Billed but not yet paid."
+            icon={Wallet}
+          />
+        </div>
 
-      <div className="mt-6 rounded-xl border bg-card">
-        <nav
-          aria-label="Filter bills by status"
-          className="flex gap-1 overflow-x-auto border-b bg-muted/20 px-4 py-3"
-        >
-          {[
-            { value: "", label: "All bills" },
-            ...billStatuses.map((value) => ({ value, label: billStatusBadge[value].label })),
-          ].map((filter) => (
-            <Link
-              key={filter.value}
-              href={href({ status: filter.value })}
-              aria-current={(status ?? "") === filter.value ? "page" : undefined}
-              className={`inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${(status ?? "") === filter.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
-            >
-              {filter.label}
-              <span className="rounded-full bg-current/10 px-1.5 py-0.5 text-xs tabular-nums">
-                {data.counts[(filter.value || "all") as BillStatus | "all"].toLocaleString()}
-              </span>
-            </Link>
-          ))}
-        </nav>
-        <FilterForm className="flex gap-2 border-b p-4">
-          {status && <input type="hidden" name="status" value={status} />}
-          <label className="relative min-w-0 flex-1">
-            <Search
-              aria-hidden="true"
-              className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-            />
-            <Input
-              name="search"
-              defaultValue={q.search}
-              placeholder="Search client, broker, property, unit or code"
-              aria-label="Search billing"
-              className={`${input} pl-9`}
-            />
-          </label>
-        </FilterForm>
+        <div className="rounded-xl border bg-card">
+          <nav
+            aria-label="Filter bills by status"
+            className="flex gap-1 overflow-x-auto border-b bg-muted/20 px-4 py-3"
+          >
+            {[
+              { value: "", label: "All bills" },
+              ...billStatuses.map((value) => ({ value, label: billStatusBadge[value].label })),
+            ].map((filter) => (
+              <Link
+                key={filter.value}
+                href={href({ status: filter.value })}
+                aria-current={(status ?? "") === filter.value ? "page" : undefined}
+                className={`inline-flex shrink-0 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${(status ?? "") === filter.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+              >
+                {filter.label}
+                <span className="rounded-full bg-current/10 px-1.5 py-0.5 text-xs tabular-nums">
+                  {data.counts[(filter.value || "all") as BillStatus | "all"].toLocaleString()}
+                </span>
+              </Link>
+            ))}
+          </nav>
+          <FilterForm className="flex gap-2 border-b p-4">
+            {status && <input type="hidden" name="status" value={status} />}
+            <label className="relative min-w-0 flex-1">
+              <Search
+                aria-hidden="true"
+                className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+              />
+              <Input
+                name="search"
+                defaultValue={q.search}
+                placeholder="Search contact, broker, property, unit or code"
+                aria-label="Search billing"
+                className={`${input} pl-9`}
+              />
+            </label>
+          </FilterForm>
 
-        {data.rows.length ? (
-          <>
-            <div className="overflow-x-auto">
-              <Table className="w-full min-w-[1100px] text-left text-sm">
-                <TableHeader className="bg-muted/60 text-xs uppercase text-muted-foreground">
-                  <TableRow>
-                    <TableHead className="px-4 py-3">Contact</TableHead>
-                    <TableHead className="px-4 py-3">Property / unit</TableHead>
-                    <TableHead className="px-4 py-3 text-right">Bill total</TableHead>
-                    <TableHead className="px-4 py-3 text-right">Balance</TableHead>
-                    <TableHead className="px-4 py-3">Status</TableHead>
-                    <TableHead className="px-4 py-3 text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody className="divide-y">
-                  {data.rows.map((row) => {
-                    const badge = billStatusBadge[row.status];
-                    const remaining =
-                      row.total === null ? null : Math.max(0, Number(row.total) - Number(row.paid));
-                    return (
-                      <TableRow key={row.dealId}>
-                        <TableCell className="min-w-52 max-w-64 px-4 py-4">
-                          <span className="font-medium">
-                            {row.contactId
-                              ? formatContactName({
-                                  firstName: row.firstName ?? "",
-                                  lastName: row.lastName ?? "",
-                                })
-                              : row.title}
-                          </span>
-                          <p className="text-xs text-muted-foreground">
-                            {row.dealCode} · {row.stageName}
-                          </p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            Broker:{" "}
-                            {[row.brokerFirstName, row.brokerLastName].filter(Boolean).join(" ") ||
-                              "Unassigned"}
-                          </p>
-                        </TableCell>
-                        {(() => {
-                          const label =
-                            row.unitLabel ??
-                            ([row.unitCode, row.developmentName].filter(Boolean).join(" · ") ||
-                              "—");
-                          // Several units are saved as "A + B"; show the first and a count, full text on hover.
-                          const [first, ...rest] = label.split(" + ");
-                          return (
-                            <TableCell
-                              title={label}
-                              className="max-w-80 truncate px-4 py-4 whitespace-nowrap"
-                            >
-                              {first}
-                              {rest.length > 0 && (
-                                <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-                                  +{rest.length}
-                                </span>
-                              )}
-                            </TableCell>
-                          );
-                        })()}
-                        <TableCell className="px-4 py-4 text-right whitespace-nowrap tabular-nums">
-                          {peso(row.total)}
-                          {row.total !== null && (
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              Paid {peso(row.paid)}
-                            </p>
-                          )}
-                        </TableCell>
-                        <TableCell
-                          className={`px-4 py-4 text-right font-semibold whitespace-nowrap tabular-nums ${remaining && remaining > 0 ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground"}`}
+          {data.rows.length ? (
+            <>
+              <div className="overflow-x-auto">
+                {/* Below md each row stacks into a card: one column, labels inline. */}
+                <Table className="w-full text-left text-sm md:min-w-[1100px]">
+                  <TableHeader className="bg-muted/60 text-xs uppercase text-muted-foreground max-md:hidden">
+                    <TableRow>
+                      <TableHead className="px-4 py-3">Contact</TableHead>
+                      <TableHead className="px-4 py-3">Property / unit</TableHead>
+                      <TableHead className="px-4 py-3 text-right">Bill total</TableHead>
+                      <TableHead className="px-4 py-3 text-right">Balance</TableHead>
+                      <TableHead className="px-4 py-3">Status</TableHead>
+                      <TableHead className="px-4 py-3 text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y">
+                    {data.rows.map((row) => {
+                      const badge = billStatusBadge[row.status];
+                      const remaining =
+                        row.total === null
+                          ? null
+                          : Math.max(0, Number(row.total) - Number(row.paid));
+                      return (
+                        <TableRow
+                          key={row.dealId}
+                          className="max-md:flex max-md:flex-col max-md:gap-1.5 max-md:p-4 max-md:[&>td]:p-0 max-md:[&>td]:text-left"
                         >
-                          {peso(remaining)}
-                        </TableCell>
-                        <TableCell className="px-4 py-4 whitespace-nowrap">
-                          <DotBadge tone={badge.tone}>{badge.label}</DotBadge>
-                        </TableCell>
-                        <TableCell className="px-4 py-3 text-right">
-                          <div className="flex items-center justify-end gap-2 whitespace-nowrap">
-                            {data.canManage &&
-                              row.billId &&
-                              remaining !== null &&
-                              remaining > 0 && (
-                                <RecordPaymentButton
-                                  billId={row.billId}
-                                  balance={String(remaining)}
-                                  size="sm"
-                                />
-                              )}
-                            <ButtonLink
-                              href={`/billing/${row.dealId}`}
-                              variant={
-                                data.canManage && row.status === "unbilled"
-                                  ? "primary"
-                                  : "secondary"
-                              }
-                              size="sm"
-                            >
-                              {data.canManage && row.status === "unbilled"
-                                ? "Create bill"
-                                : "View bill"}
-                            </ButtonLink>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-            <footer className="flex flex-wrap items-center justify-between gap-2 border-t p-4 text-sm">
-              <span>
-                {data.total.toLocaleString()} {data.total === 1 ? "opportunity" : "opportunities"}
-              </span>
-              <div className="flex gap-2">
-                {page > 1 && (
-                  <ButtonLink href={href({ page: page - 1 })} variant="secondary">
-                    Previous
-                  </ButtonLink>
-                )}
-                {page < pages && (
-                  <ButtonLink href={href({ page: page + 1 })} variant="secondary">
-                    Next
-                  </ButtonLink>
-                )}
+                          <TableCell className="px-4 py-4 md:min-w-52 md:max-w-64">
+                            <span className="font-medium">
+                              {row.contactId
+                                ? formatContactName({
+                                    firstName: row.firstName ?? "",
+                                    lastName: row.lastName ?? "",
+                                  })
+                                : row.title}
+                            </span>
+                            <p className="text-xs text-muted-foreground">
+                              <span className="break-all">{row.dealCode}</span> · {row.stageName}
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Broker:{" "}
+                              {[row.brokerFirstName, row.brokerLastName]
+                                .filter(Boolean)
+                                .join(" ") || "Unassigned"}
+                            </p>
+                          </TableCell>
+                          {(() => {
+                            const label =
+                              row.unitLabel ??
+                              ([row.unitCode, row.developmentName].filter(Boolean).join(" · ") ||
+                                "—");
+                            // Several units are saved as "A + B"; show the first and a count, full text on hover.
+                            const [first, ...rest] = label.split(" + ");
+                            return (
+                              <TableCell
+                                title={label}
+                                className="max-w-80 truncate px-4 py-4 whitespace-nowrap"
+                              >
+                                {first}
+                                {rest.length > 0 && (
+                                  <span className="ml-1.5 rounded-full bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+                                    +{rest.length}
+                                  </span>
+                                )}
+                              </TableCell>
+                            );
+                          })()}
+                          <TableCell className="px-4 py-4 text-right whitespace-nowrap tabular-nums">
+                            <span className="text-muted-foreground md:hidden">Total </span>
+                            {peso(row.total)}
+                            {row.total !== null && (
+                              <p className="mt-1 text-xs text-muted-foreground max-md:mt-0 max-md:ml-2 max-md:inline">
+                                Paid {peso(row.paid)}
+                              </p>
+                            )}
+                          </TableCell>
+                          <TableCell
+                            className={`px-4 py-4 text-right font-semibold whitespace-nowrap tabular-nums ${remaining && remaining > 0 ? "text-rose-600 dark:text-rose-400" : "text-muted-foreground"}`}
+                          >
+                            <span className="font-normal text-muted-foreground md:hidden">
+                              Balance{" "}
+                            </span>
+                            {peso(remaining)}
+                          </TableCell>
+                          <TableCell className="px-4 py-4 whitespace-nowrap">
+                            <DotBadge tone={badge.tone}>{badge.label}</DotBadge>
+                          </TableCell>
+                          <TableCell className="px-4 py-3 text-right max-md:pt-2!">
+                            <div className="flex items-center gap-2 whitespace-nowrap md:justify-end">
+                              {data.canManage &&
+                                row.billId &&
+                                remaining !== null &&
+                                remaining > 0 && (
+                                  <RecordPaymentButton
+                                    billId={row.billId}
+                                    balance={String(remaining)}
+                                    size="sm"
+                                  />
+                                )}
+                              <ButtonLink
+                                href={`/billing/${row.dealId}`}
+                                variant={
+                                  data.canManage && row.status === "unbilled"
+                                    ? "primary"
+                                    : "secondary"
+                                }
+                                size="sm"
+                              >
+                                {data.canManage && row.status === "unbilled"
+                                  ? "Create bill"
+                                  : "View bill"}
+                              </ButtonLink>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
-            </footer>
-          </>
-        ) : (
-          <div className="grid min-h-48 place-items-center px-6 text-center text-sm text-muted-foreground">
-            {q.search || status ? "No opportunities match these filters." : "No opportunities yet."}
-          </div>
-        )}
+              <footer className="flex flex-wrap items-center justify-between gap-2 border-t p-4 text-sm">
+                <span>
+                  {data.total.toLocaleString()} {data.total === 1 ? "opportunity" : "opportunities"}
+                </span>
+                <div className="flex gap-2">
+                  {page > 1 && (
+                    <ButtonLink href={href({ page: page - 1 })} variant="secondary">
+                      Previous
+                    </ButtonLink>
+                  )}
+                  {page < pages && (
+                    <ButtonLink href={href({ page: page + 1 })} variant="secondary">
+                      Next
+                    </ButtonLink>
+                  )}
+                </div>
+              </footer>
+            </>
+          ) : (
+            <div className="grid min-h-48 place-items-center px-6 text-center text-sm text-muted-foreground">
+              {q.search || status
+                ? "No opportunities match these filters."
+                : "No opportunities yet."}
+            </div>
+          )}
+        </div>
       </div>
     </PageContainer>
   );

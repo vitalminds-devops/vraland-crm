@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const opportunitySelectionSchema = z.object({
   developmentId: z.uuid({ error: "Select a development." }),
-  buildingId: z.uuid({ error: "Select a building." }),
+  buildingId: z.uuid({ error: "Select a property." }),
   unitIds: z
     .array(z.uuid())
     .min(1, "Select at least one unit.")

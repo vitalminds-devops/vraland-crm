@@ -5,6 +5,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.4.6] - 2026-11-21
+
+### Changed
+- Billing, opportunity and contact pages fit on phones; the unit picker labels its Property and Floor fields.
+
 ## [0.4.5] - 2026-11-21
 
 ### Fixed

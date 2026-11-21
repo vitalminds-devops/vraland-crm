@@ -121,7 +121,7 @@ export function OpportunityParkingSelector({
         </>
       ) : (
         <p className="text-sm text-muted-foreground">
-          No parking slots available in this building.
+          No parking slots available in this property.
         </p>
       )}
       {unavailable && (

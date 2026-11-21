@@ -25,7 +25,7 @@ import {
 import { OpportunityParkingSelector } from "./opportunity-parking-selector";
 
 const field =
-  "w-full rounded-lg border border-border/60 bg-background px-3 py-2 pr-9 text-sm outline-none transition-all hover:border-border focus-visible:ring-2 focus-visible:ring-primary/25";
+  "w-full rounded-lg border border-border/60 bg-background px-3 py-2 pr-9 text-base outline-none sm:text-sm transition-all hover:border-border focus-visible:ring-2 focus-visible:ring-primary/25";
 
 const peso = (value: string, currency: string) =>
   new Intl.NumberFormat("en-PH", { style: "currency", currency }).format(Number(value));
@@ -214,7 +214,7 @@ function ChangeUnitsDialog({ dealId, onClose }: { dealId: string; onClose: () =>
                   </section>
                 )}
                 <div
-                  className="flex items-center justify-between gap-3 rounded-lg bg-primary/5 px-4 py-3 text-sm"
+                  className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 rounded-lg bg-primary/5 px-4 py-3 text-sm"
                   aria-live="polite"
                 >
                   <span className="text-muted-foreground">New total</span>

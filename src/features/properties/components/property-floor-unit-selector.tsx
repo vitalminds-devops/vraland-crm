@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils/cn";
 import { unitStatusLabel, unitStatusToneFor } from "../lib/unit-codes";
 
 const selectClass =
-  "h-[42px] w-full rounded-lg border border-border/60 bg-background px-3 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground/70 hover:border-border focus-visible:ring-2 focus-visible:ring-primary/25 disabled:opacity-60 cursor-pointer appearance-none pr-9";
+  "h-[42px] w-full rounded-lg border border-border/60 bg-background px-3 text-base text-foreground sm:text-sm outline-none transition-all placeholder:text-muted-foreground/70 hover:border-border focus-visible:ring-2 focus-visible:ring-primary/25 disabled:opacity-60 cursor-pointer appearance-none pr-9";
 
 const EMPTY_PROPERTIES: Property[] = [];
 const EMPTY_FLOORS: Floor[] = [];
@@ -189,38 +189,42 @@ export function PropertyFloorUnitSelector({
   return (
     <div className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
-        <NativeSelect
-          aria-label="Building"
-          value={selectedBuildingId ?? ""}
-          onChange={(event) => {
-            if (onBuildingChange) clearUnits();
-            setSelectedBuildingId(event.target.value || null);
-            setSelectedFloorId(null);
-          }}
-          disabled={disabled || !developmentId || pending}
-          className={selectClassName}
-        >
-          <NativeSelectOption value="">Building</NativeSelectOption>
-          {buildings.map((building) => (
-            <NativeSelectOption key={building.id} value={building.id}>
-              {building.title}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
-        <NativeSelect
-          aria-label="Floor"
-          value={selectedFloorId ?? ""}
-          onChange={(event) => setSelectedFloorId(event.target.value || null)}
-          disabled={disabled || !selectedBuildingId || pending}
-          className={selectClassName}
-        >
-          <NativeSelectOption value="">Floor</NativeSelectOption>
-          {floors.map((floor) => (
-            <NativeSelectOption key={floor.id} value={floor.id}>
-              {floor.label}
-            </NativeSelectOption>
-          ))}
-        </NativeSelect>
+        <label className="grid gap-1.5 text-sm font-medium">
+          Property
+          <NativeSelect
+            value={selectedBuildingId ?? ""}
+            onChange={(event) => {
+              if (onBuildingChange) clearUnits();
+              setSelectedBuildingId(event.target.value || null);
+              setSelectedFloorId(null);
+            }}
+            disabled={disabled || !developmentId || pending}
+            className={selectClassName}
+          >
+            <NativeSelectOption value="">Select property</NativeSelectOption>
+            {buildings.map((building) => (
+              <NativeSelectOption key={building.id} value={building.id}>
+                {building.title}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+        </label>
+        <label className="grid gap-1.5 text-sm font-medium">
+          Floor
+          <NativeSelect
+            value={selectedFloorId ?? ""}
+            onChange={(event) => setSelectedFloorId(event.target.value || null)}
+            disabled={disabled || !selectedBuildingId || pending}
+            className={selectClassName}
+          >
+            <NativeSelectOption value="">Select floor</NativeSelectOption>
+            {floors.map((floor) => (
+              <NativeSelectOption key={floor.id} value={floor.id}>
+                {floor.label}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+        </label>
       </div>
 
       {selectedFloorId &&
