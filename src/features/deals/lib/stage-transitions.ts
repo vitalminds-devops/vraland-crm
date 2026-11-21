@@ -40,6 +40,15 @@ export const NO_FIRST_MONTH_MESSAGE =
   "Before moving this opportunity to Won, make sure the first monthly payment is fully recorded in Billing. Then try the move again.";
 export const MOVE_BACK_MESSAGE = "You don't have permission to move opportunities back.";
 
+export function paymentMessageForUser(message: string, canManageBilling: boolean): string {
+  if (canManageBilling) return message;
+  if (message === NO_RESERVATION_MESSAGE)
+    return "Ask the billing team to record the full reservation fee. This opportunity will then move to Reservation automatically.";
+  if (message === NO_FIRST_MONTH_MESSAGE)
+    return "Ask the billing team to record the full first monthly payment. Then try moving this opportunity to Won again.";
+  return message;
+}
+
 /**
  * The payment a move still needs, or null: a Reservation to enter Reservation, the first Monthly to reach Won.
  * Applies to everyone, administrators included: they record the payment in Billing first.

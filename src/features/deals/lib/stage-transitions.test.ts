@@ -4,6 +4,7 @@ import {
   MOVE_BACK_MESSAGE,
   NO_FIRST_MONTH_MESSAGE,
   NO_RESERVATION_MESSAGE,
+  paymentMessageForUser,
   canMoveStage,
   canStartDealInStage,
   checkStageTransition,
@@ -41,6 +42,26 @@ const move = (
     payments,
     canMoveBack,
   });
+
+describe("payment guidance", () => {
+  it.each([
+    [
+      NO_RESERVATION_MESSAGE,
+      "Ask the billing team to record the full reservation fee. This opportunity will then move to Reservation automatically.",
+    ],
+    [
+      NO_FIRST_MONTH_MESSAGE,
+      "Ask the billing team to record the full first monthly payment. Then try moving this opportunity to Won again.",
+    ],
+  ])("gives users without Billing access a next step for %s", (message, expected) => {
+    expect(paymentMessageForUser(message, false)).toBe(expected);
+    expect(paymentMessageForUser(message, true)).toBe(message);
+  });
+
+  it("preserves other stage errors", () => {
+    expect(paymentMessageForUser(MOVE_BACK_MESSAGE, false)).toBe(MOVE_BACK_MESSAGE);
+  });
+});
 
 describe("payment gates", () => {
   it("lets a lead become an opportunity without a payment", () => {

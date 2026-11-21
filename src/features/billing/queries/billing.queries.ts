@@ -68,6 +68,8 @@ function dealScope(context: AuthorizationContext) {
       brokerUserId: deals.brokerUserId,
     }),
     leadNotArchived,
+    // Billing starts at Opportunity; a deal still in Leads has nothing to bill.
+    sql`${deals.stageId} not in (select ${pipelineStages.id} from ${pipelineStages} where ${pipelineStages.slug} = 'leads')`,
   );
 }
 

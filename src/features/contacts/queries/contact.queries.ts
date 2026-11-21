@@ -8,10 +8,11 @@ import {
   sql,
   desc,
   eq,
+  exists,
   ilike,
   isNotNull,
-  ne,
   isNull,
+  not,
   or,
 } from "drizzle-orm";
 import { db } from "@/db";
@@ -47,6 +48,36 @@ export type ContactSortKey = (typeof contactSortKeys)[number];
 
 export function isContactSortKey(value: string | undefined): value is ContactSortKey {
   return !!value && (contactSortKeys as readonly string[]).includes(value);
+}
+
+/**
+ * A contact a broker entered stores the broker as both agent and broker: show it as
+ * that broker with no agent. An agent with no broker is stored the same way.
+ */
+function brokerOwnsContact() {
+  return and(
+    sql`${contacts.brokerUserId} is not distinct from ${contacts.assignedUserId}`,
+    exists(
+      db
+        .select({ one: sql`1` })
+        .from(userRoles)
+        .innerJoin(roles, eq(userRoles.roleId, roles.id))
+        .where(
+          and(
+            eq(userRoles.userId, contacts.assignedUserId),
+            inArray(sql`lower(${roles.slug})`, [...brokerRoleSlugs]),
+          ),
+        ),
+    ),
+  )!;
+}
+
+/** False for an agent with no broker, so they don't show as their own broker. */
+function brokerShown() {
+  return or(
+    sql`${contacts.brokerUserId} is distinct from ${contacts.assignedUserId}`,
+    brokerOwnsContact(),
+  )!;
 }
 
 export async function listContacts(input: {
@@ -139,15 +170,8 @@ export async function listContacts(input: {
         createdAt: contacts.createdAt,
       })
       .from(contacts)
-      .leftJoin(users, eq(contacts.assignedUserId, users.id))
-      .leftJoin(
-        brokerUser,
-        // An agent with no broker is stored as their own broker; show that as no broker.
-        and(
-          eq(contacts.brokerUserId, brokerUser.id),
-          ne(contacts.brokerUserId, contacts.assignedUserId),
-        ),
-      )
+      .leftJoin(users, and(eq(contacts.assignedUserId, users.id), not(brokerOwnsContact())))
+      .leftJoin(brokerUser, and(eq(contacts.brokerUserId, brokerUser.id), brokerShown()))
       .where(where)
       .orderBy(...orderBy)
       .limit(limit)
@@ -455,14 +479,7 @@ export async function exportContacts() {
         approvalStatus: contacts.approvalStatus,
       })
       .from(contacts)
-      .leftJoin(
-        brokerUser,
-        // An agent with no broker is stored as their own broker; show that as no broker.
-        and(
-          eq(contacts.brokerUserId, brokerUser.id),
-          ne(contacts.brokerUserId, contacts.assignedUserId),
-        ),
-      )
+      .leftJoin(brokerUser, and(eq(contacts.brokerUserId, brokerUser.id), brokerShown()))
       .where(
         and(eq(contacts.organizationId, context.organizationId), isNull(contacts.deletedAt), scope),
       )

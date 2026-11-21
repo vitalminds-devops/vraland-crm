@@ -39,6 +39,7 @@ import { canAccessResource, requirePermission } from "@/lib/permissions/authoriz
 import { eligibleAgent } from "@/features/contacts/lib/assignment";
 import { grantedPropertyCondition } from "@/lib/permissions/property-access";
 import { dataScopeCondition, scopedAgentCondition } from "@/lib/permissions/scope";
+import { canManageBilling } from "@/lib/permissions/policy";
 import { resolveMoveRole } from "../lib/stage-transitions";
 import { dealFirstMonthPaid, dealReservationPaid } from "@/features/billing/lib/deal-payment";
 import { leadNotArchived } from "../lib/lead-not-archived";
@@ -200,6 +201,7 @@ export async function getPipelineBoard() {
     deals: rows,
     canChangeStage: context.permissions.has("deals.change_stage"),
     canApproveStageChange: context.permissions.has("deals.approve_stage_change"),
+    canManageBilling: canManageBilling(context),
     canMoveBack: context.permissions.has("deals.move_back"),
     canCreate: context.permissions.has("deals.create"),
     userRole,

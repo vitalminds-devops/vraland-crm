@@ -23,6 +23,7 @@ export default async function PipelinePage({
             deals={data.deals}
             canChangeStage={data.canChangeStage}
             canApproveStageChange={data.canApproveStageChange}
+            canManageBilling={data.canManageBilling}
             canMoveBack={data.canMoveBack}
             userRole={data.userRole}
           />

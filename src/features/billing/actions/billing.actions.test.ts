@@ -178,7 +178,7 @@ it.each(["save", "record", "remove"])(
       mock.reads = [
         [{ dealId: input.dealId }],
         [{ id: "bill", dealId: input.dealId, total: "1000" }],
-        [{ paid: "0" }],
+        [{ paid: "0", reservationPaid: "100" }],
       ];
       result = await recordPayment(paymentInput, transactionSlip());
     } else {
@@ -203,7 +203,7 @@ it.each(["save", "record", "remove"])(
       mock.reads = [
         [{ dealId: input.dealId }],
         [{ id: "bill", dealId: input.dealId, total: "1000" }],
-        [{ paid: "0" }],
+        [{ paid: "0", reservationPaid: "100" }],
       ];
       result = await recordPayment(paymentInput, transactionSlip());
     } else {
@@ -229,6 +229,21 @@ it("refuses a payment on a lost deal", async () => {
   expect(mock.writes).toEqual([]);
   expect(syncBillingInventory).not.toHaveBeenCalled();
 });
+
+it.each(["save", "record"])(
+  "refuses to %s billing while the deal is still in Leads",
+  async (op) => {
+    mock.slug = "leads";
+    mock.reads = [[{ dealId: input.dealId }]];
+    const result =
+      op === "save" ? await saveBill(input) : await recordPayment(paymentInput, transactionSlip());
+    expect(result).toMatchObject({
+      success: false,
+      error: { message: "Move this lead to Opportunity before billing it." },
+    });
+    expect(mock.writes).toEqual([]);
+  },
+);
 
 it("refuses a price change on a won deal, whose commissions are set", async () => {
   mock.won = true;
@@ -285,7 +300,7 @@ it.each([
   mock.reads = [
     [{ dealId: input.dealId }],
     [{ id: "bill", dealId: input.dealId, total: "1000" }],
-    [{ paid: "0" }],
+    [{ paid: "0", reservationPaid: "100" }],
     stages,
   ];
   expect(await recordPayment({ ...paymentInput, classification }, transactionSlip())).toMatchObject(
@@ -320,11 +335,49 @@ it.each([
     });
 });
 
+it.each([
+  [
+    "no reservation yet",
+    null,
+    "0",
+    300,
+    "Pay the reservation fee before recording a monthly payment.",
+  ],
+  [
+    "part of the fee",
+    "500",
+    "200",
+    300,
+    "Pay the reservation fee before recording a monthly payment.",
+  ],
+  [
+    "below the amortization",
+    "500",
+    "500",
+    299,
+    "A monthly payment must be at least the ₱300.00 monthly amortization.",
+  ],
+  ["at the amortization", "500", "500", 300, null],
+  ["no fee set, any reservation", null, "50", 300, null],
+])("monthly payment with %s", async (_, reservationFee, reservationPaid, amount, error) => {
+  mock.reads = [
+    [{ dealId: input.dealId }],
+    [{ id: "bill", dealId: input.dealId, total: "1000" }],
+    [{ paid: reservationPaid, reservationFee, reservationPaid, monthlyAmount: "300" }],
+    stages,
+  ];
+  const result = await recordPayment({ ...paymentInput, amount }, transactionSlip());
+  if (error) {
+    expect(result).toMatchObject({ success: false, error: { message: error } });
+    expect(mock.writes).toEqual([]);
+  } else expect(result.success).toBe(true);
+});
+
 const fullPayment = { ...paymentInput, amount: 1000, classification: "full_payment" };
 const fullPaymentReads = () => [
   [{ dealId: input.dealId }],
   [{ id: "bill", dealId: input.dealId, total: "1000" }],
-  [{ paid: "0" }],
+  [{ paid: "0", reservationPaid: "100" }],
   stages,
 ];
 
@@ -380,7 +433,7 @@ it("leaves the stage alone when the payment does not match the deal's stage", as
   mock.reads = [
     [{ dealId: input.dealId }],
     [{ id: "bill", dealId: input.dealId, total: "1000" }],
-    [{ paid: "0" }],
+    [{ paid: "0", reservationPaid: "100" }],
     stages,
   ];
   expect(await recordPayment(paymentInput, transactionSlip())).toMatchObject({

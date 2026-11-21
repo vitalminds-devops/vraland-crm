@@ -30,6 +30,7 @@ import { eligibleAgent } from "@/features/contacts/lib/assignment";
 import { formatContactName } from "@/features/contacts/lib/helpers";
 import { InactiveAssigneeError, lockActiveAssignees } from "@/lib/permissions/active-assignees";
 import { scopedAgentCondition } from "@/lib/permissions/scope";
+import { canManageBilling } from "@/lib/permissions/policy";
 import { dealTitleFor } from "../lib/deal-label";
 import { recordDealCommissions } from "../lib/record-commissions";
 import { enrollByTrigger } from "@/features/marketing/lib/auto-enroll";
@@ -37,6 +38,7 @@ import { missingOpportunityDetails } from "../lib/opportunity-requirements";
 import { InventoryUnavailable, syncDealInventory } from "../lib/deal-inventory";
 import {
   canMoveStage,
+  paymentMessageForUser,
   closeDateFor,
   dealStatusForStage,
   canStartDealInStage,
@@ -503,7 +505,11 @@ async function applyStageChange(
           firstMonthPaid: before.firstMonthPaid,
         },
       });
-      if (!moveCheck.allowed) return { kind: "invalid" as const, message: moveCheck.message };
+      if (!moveCheck.allowed)
+        return {
+          kind: "invalid" as const,
+          message: paymentMessageForUser(moveCheck.message, canManageBilling(context)),
+        };
       if ((fromStage.slug === "leads" || fromStage.isLostStage) && toStage.slug === "opportunity") {
         const missing = await missingOpportunityDetails(tx, dealId);
         if (missing) return { kind: "invalid" as const, message: missing };

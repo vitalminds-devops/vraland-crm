@@ -42,7 +42,7 @@ import { cn } from "@/lib/utils/cn";
 import { changeDealStage } from "../actions/deal.actions";
 import {
   canActOnDeal,
-  canMoveDealToStage,
+  stageMoveBlockedMessage,
   dropHintFor,
   dropHintTone,
   reasonPromptFor,
@@ -50,10 +50,9 @@ import {
   type MoveRole,
   type MoveStage,
   type ReasonPrompt,
-  paymentNeededFor,
 } from "../lib/stage-move";
 import { dealLabel } from "../lib/deal-label";
-import { NO_RESERVATION_MESSAGE } from "../lib/stage-transitions";
+import { NO_RESERVATION_MESSAGE, paymentMessageForUser } from "../lib/stage-transitions";
 import { BOARD_COLUMN_LIMIT } from "../lib/board-limit";
 import { formatContactName } from "@/features/contacts";
 import { notify } from "@/components/ui/toast";
@@ -137,6 +136,7 @@ export function PipelineBoard({
   deals,
   canChangeStage,
   canApproveStageChange,
+  canManageBilling = false,
   canMoveBack,
   userRole,
   resumeOpportunityId,
@@ -145,6 +145,7 @@ export function PipelineBoard({
   deals: Deal[];
   canChangeStage: boolean;
   canApproveStageChange?: boolean;
+  canManageBilling?: boolean;
   /** Holds `deals.move_back`. */
   canMoveBack?: boolean;
   userRole?: MoveRole;
@@ -260,21 +261,22 @@ export function PipelineBoard({
     if (!toStage) return;
 
     // UI-level validation before the server call, mirroring the server's rules.
-    if (!canMoveDealToStage(before, toStage, sortedStages, canChangeStage, userRole, canMoveBack)) {
-      const paymentMessage = paymentNeededFor(
-        before,
-        sortedStages.find((s) => s.id === before.stageId),
-        toStage,
-      );
-      const automaticReservation = paymentMessage === NO_RESERVATION_MESSAGE;
+    const blockedMessage = stageMoveBlockedMessage(
+      before,
+      toStage,
+      sortedStages,
+      canChangeStage,
+      userRole,
+      canMoveBack,
+    );
+    if (blockedMessage) {
+      const automaticReservation = blockedMessage === NO_RESERVATION_MESSAGE;
       notify(
         automaticReservation ? "Reservation is automatic" : `Cannot move to ${toStage.name}`,
         automaticReservation ? "info" : "error",
         {
           id: `stage-move-${dealId}`,
-          description:
-            paymentMessage ??
-            "Your permissions or the current pipeline stage prevent this move. Open the opportunity to see the available stage changes.",
+          description: paymentMessageForUser(blockedMessage, canManageBilling),
         },
       );
       return;

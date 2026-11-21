@@ -5,6 +5,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-11-21
+
+### Changed
+- The sales pipeline says why a stage move is blocked and what to do next.
+
+### Fixed
+- Leads stay out of Billing until they reach Opportunity, and cannot be billed or paid before then.
+- Monthly payments need the reservation fee paid first and must be at least the monthly amortization.
+- Contacts entered by a broker show that broker as the broker with no agent, instead of as the agent with no broker.
+
 ## [0.4.3] - 2026-11-21
 
 ### Fixed

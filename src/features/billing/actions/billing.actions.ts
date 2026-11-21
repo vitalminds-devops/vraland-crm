@@ -22,7 +22,12 @@ import {
   NO_RESERVATION_MESSAGE,
 } from "@/features/deals/lib/stage-transitions";
 import { lockDealForInventory, syncBillingInventory } from "../lib/billing-inventory";
-import { dealFirstMonthPaid, dealReservationFee, dealReservationPaid } from "../lib/deal-payment";
+import {
+  dealFirstMonthPaid,
+  dealMonthlyAmortization,
+  dealReservationFee,
+  dealReservationPaid,
+} from "../lib/deal-payment";
 import { stagesAfterPayment } from "../lib/payment-stage";
 import { changeDealStage } from "@/features/deals/actions/deal.actions";
 import { logError } from "@/lib/logger";
@@ -69,6 +74,8 @@ function refresh(dealId: string, propertyIds: string[]) {
 
 const notManager = () => failure(permissionDenied("You don't have permission to manage billing."));
 
+const LEAD_NOT_BILLABLE = "Move this lead to Opportunity before billing it.";
+
 /** Billing reaches only the opportunities in the user's data access. */
 const dealInScope = (context: AuthorizationContext, dealId: string) =>
   canAccessResource(context, { type: "deal", id: dealId });
@@ -92,6 +99,7 @@ export async function saveBill(input: unknown): Promise<ActionResult<{ id: strin
     const outcome = await db.transaction(async (tx) => {
       const deal = await lockDealForInventory(tx, context.organizationId, value.dealId);
       if (!deal) return { kind: "missing" as const };
+      if (deal.slug === "leads") return { kind: "lead" as const };
 
       const [existing] = await tx
         .select({
@@ -191,6 +199,7 @@ export async function saveBill(input: unknown): Promise<ActionResult<{ id: strin
     });
 
     if (outcome.kind === "missing") return notFoundFailure("Opportunity");
+    if (outcome.kind === "lead") return validationFailure(LEAD_NOT_BILLABLE);
     if (outcome.kind === "discount-too-large")
       return validationFailure("The reservation discount cannot exceed the selling price.");
     if (outcome.kind === "zero-total")
@@ -244,6 +253,7 @@ export async function recordPayment(
       const deal = await lockDealForInventory(tx, context.organizationId, target.dealId);
       if (!deal) return { kind: "missing" as const };
       if (deal.isLostStage || deal.isCancelledStage) return { kind: "closed" as const };
+      if (deal.slug === "leads") return { kind: "lead" as const };
       // All billing changes lock deal, bill, then inventory in the same order as stage moves.
       const [bill] = await tx
         .select({
@@ -255,10 +265,11 @@ export async function recordPayment(
         .where(and(eq(bills.id, value.billId), eq(bills.organizationId, context.organizationId)))
         .for("update");
       if (!bill) return { kind: "missing" as const };
-      const [{ paid, reservationFee, reservationPaid }] = await tx
+      const [{ paid, reservationFee, reservationPaid, monthlyAmount }] = await tx
         .select({
           paid: paidSum(bill.id),
           reservationFee: dealReservationFee,
+          monthlyAmount: dealMonthlyAmortization,
           reservationPaid: sql<string>`coalesce((select sum(${payments.amount}) from ${payments}
             where ${payments.billId} = ${bill.id} and ${payments.deletedAt} is null
               and ${payments.classification} = 'reservation'), 0)`,
@@ -277,6 +288,14 @@ export async function recordPayment(
       );
       if (value.classification === "reservation" && value.amount < reservationDue - 0.004)
         return { kind: "reservation-short" as const, due: reservationDue };
+      if (value.classification === "monthly") {
+        // Monthly payments start only after the reservation fee (or any reservation, if none is set) is paid.
+        if (reservationDue > 0.004 || !(Number(reservationPaid) > 0))
+          return { kind: "reservation-unpaid" as const };
+        const monthlyDue = Math.min(Number(monthlyAmount ?? 0), balance);
+        if (value.amount < monthlyDue - 0.004)
+          return { kind: "monthly-short" as const, due: monthlyDue };
+      }
 
       let transactionSlipDocumentId: string | null = null;
       if (transactionSlip && slipBody) {
@@ -364,6 +383,7 @@ export async function recordPayment(
     });
 
     if (outcome.kind === "missing") return notFoundFailure("Bill");
+    if (outcome.kind === "lead") return validationFailure(LEAD_NOT_BILLABLE);
     if (outcome.kind === "closed")
       return validationFailure(
         "This opportunity is lost or cancelled. Reopen it to record a payment.",
@@ -375,6 +395,12 @@ export async function recordPayment(
     if (outcome.kind === "reservation-short")
       return validationFailure(
         `A reservation must be at least the ₱${outcome.due.toLocaleString("en-PH", { minimumFractionDigits: 2 })} reservation fee.`,
+      );
+    if (outcome.kind === "reservation-unpaid")
+      return validationFailure("Pay the reservation fee before recording a monthly payment.");
+    if (outcome.kind === "monthly-short")
+      return validationFailure(
+        `A monthly payment must be at least the ₱${outcome.due.toLocaleString("en-PH", { minimumFractionDigits: 2 })} monthly amortization.`,
       );
     if (outcome.kind === "over")
       return validationFailure(
