@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-25
+
 ### Added
 - An "Export opportunities" permission for the Opportunity list's CSV, like Export contacts. Every role that can view opportunities keeps it (migration 0077); without it, the Export button is hidden.
 - "Access all properties" and "Manage shared files" permissions. Administrators had both by role; they keep them (migration 0076), and unticking them now works. Giving property access no longer skips its permission for Administrators.
