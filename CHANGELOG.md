@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-25
+
 ### Added
 - Dashboard card for Available parking (free slots, of all the slots you can see).
 - Dashboard cards for Won (value, with the count and amount collected underneath), Monthly paid (amount, with the number of payments) and Floors (with how many properties have them). Total reservations now leads with its amount, the count underneath.
