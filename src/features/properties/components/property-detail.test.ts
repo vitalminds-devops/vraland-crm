@@ -78,7 +78,7 @@ vi.mock("@/lib/permissions/authorization", () => ({
 vi.mock("@/features/properties/lib/access-page-mode", () => ({
   accessPageMode: () => (fixture.permissions.has("properties.update") ? "edit" : null),
 }));
-vi.mock("@/features/properties/lib/property-scope", () => ({
+vi.mock("@/features/properties/queries/property-scope.queries", () => ({
   canWriteProperty: vi.fn(async () => fixture.canWrite),
 }));
 vi.mock("@/features/properties/queries/property.queries", () => ({

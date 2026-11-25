@@ -104,6 +104,34 @@ export function grantedPropertyCondition(
   return grantCondition(context.userId, columns.propertyId);
 }
 
+/**
+ * Access to the whole property: a grant with no floors, units or slots picked and no units left
+ * out. Changing a property needs this; access to part of it only lets the user see that part.
+ */
+export function wholePropertyGrantCondition(
+  context: AuthorizationContext,
+  columns: PropertyAccessColumns,
+): SQL {
+  if (hasUnrestrictedInventoryAccess(context)) return sql`true`;
+  return exists(
+    db
+      .select({ id: propertyAccessGrants.id })
+      .from(propertyAccessGrants)
+      .where(
+        and(
+          eq(propertyAccessGrants.userId, context.userId),
+          eq(propertyAccessGrants.propertyId, columns.propertyId),
+          notExists(
+            db
+              .select({ id: propertyAccessGrantTargets.id })
+              .from(propertyAccessGrantTargets)
+              .where(eq(propertyAccessGrantTargets.grantId, propertyAccessGrants.id)),
+          ),
+        ),
+      ),
+  );
+}
+
 export function grantedUnitsCondition(
   context: AuthorizationContext,
   columns: UnitAccessColumns,

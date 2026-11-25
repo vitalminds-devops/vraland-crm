@@ -12,7 +12,7 @@ import { UnitNamingPanel } from "@/features/properties/components/unit-naming-pa
 import { FloorSetupPanel } from "@/features/properties/components/floor-setup-panel";
 import { unitEndings } from "@/features/properties/lib/floor-groups";
 import { propertyPageActions } from "@/features/properties/lib/property-page-actions";
-import { canWriteProperty } from "@/features/properties/lib/property-scope";
+import { canWriteProperty } from "@/features/properties/queries/property-scope.queries";
 import { listParkingSlots } from "@/features/properties/queries/parking.queries";
 import { getPropertyInventory } from "@/features/properties/queries/property-floor-unit.queries";
 import { requirePagePermission } from "@/lib/permissions/authorization";
@@ -41,7 +41,8 @@ export default async function PropertyDesignPage({
   ]);
   if (!inventory.property) notFound();
   // Designing changes units and parking, so only people who manage them get here.
-  if (!propertyPageActions(context, canWrite).canManageUnits) redirect(`/properties/${id}`);
+  const actions = propertyPageActions(context, canWrite);
+  if (!actions.canManageUnits) redirect(`/properties/${id}`);
   const property = inventory.property;
 
   return (
@@ -85,6 +86,7 @@ export default async function PropertyDesignPage({
               unitTypes={inventory.unitTypes}
               currency={property.currency}
               parkingTypes={property.parkingTypes}
+              canManagePrices={actions.canManagePrices}
             />
           </Panel>
         </div>
@@ -109,6 +111,7 @@ export default async function PropertyDesignPage({
           <FloorsAndUnits
             propertyId={id}
             canManageUnits
+            canManagePrices={actions.canManagePrices}
             canDesign
             floors={inventory.floors}
             units={inventory.units}

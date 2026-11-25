@@ -7,6 +7,7 @@ import { requirePagePermission } from "@/lib/permissions/authorization";
 import {
   administratorRoleSlug,
   permissionKeys,
+  permissionModule,
   rolePermissionDefaults,
   superAdministratorRoleSlug,
   type RoleSlug,
@@ -34,7 +35,7 @@ export default async function RolesPage() {
 
   const catalogKeys = new Set<string>(permissionKeys);
   const permissionOptions = [
-    ...permissionKeys.map((key) => ({ key, module: key.split(".")[0] })),
+    ...permissionKeys.map((key) => ({ key, module: permissionModule(key) })),
     ...data.permissions
       .filter((row) => !catalogKeys.has(row.key))
       .map((row) => ({ key: row.key, module: row.module })),

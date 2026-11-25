@@ -58,6 +58,7 @@ const DesignedFloorScene = dynamic(() => import("./designed-floor-scene"), {
 export function FloorsAndUnits({
   propertyId,
   canManageUnits = false,
+  canManagePrices = false,
   canManageUnitPictures = false,
   floors,
   units,
@@ -75,6 +76,8 @@ export function FloorsAndUnits({
 }: {
   propertyId: string;
   canManageUnits?: boolean;
+  /** Prices and fees: without it, they show but can't be changed. */
+  canManagePrices?: boolean;
   canManageUnitPictures?: boolean;
   floors: {
     id: string;
@@ -210,6 +213,7 @@ export function FloorsAndUnits({
       imageUrl={unitImageUrl(selectedUnit)}
       unitTypes={unitTypes}
       canManageUnits={canManageUnits}
+      canManagePrices={canManagePrices}
       canManageUnitPictures={canManageUnitPictures}
       // The photo views open on their own, in place of this modal.
       onPreviewPhoto={() => {
@@ -658,6 +662,7 @@ export function FloorsAndUnits({
             floorUnits={activeUnits.map((unit) => ({ id: unit.id, code: unit.code }))}
             unitTypes={unitTypes}
             numbering={numbering ?? legacyNumbering}
+            canManagePrices={canManagePrices}
             onClose={() => setDesigning(false)}
           />
         )}
@@ -671,6 +676,7 @@ export function FloorsAndUnits({
             floorLabel={activeFloor.label}
             currency={currency}
             canManage={canManageUnits}
+            canManagePrices={canManagePrices}
             onClose={() => setSelectedSlotId(null)}
           />
         )}

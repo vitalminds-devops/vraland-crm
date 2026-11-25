@@ -46,7 +46,7 @@ vi.mock("@/lib/permissions/authorization", () => ({
 }));
 vi.mock("@/lib/permissions/policy", () => ({
   canManageUsers: () => true,
-  hasPermission: vi.fn(),
+  hasPermission: vi.fn(() => true),
 }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("better-auth/crypto", () => ({ hashPassword: async () => "hash" }));

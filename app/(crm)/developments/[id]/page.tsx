@@ -11,6 +11,8 @@ import { DevelopmentBuildingCard } from "@/features/developments/components/deve
 import { DevelopmentDeleteButton } from "@/features/developments/components/development-delete-button";
 import { getDevelopment } from "@/features/developments/queries/development.queries";
 import { developmentCoverImageUrl } from "@/features/developments/lib/cover-image";
+import { propertyPageActions } from "@/features/properties/lib/property-page-actions";
+import { writablePropertyIds } from "@/features/properties/queries/property-scope.queries";
 import { requirePagePermission } from "@/lib/permissions/authorization";
 import { canGrantUnitAccess } from "@/lib/permissions/policy";
 
@@ -20,6 +22,11 @@ export default async function DevelopmentPage({ params }: { params: Promise<{ id
   const data = await getDevelopment(id);
   if (!data) notFound();
   const { record, buildings, unitCount } = data;
+  // Edit shows only on properties the user could save, as on the Property page.
+  const writable = await writablePropertyIds(
+    context,
+    buildings.map((building) => building.id),
+  );
   const canEdit = context.permissions.has("developments.update");
   const canAddProperty = context.permissions.has("properties.create");
   const canDelete = context.permissions.has("developments.delete");
@@ -127,7 +134,7 @@ export default async function DevelopmentPage({ params }: { params: Promise<{ id
               <li key={building.id}>
                 <DevelopmentBuildingCard
                   building={building}
-                  canEdit={context.permissions.has("properties.update")}
+                  canEdit={propertyPageActions(context, writable.has(building.id)).canEdit}
                   canAccess={canGrantUnitAccess(context)}
                 />
               </li>

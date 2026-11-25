@@ -50,27 +50,16 @@ export default async function DashboardPage() {
   const count = (n: number, one: string, many: string) =>
     `${n.toLocaleString()} ${n === 1 ? one : many}`;
   const money = (amount: number) => compactCurrency(amount, data.currency);
-  // The headline money, in the order a sale runs: open, reserved, won, then what came in.
+  // The headline money: what was won, then what came in.
   const figureCandidates: (Figure | false)[] = [
-    sections.kpis.pipeline && {
-      key: "pipeline",
-      label: "Open opportunities",
-      value: money(data.kpis.pipelineValue),
-      detail: count(data.kpis.pipelineDeals, "opportunity", "opportunities"),
-      href: "/pipeline",
-    },
-    sections.kpis.pipeline && {
-      key: "reservations",
-      label: "Reservation value",
-      value: money(data.kpis.reservationValue),
-      detail: count(data.kpis.reservations, "reservation", "reservations"),
-      href: "/pipeline",
-    },
     sections.kpis.pipeline && {
       key: "won",
       label: "Won sales value",
       value: money(data.kpis.wonValue),
-      detail: `${data.kpis.wonCount.toLocaleString()} won · ${money(data.kpis.wonCollected)} collected`,
+      // Money collected is billing data: only with the payment figures.
+      detail: sections.kpis.collected
+        ? `${data.kpis.wonCount.toLocaleString()} won · ${money(data.kpis.wonCollected)} collected`
+        : `${data.kpis.wonCount.toLocaleString()} won`,
       href: "/pipeline",
     },
     sections.kpis.collected && {
@@ -81,12 +70,28 @@ export default async function DashboardPage() {
       href: "/payments",
     },
     sections.kpis.collected && {
+      key: "reservationsReceived",
+      label: "Reservations received this month",
+      value: money(data.kpis.reservationsReceived),
+      detail: count(data.kpis.reservationPayments, "payment", "payments"),
+      href: "/payments",
+    },
+    sections.kpis.collected && {
       key: "monthlyPaid",
       label: "Monthly payments received",
       value: money(data.kpis.monthlyPaid),
       detail: `${count(data.kpis.monthlyPayments, "payment", "payments")} · All time`,
       href: "/payments",
     },
+    // Summary shows it when on; without Summary the figures permission still promises it.
+    sections.kpis.leads &&
+      !sections.summary && {
+        key: "activeContacts",
+        label: "Active contacts",
+        value: data.kpis.activeLeads.toLocaleString(),
+        detail: "Not yet converted",
+        href: "/contacts",
+      },
   ];
   const figures = figureCandidates.filter((figure): figure is Figure => Boolean(figure));
   const showInventory = sections.kpis.properties || sections.inventory;
@@ -116,7 +121,7 @@ export default async function DashboardPage() {
     },
     showInventory && {
       key: "inventory",
-      title: "Inventory",
+      title: "Properties",
       body: (
         <div className="space-y-4">
           {sections.kpis.properties && (

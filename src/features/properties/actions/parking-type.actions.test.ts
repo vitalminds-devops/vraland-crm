@@ -37,10 +37,15 @@ vi.mock("@/db", () => ({
   },
 }));
 vi.mock("@/lib/logger", () => ({ logError: vi.fn() }));
+const access = vi.hoisted(() => ({ prices: true }));
 vi.mock("@/lib/permissions/authorization", () => ({
-  requirePermission: async () => ({ organizationId: "org", userId: "user" }),
+  requirePermission: async () => ({
+    organizationId: "org",
+    userId: "user",
+    permissions: new Set(access.prices ? ["properties.manage_prices"] : []),
+  }),
 }));
-vi.mock("../lib/property-scope", () => ({ canWriteProperty: async () => true }));
+vi.mock("../queries/property-scope.queries", () => ({ canWriteProperty: async () => true }));
 vi.mock("../lib/revalidate-property", () => ({ revalidateProperty: vi.fn() }));
 
 beforeEach(() => {

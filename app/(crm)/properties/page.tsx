@@ -20,7 +20,7 @@ import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { DotBadge, type DotBadgeTone } from "@/components/ui/dot-badge";
 import { label, propertyStatuses, propertyTypes, fieldClass } from "@/features/properties";
 import { propertyPageActions } from "@/features/properties/lib/property-page-actions";
-import { writablePropertyIds } from "@/features/properties/lib/property-scope";
+import { writablePropertyIds } from "@/features/properties/queries/property-scope.queries";
 import { listProperties } from "@/features/properties/queries/property.queries";
 import { requirePagePermission } from "@/lib/permissions/authorization";
 import { accessPageMode } from "@/features/properties/lib/access-page-mode";
@@ -46,7 +46,7 @@ export default async function PropertiesPage({
   // Same rule as the Access page: granters edit it, "See everyone's property access" views it.
   const canOpenAccess = accessPageMode(context) !== null;
   // The header's Actions column lines up with the row buttons.
-  const actionsWidth = canOpenAccess ? "sm:w-72" : "sm:w-32";
+  const actionsWidth = canOpenAccess ? "lg:w-72" : "lg:w-32";
 
   const query = (next: number) => {
     const params = new URLSearchParams();
@@ -100,25 +100,26 @@ export default async function PropertiesPage({
         }
       />
 
-      <Card className="mt-2">
-        <FilterForm className="flex flex-col gap-2 border-b border-border/40 p-4 lg:flex-row lg:items-center">
-          <label className="relative min-w-0 lg:flex-1">
+      <Card className="mt-2 shadow-none">
+        <FilterForm className="grid gap-3 border-b border-border/60 p-4 sm:grid-cols-2 lg:flex lg:items-center">
+          <label className="relative min-w-0 sm:col-span-2 lg:flex-1">
             <Search
               aria-hidden="true"
               className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
             />
             <Input
               name="search"
+              aria-label="Search properties"
               defaultValue={search}
               placeholder="Search by name, code or location"
-              className={cn(fieldClass, "pl-9")}
+              className={cn(fieldClass, "bg-card pl-9 shadow-none")}
             />
           </label>
           <NativeSelect
             name="status"
             aria-label="Status"
             defaultValue={status ?? ""}
-            className={cn(fieldClass, "pr-9")}
+            className={cn(fieldClass, "bg-card pr-9 shadow-none")}
             wrapperClassName="lg:w-44 lg:shrink-0"
           >
             <NativeSelectOption value="">All statuses</NativeSelectOption>
@@ -132,7 +133,7 @@ export default async function PropertiesPage({
             name="type"
             aria-label="Property type"
             defaultValue={type ?? ""}
-            className={cn(fieldClass, "pr-9")}
+            className={cn(fieldClass, "bg-card pr-9 shadow-none")}
             wrapperClassName="lg:w-44 lg:shrink-0"
           >
             <NativeSelectOption value="">All types</NativeSelectOption>
@@ -153,7 +154,7 @@ export default async function PropertiesPage({
           <div>
             <div
               aria-hidden="true"
-              className="hidden items-center gap-x-5 border-b border-border/40 bg-muted/30 px-5 py-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase sm:flex"
+              className="hidden items-center gap-x-5 border-b border-border/40 bg-muted/20 px-5 py-2.5 text-xs font-medium text-muted-foreground lg:flex"
             >
               <span className="flex-1">Property</span>
               <span className="w-28 text-right">Units available</span>
@@ -166,7 +167,7 @@ export default async function PropertiesPage({
                 return (
                   <li
                     key={row.id}
-                    className="group relative flex cursor-pointer flex-wrap items-center gap-x-5 gap-y-3 px-4 py-4 transition-colors hover:bg-primary/[0.04] sm:px-5"
+                    className="group relative flex cursor-pointer flex-wrap items-center gap-x-5 gap-y-4 px-4 py-5 transition-colors hover:bg-muted/30 sm:px-5"
                   >
                     {/* The whole row opens the property; the button sits above it. */}
                     <Link
@@ -174,9 +175,9 @@ export default async function PropertiesPage({
                       aria-label={`Open ${row.title}`}
                       className="absolute inset-0 z-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                     />
-                    <div className="min-w-0 flex-1 basis-56">
+                    <div className="min-w-0 flex-1 basis-full lg:basis-56">
                       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                        <h2 className="min-w-0 text-[15px] leading-6 break-words font-semibold tracking-tight underline-offset-2 group-hover:text-primary group-hover:underline">
+                        <h2 className="min-w-0 text-[15px] leading-6 break-words font-semibold tracking-tight group-hover:text-primary">
                           {row.title}
                         </h2>
                         <DotBadge
@@ -185,19 +186,20 @@ export default async function PropertiesPage({
                         >
                           {label(row.status)}
                         </DotBadge>
-                        <span className="ml-auto inline-flex items-baseline gap-1.5 text-[11px] whitespace-nowrap text-muted-foreground max-sm:ml-0">
+                        <span className="inline-flex items-baseline gap-1.5 text-[11px] whitespace-nowrap text-muted-foreground">
                           Code <span className="font-mono text-[12px]">{row.code}</span>
                         </span>
                       </div>
-                      <p className="mt-1.5 flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-1 text-[12px] leading-5 text-muted-foreground">
+                      <p className="mt-2 flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-1 text-xs leading-5 text-muted-foreground">
                         {row.developmentName && (
                           <span className="min-w-0 break-words">
-                            Development{" "}
+                            <span className="sr-only">Development </span>
                             <span className="text-foreground/80">{row.developmentName}</span>
                           </span>
                         )}
                         <span className="min-w-0 break-words">
-                          Type <span className="text-foreground/80">{label(row.type)}</span>
+                          <span className="sr-only">Type </span>
+                          <span className="text-foreground/80">{label(row.type)}</span>
                         </span>
                         {location ? (
                           <span className="inline-flex min-w-0 items-start gap-1.5">
@@ -216,18 +218,20 @@ export default async function PropertiesPage({
                         )}
                       </p>
                     </div>
-                    <div className="shrink-0 sm:w-28 sm:text-right">
-                      <p className="mb-1 text-[11px] font-medium text-muted-foreground uppercase sm:hidden">
+                    <div className="shrink-0 lg:w-28 lg:text-right">
+                      <p className="mb-1.5 text-[11px] font-medium text-muted-foreground lg:hidden">
                         Units available
                       </p>
                       {row.granted.visible ? (
                         <>
-                          <p className="text-lg leading-none font-semibold tabular-nums">
+                          <p className="text-xl leading-6 font-semibold tracking-tight tabular-nums">
                             {row.granted.available}
                           </p>
                           <p className="mt-1 text-[11px] text-muted-foreground">
-                            of {row.granted.visible}
-                            {row.granted.floors ? ` · ${floorLabel(row.granted.floors)}` : ""}
+                            of {row.granted.visible} {row.granted.visible === 1 ? "unit" : "units"}
+                            {row.granted.floors > 0 && (
+                              <span className="mt-0.5 block">{floorLabel(row.granted.floors)}</span>
+                            )}
                           </p>
                         </>
                       ) : (
@@ -236,7 +240,7 @@ export default async function PropertiesPage({
                     </div>
                     <span
                       className={cn(
-                        "relative z-10 ml-auto flex max-w-full flex-wrap items-center justify-end gap-2 sm:ml-0",
+                        "relative z-10 ml-auto flex max-w-full flex-wrap items-center justify-end gap-2 lg:ml-0",
                         actionsWidth,
                       )}
                     >
@@ -263,7 +267,7 @@ export default async function PropertiesPage({
           </div>
         )}
 
-        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border/40 p-4 text-sm">
+        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border/40 bg-muted/10 px-4 py-3 text-xs sm:px-5">
           <span className="text-muted-foreground">
             {data.total} {data.total === 1 ? "property" : "properties"}
           </span>

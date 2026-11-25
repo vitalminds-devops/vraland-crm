@@ -12,7 +12,7 @@ When a word isn't here, copy what the nearest existing page says, then add it he
 
 | Say | Not | Where / notes |
 |---|---|---|
-| Reservation value | Total reservations (for an amount) | Value of open opportunities currently in Reservation; show the reservation count underneath. |
+| Reservations received this month | Reservation value, Total reservations (for an amount) | Reservation payments received during the current calendar month; show the payment count underneath. |
 | Won sales value | Won (for an amount) | All-time value of won opportunities; collected payments are a separate amount. |
 | Monthly payments received | Monthly paid | All-time payments classified as Monthly, not payments received during this month. Show "All time" underneath. |
 | Payments received this month | Collected this month | All payment classifications received during the current calendar month. |
@@ -55,6 +55,7 @@ When a word isn't here, copy what the nearest existing page says, then add it he
 | Parking slot | parking space, Parking Slots | One slot. "Parking" as a section or list name. |
 | Section | floor group, wing, zone | A named, coloured set of a property's floors, or their odd, even or picked units, such as Tower A or Sunrise. Set on the Design page. |
 | Unit identifier, Identifier | numbering, unit number, unit code | What names a unit: letters (2A), numbers (201) or custom endings. Set with Identifier in Design floor. |
+| Design properties | Manage floors, units and parking | The permission for the Design page: types, floors, floor plans, sections, identifiers, units and parking. |
 | Unit ending | suffix, unit letter | The part of a unit identifier after its floor: A in 2A, 03 in 203. |
 | Photo | picture, image | Profile, cover and unit photos. "Add photo", "Change photo". |
 | Property access | grants, unit access | "Give access", "Save access", "Manage access". |

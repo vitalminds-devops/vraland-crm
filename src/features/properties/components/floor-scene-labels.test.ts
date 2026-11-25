@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { UnitPlaque } from "./floor-scene-kit";
 import { PaintedText } from "./game-look";
-import { UnitChip } from "./unit-markers";
+import { ParkingChip, UnitChip } from "./unit-markers";
 
 vi.mock("react", async (importOriginal) => ({
   ...(await importOriginal<typeof import("react")>()),
@@ -96,4 +96,13 @@ it("fills a quarter of the unit capsule and keeps the code in its white area", (
   expect(context.fillText).toHaveBeenCalledWith("104", canvas.width / 4 + 16, 52);
   expect(canvas.width * 0.75).toBeGreaterThan(context.measureText("104").width);
   expect(context.arc).not.toHaveBeenCalled();
+});
+
+it("centres parking labels near their bays and fits long codes inside narrow slots", () => {
+  canvasContext();
+  const chip = ParkingChip({ code: "BASEMENT-104", status: "available", w: 2.5 });
+  expect(chip.props.position).toEqual([0, 0.18, 0]);
+  expect(chip.props.scale[0]).toBeLessThanOrEqual(2.5 * 0.75);
+  expect(chip.props.children.props.depthTest).toBe(false);
+  expect(chip.props.children.props.depthWrite).toBe(false);
 });

@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => ({
   inserted: [] as unknown[],
   roles: ["super-administrator"],
   heldRoleRows: [] as unknown[],
+  /** The permission keys the role has before the save. */
+  currentKeys: [] as string[],
 }));
 vi.mock("@/db", () => ({
   db: {
@@ -15,6 +17,11 @@ vi.mock("@/db", () => ({
       chain.from = (from: unknown) => ((table = from), chain);
       chain.limit = async () =>
         table === userRoles ? mocks.heldRoleRows : [{ id: "role", name: "Agent", slug: "agent" }];
+      chain.innerJoin = () => chain;
+      chain.then = (resolve: (rows: unknown[]) => unknown) =>
+        Promise.resolve(
+          table === rolePermissions ? mocks.currentKeys.map((key) => ({ key })) : [],
+        ).then(resolve);
       return chain;
     },
     transaction: mocks.transaction,
@@ -31,7 +38,7 @@ vi.mock("@/lib/permissions/authorization", () => ({
 }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/logger", () => ({ logError: vi.fn() }));
-import { userRoles } from "@/db/schema";
+import { auditLogs, rolePermissions, userRoles } from "@/db/schema";
 import { updateRolePermissions } from "./settings.actions";
 
 const roleId = "00000000-0000-4000-8000-000000000001";
@@ -40,6 +47,7 @@ beforeEach(() => {
   mocks.inserted = [];
   mocks.roles = ["super-administrator"];
   mocks.heldRoleRows = [];
+  mocks.currentKeys = [];
   mocks.transaction.mockClear();
   mocks.transaction.mockImplementation(async (work) => {
     const chain: Record<string, unknown> = {};
@@ -48,9 +56,9 @@ beforeEach(() => {
     return work({
       select: () => chain,
       delete: () => chain,
-      insert: () => ({
+      insert: (table: unknown) => ({
         values: (values: unknown) => {
-          mocks.inserted.push(values);
+          mocks.inserted.push(table === auditLogs ? { audit: values } : values);
           return chain;
         },
       }),
@@ -98,4 +106,32 @@ it("lets a Super Administrator change a role they hold", async () => {
   mocks.heldRoleRows = [{ roleId }];
   const result = await updateRolePermissions({ roleId, permissionKeys: ["contacts.view"] });
   expect(result.success).toBe(true);
+});
+
+it("refuses to remove a permission the caller doesn't hold", async () => {
+  mocks.roles = ["administrator"];
+  mocks.currentKeys = ["contacts.view", "billing.manage"];
+  const result = await updateRolePermissions({ roleId, permissionKeys: ["contacts.view"] });
+  expect(result).toMatchObject({
+    success: false,
+    error: { message: "You cannot remove permissions you do not hold yourself." },
+  });
+  expect(mocks.transaction).not.toHaveBeenCalled();
+});
+
+it("logs the keys before and after, and nothing when they didn't change", async () => {
+  mocks.currentKeys = ["deals.view"];
+  await updateRolePermissions({ roleId, permissionKeys: ["contacts.view"] });
+  expect(mocks.inserted).toContainEqual({
+    audit: expect.objectContaining({
+      oldValues: { permissionKeys: ["deals.view"] },
+      newValues: { permissionKeys: ["contacts.view"] },
+    }),
+  });
+  mocks.inserted = [];
+  mocks.currentKeys = ["contacts.view"];
+  await updateRolePermissions({ roleId, permissionKeys: ["contacts.view"] });
+  expect(mocks.inserted.some((row) => typeof row === "object" && row && "audit" in row)).toBe(
+    false,
+  );
 });

@@ -107,7 +107,8 @@ export type LayoutItem = {
   rotation: Rotation;
 };
 
-export type UnitRoom = LayoutItem & { kind: RoomKind };
+/** A room in a unit type's design; `flip` mirrors it, such as a door swinging the other way. */
+export type UnitRoom = LayoutItem & { kind: RoomKind; flip?: boolean };
 /** A unit type's design: its outline and the rooms inside it. */
 export type UnitDesign = { width: number; depth: number; rooms: UnitRoom[] };
 
@@ -119,6 +120,8 @@ export type UnitPlacement = LayoutItem & {
   flip: boolean;
   /** A name typed for it in the designer, applied to its unit on save. */
   code?: string;
+  /** Resized on the plan: keeps its own size instead of its type's, its rooms stretched to fit. */
+  sized?: boolean;
 };
 /** A parking slot placed on a floor; `slotId` is empty until the floor is saved. */
 export type ParkingSpot = LayoutItem & {
@@ -264,6 +267,25 @@ export function unitEnding(code: string, level: number): string {
   return code.startsWith(prefix) && code.length > prefix.length ? code.slice(prefix.length) : code;
 }
 
+/**
+ * Which of a floor's own slots each copied slot takes over, pairing them in plan order (top to
+ * bottom, then left to right), so copying a layout keeps the slots already there with their
+ * identifier, price and fee. Copied slots past the floor's count get none and become new slots.
+ */
+export function slotsByPosition(
+  copied: readonly LayoutItem[],
+  existing: readonly (LayoutItem & { slotId: string | null })[],
+): Map<string, string> {
+  const order = (a: LayoutItem, b: LayoutItem) => a.y - b.y || a.x - b.x;
+  const own = existing.filter((spot) => spot.slotId).toSorted(order);
+  return new Map(
+    copied
+      .toSorted(order)
+      .slice(0, own.length)
+      .map((spot, index) => [spot.id, own[index]!.slotId!]),
+  );
+}
+
 /** A unit's number on another floor with the same layout: 303 -> 503; null for renamed units. */
 export function copiedCode(code: string, fromLevel: number, toLevel: number): string | null {
   const ending = unitEnding(code, fromLevel);
@@ -390,7 +412,8 @@ export function fitPlacements(
     ...layout,
     units: layout.units.map((unit) => {
       const design = designOf(unit.typeId);
-      if (!design || (design.width === unit.w && design.depth === unit.h)) return unit;
+      if (!design || unit.sized || (design.width === unit.w && design.depth === unit.h))
+        return unit;
       return placeWithin({ ...unit, w: design.width, h: design.depth }, layout.width, layout.depth);
     }),
     ...(layout.parking && {
@@ -414,5 +437,93 @@ export function withoutRemoved(
     ...layout,
     units: layout.units.filter((unit) => !unit.unitId || !units.has(unit.unitId)),
     parking: (layout.parking ?? []).filter((slot) => !slot.slotId || !slots.has(slot.slotId)),
+  };
+}
+
+/**
+ * Copies of several pieces, keeping their arrangement, right beside the group (right, below, left
+ * or above, whichever fits). Each copy is new: it keeps no unit, slot or typed name.
+ */
+export function copyGroupBeside<T extends LayoutItem>(
+  pieces: readonly T[],
+  width: number,
+  depth: number,
+  newId: () => string,
+  marginOf: (piece: T) => number = () => 0,
+): T[] {
+  const box = groupBox(pieces);
+  const margin = Math.min(...pieces.map(marginOf));
+  const fits = (dx: number, dy: number) =>
+    box.x0 + dx >= -margin &&
+    box.y0 + dy >= -margin &&
+    box.x1 + dx <= width + margin &&
+    box.y1 + dy <= depth + margin;
+  const [bw, bh] = [box.x1 - box.x0, box.y1 - box.y0];
+  const [dx, dy] = (
+    [
+      [bw, 0],
+      [0, bh],
+      [-bw, 0],
+      [0, -bh],
+    ] as const
+  ).find(([x, y]) => fits(x, y)) ?? [1, 1];
+  return pieces.map((piece) =>
+    placeWithin(
+      {
+        ...piece,
+        x: piece.x + dx,
+        y: piece.y + dy,
+        id: newId(),
+        ...("unitId" in piece ? { unitId: null } : {}),
+        ...("slotId" in piece ? { slotId: null } : {}),
+        ...("code" in piece ? { code: undefined } : {}),
+      } as T,
+      width,
+      depth,
+      marginOf(piece),
+    ),
+  );
+}
+
+/** The pieces moved together by (dx, dy), held back so none leaves the canvas and they keep formation. */
+export function moveGroup<T extends LayoutItem>(
+  pieces: readonly T[],
+  dx: number,
+  dy: number,
+  width: number,
+  depth: number,
+  marginOf: (piece: T) => number = () => 0,
+): T[] {
+  let [minX, maxX, minY, maxY] = [-Infinity, Infinity, -Infinity, Infinity];
+  for (const piece of pieces) {
+    const [fw, fh] = footprint(piece);
+    const margin = marginOf(piece);
+    minX = Math.max(minX, -margin - piece.x);
+    maxX = Math.min(maxX, width + margin - fw - piece.x);
+    minY = Math.max(minY, -margin - piece.y);
+    maxY = Math.min(maxY, depth + margin - fh - piece.y);
+  }
+  // Whole grid steps, so pieces on the grid stay on it; toward zero when a step would overshoot.
+  const step = (value: number, low: number, high: number) => {
+    const held = Math.min(high, Math.max(low, value));
+    const snapped = snap(held);
+    return snapped < low || snapped > high ? Math.trunc(held / GRID) * GRID : snapped;
+  };
+  const stepX = step(dx, minX, maxX);
+  const stepY = step(dy, minY, maxY);
+  return pieces.map((piece) => ({ ...piece, x: piece.x + stepX, y: piece.y + stepY }));
+}
+
+/** The box around some pieces' footprints. */
+export function groupBox(pieces: readonly LayoutItem[]) {
+  const boxes = pieces.map((piece) => {
+    const [fw, fh] = footprint(piece);
+    return { x0: piece.x, y0: piece.y, x1: piece.x + fw, y1: piece.y + fh };
+  });
+  return {
+    x0: Math.min(...boxes.map((box) => box.x0)),
+    y0: Math.min(...boxes.map((box) => box.y0)),
+    x1: Math.max(...boxes.map((box) => box.x1)),
+    y1: Math.max(...boxes.map((box) => box.y1)),
   };
 }

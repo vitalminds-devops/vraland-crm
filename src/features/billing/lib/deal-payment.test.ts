@@ -6,6 +6,7 @@ import {
   dealMonthlyAmortization,
   dealReservationFee,
   dealReservationPaid,
+  dealReservationReceived,
 } from "./deal-payment";
 
 const render = (gate: SQL) => new PgDialect().sqlToQuery(gate);
@@ -52,4 +53,11 @@ it("ignores removed payments and treats a fully paid bill as passing", () => {
   const { sql } = render(dealFirstMonthPaid);
   expect(sql.match(/p\."deleted_at" is null/g)).toHaveLength(3);
   expect(sql).toContain(`>= b."unit_price" - b."reservation_discount" + b."miscellaneous_fee"`);
+});
+
+it("holds units on any reservation payment, even below a fee that rose since", () => {
+  const { sql, params } = render(dealReservationReceived);
+  expect(params).toEqual(["reservation"]);
+  expect(sql).toContain(">= greatest(0, 0.01)");
+  expect(sql).not.toContain("reservation_fee");
 });

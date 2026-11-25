@@ -4,7 +4,6 @@ import {
   superAdministratorRoleSlug,
   type DataScope,
   type PermissionKey,
-  type RoleSlug,
 } from "./catalog";
 
 export type AuthorizationContext = {
@@ -14,8 +13,6 @@ export type AuthorizationContext = {
   roles: readonly string[];
   permissions: ReadonlySet<string>;
 };
-
-const organizationWideRoles: readonly RoleSlug[] = ["super-administrator", "administrator"];
 
 /** Whose records the user reaches: the broadest `records.*` permission they hold, else their own. */
 export function resolveDataScope(context: Pick<AuthorizationContext, "permissions">): DataScope {
@@ -66,16 +63,13 @@ export function canViewAuditLog(context: AuthorizationContext): boolean {
   return context.permissions.has("settings.audit");
 }
 
-/** Property inventory follows its own access grants; administrators skip them. */
+/** Property inventory follows its own access grants; "Access all properties" skips them. */
 export function hasUnrestrictedInventoryAccess(context: AuthorizationContext): boolean {
-  return organizationWideRoles.some((role) => context.roles.includes(role));
+  return context.permissions.has("properties.access_all");
 }
 
 export function canGrantUnitAccess(context: AuthorizationContext): boolean {
-  return (
-    hasUnrestrictedInventoryAccess(context) ||
-    hasPermission(context, "properties.grant_unit_access")
-  );
+  return hasPermission(context, "properties.grant_unit_access");
 }
 
 export function hasPermission(context: AuthorizationContext, permission: PermissionKey): boolean {

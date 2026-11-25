@@ -1,5 +1,6 @@
 "use client";
 
+import { unitsReservationFee } from "@/features/billing/lib/quoted-terms";
 import { Check, FileText, Loader2, Plus, ScanLine, Upload, X } from "lucide-react";
 import {
   useCallback,
@@ -619,7 +620,10 @@ export function OpportunityDialog({
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogPortal>
         <DialogOverlay className="fixed inset-0 z-[60] grid place-items-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm">
-          <DialogPopup className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-xl border border-border/60 bg-card p-5 shadow-2xl">
+          <DialogPopup
+            aria-describedby={undefined}
+            className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-xl border border-border/60 bg-card p-5 shadow-2xl"
+          >
             <header className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <DialogTitle className="text-base font-semibold">Move to Opportunity</DialogTitle>
@@ -1048,10 +1052,10 @@ export function OpportunityDialog({
                               ? ([
                                   [
                                     "Unit reservation fee",
-                                    (
-                                      Number(currentEstimate.reservationFee ?? 0) -
-                                      Number(currentEstimate.parkingReservationFee)
-                                    ).toFixed(2),
+                                    unitsReservationFee(
+                                      currentEstimate.reservationFee,
+                                      currentEstimate.parkingReservationFee,
+                                    ),
                                   ],
                                   [
                                     "Parking reservation fee",

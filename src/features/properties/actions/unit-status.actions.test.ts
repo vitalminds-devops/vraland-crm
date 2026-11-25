@@ -57,7 +57,7 @@ vi.mock("@/lib/permissions/authorization", () => ({
   requirePermission: async () => ({ organizationId: "organization", userId: "admin" }),
 }));
 vi.mock("@/lib/storage/document-storage", () => ({ getDocumentStorage: vi.fn() }));
-vi.mock("../lib/property-scope", () => ({ canWriteProperty: async () => true }));
+vi.mock("../queries/property-scope.queries", () => ({ canWriteProperty: async () => true }));
 
 beforeEach(() => {
   mock.reservedDealId = null;

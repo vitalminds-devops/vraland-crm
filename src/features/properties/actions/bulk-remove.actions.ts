@@ -19,7 +19,7 @@ import {
 import { dropFromFloorPlans } from "../lib/floor-plan-cleanup";
 import { parkingRemovalBlocker } from "../lib/parking-removal";
 import { syncParkingCount } from "../lib/parking-sync";
-import { canWriteProperty } from "../lib/property-scope";
+import { canWriteProperty } from "../queries/property-scope.queries";
 import { revalidateProperty } from "../lib/revalidate-property";
 import { removalBlocker } from "../lib/unit-removal";
 

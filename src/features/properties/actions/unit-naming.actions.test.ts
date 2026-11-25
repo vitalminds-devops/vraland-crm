@@ -37,7 +37,7 @@ vi.mock("@/lib/logger", () => ({ logError: vi.fn() }));
 vi.mock("@/lib/permissions/authorization", () => ({
   requirePermission: async () => ({ organizationId: "org", userId: "user" }),
 }));
-vi.mock("../lib/property-scope", () => ({ canWriteProperty: async () => true }));
+vi.mock("../queries/property-scope.queries", () => ({ canWriteProperty: async () => true }));
 vi.mock("../lib/revalidate-property", () => ({ revalidateProperty: vi.fn() }));
 
 beforeEach(() => {

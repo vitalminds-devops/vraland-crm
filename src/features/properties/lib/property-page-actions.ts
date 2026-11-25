@@ -9,6 +9,7 @@ export function propertyPageActions(context: AuthorizationContext, canWrite: boo
     canEdit: canWrite && hasPermission(context, "properties.update"),
     canArchive: canWrite && hasPermission(context, "properties.delete"),
     canManageUnits: canWrite && hasPermission(context, "properties.manage_units"),
+    canManagePrices: canWrite && hasPermission(context, "properties.manage_prices"),
     canManageUnitPictures: canWrite && hasPermission(context, "properties.manage_unit_pictures"),
   };
 }

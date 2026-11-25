@@ -1,6 +1,6 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { activities, auditLogs, properties } from "@/db/schema";
-import { canWriteProperty } from "../lib/property-scope";
+import { canWriteProperty } from "../queries/property-scope.queries";
 import { archiveProperty, restoreProperty } from "./property.actions";
 
 const mock = vi.hoisted(() => ({
@@ -41,7 +41,7 @@ vi.mock("@/lib/permissions/authorization", () => ({
   requirePermission: vi.fn(async () => ({ organizationId: "organization", userId: "admin" })),
 }));
 vi.mock("@/lib/permissions/policy", () => ({ hasUnrestrictedInventoryAccess: () => true }));
-vi.mock("../lib/property-scope", () => ({ canWriteProperty: vi.fn(async () => true) }));
+vi.mock("../queries/property-scope.queries", () => ({ canWriteProperty: vi.fn(async () => true) }));
 vi.mock("../lib/parking-sync", () => ({ syncParkingCount: vi.fn() }));
 
 beforeEach(() => {

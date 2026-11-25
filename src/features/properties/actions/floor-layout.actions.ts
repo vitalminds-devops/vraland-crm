@@ -24,12 +24,18 @@ import {
   validationFailure,
   validationFailureFromZod,
 } from "@/lib/types/action-result";
-import { canWriteProperty } from "../lib/property-scope";
-import { copiedCode, resolvePlacements, type FloorLayout } from "../lib/floor-layout";
+import { canWriteProperty } from "../queries/property-scope.queries";
+import {
+  copiedCode,
+  resolvePlacements,
+  slotsByPosition,
+  type FloorLayout,
+} from "../lib/floor-layout";
 import { slotTypeChange } from "../lib/parking-types";
 import { legacyNumbering, nextFreeCode } from "../lib/unit-numbering";
 import { removalBlocker } from "../lib/unit-removal";
-import { nextParkingCode } from "../lib/parking-codes";
+import { nextSlotCode } from "../lib/parking-codes";
+import { renameActivities } from "../lib/rename-activities";
 import { parkingRemovalBlocker } from "../lib/parking-removal";
 import { syncParkingCount } from "../lib/parking-sync";
 import { saveFloorLayoutSchema } from "../schemas/floor-layout.schema";
@@ -83,6 +89,13 @@ export async function saveFloorLayout(
 
   try {
     const outcome = await db.transaction(async (tx) => {
+      // One floor save per property at a time: slot identifiers are property-wide, so two saves
+      // on different floors could otherwise both hand out the same next one.
+      await tx
+        .select({ id: properties.id })
+        .from(properties)
+        .where(eq(properties.id, source.propertyId))
+        .for("update");
       const floorIds = [floorId, ...copyToFloorIds.filter((id) => id !== floorId)];
       const targets = await tx
         .select({ id: floors.id, level: floors.level, label: floors.label, layout: floors.layout })
@@ -178,7 +191,7 @@ export async function saveFloorLayout(
           : layout.units.flatMap((unit) => {
               const current = resolved.assigned.find((entry) => entry.placementId === unit.id);
               return unit.code && current?.unitId && current.code !== unit.code
-                ? [{ unitId: current.unitId, code: unit.code }]
+                ? [{ unitId: current.unitId, code: unit.code, from: current.code }]
                 : [];
             });
         for (const rename of renames)
@@ -191,6 +204,15 @@ export async function saveFloorLayout(
             .update(units)
             .set({ code: rename.code, updatedAt: new Date() })
             .where(eq(units.id, rename.unitId));
+        // Each rename shows in the unit's history, as a single rename does.
+        if (renames.length)
+          await tx.insert(activities).values(
+            renameActivities(
+              context,
+              source.propertyId,
+              renames.map(({ unitId, from, code }) => ({ unitId, from, to: code })),
+            ),
+          );
 
         // Existing units take the type they were placed as, one update per type.
         const byType = new Map<string, string[]>();
@@ -221,17 +243,26 @@ export async function saveFloorLayout(
         const otherCodes = propertySlots
           .filter((slot) => slot.floorId !== floor.id)
           .map((slot) => slot.code);
+        // A copy takes over the floor's own slots by position instead of replacing them.
+        const kept = copying
+          ? slotsByPosition(
+              layout.parking,
+              (floor.layout?.parking ?? []).filter((spot) =>
+                floorSlots.some((slot) => slot.id === spot.slotId),
+              ),
+            )
+          : null;
         const slotsResolved = resolvePlacements({
           placements: layout.parking.map((slot) => ({
             id: slot.id,
-            unitId: copying ? null : slot.slotId,
+            unitId: kept ? (kept.get(slot.id) ?? null) : slot.slotId,
             code: copying ? null : (slot.code ?? null),
           })),
           floorUnits: floorSlots,
           previouslyPlaced: (floor.layout?.parking ?? []).flatMap((slot) =>
             slot.slotId ? [slot.slotId] : [],
           ),
-          nextCode: (taken) => nextParkingCode([...otherCodes, ...taken]),
+          nextCode: (taken) => nextSlotCode(numbering, floor.level, [...otherCodes, ...taken]),
         });
         if (slotsResolved.removed.length) {
           const blocker = await parkingRemovalBlocker(tx, slotsResolved.removed);
@@ -271,15 +302,25 @@ export async function saveFloorLayout(
           ]),
         );
 
-        if (!copying)
-          for (const slot of layout.parking) {
-            const current = slotsResolved.assigned.find((entry) => entry.placementId === slot.id);
-            if (slot.code && current?.unitId && current.code !== slot.code)
-              await tx
-                .update(propertyParkingSlots)
-                .set({ code: slot.code, updatedAt: new Date() })
-                .where(eq(propertyParkingSlots.id, current.unitId));
-          }
+        // Like units: two steps, so a renumbering that shifts or swaps codes never collides.
+        const slotRenames = copying
+          ? []
+          : layout.parking.flatMap((slot) => {
+              const current = slotsResolved.assigned.find((entry) => entry.placementId === slot.id);
+              return slot.code && current?.unitId && current.code !== slot.code
+                ? [{ slotId: current.unitId, code: slot.code }]
+                : [];
+            });
+        for (const rename of slotRenames)
+          await tx
+            .update(propertyParkingSlots)
+            .set({ code: `~${rename.slotId}` })
+            .where(eq(propertyParkingSlots.id, rename.slotId));
+        for (const rename of slotRenames)
+          await tx
+            .update(propertyParkingSlots)
+            .set({ code: rename.code, updatedAt: new Date() })
+            .where(eq(propertyParkingSlots.id, rename.slotId));
 
         // A slot given a parking type on the plan joins it; an available one takes its price and
         // fee too, while a reserved or sold slot keeps what it was sold at.
@@ -337,8 +378,16 @@ export async function saveFloorLayout(
             copiedFrom: copying ? floorId : undefined,
           },
         });
-        if (!copying)
-          sourceCodes = new Map(resolved.assigned.map((entry) => [entry.placementId, entry.code]));
+        // Copies follow the source's identifiers after this save, renames typed on the plan included.
+        if (!copying) {
+          const typed = new Map(layout.units.map((unit) => [unit.id, unit.code]));
+          sourceCodes = new Map(
+            resolved.assigned.map((entry) => [
+              entry.placementId,
+              typed.get(entry.placementId) ?? entry.code,
+            ]),
+          );
+        }
       }
       return { created, removed: removedCount, floors: targets.length };
     });
@@ -346,9 +395,12 @@ export async function saveFloorLayout(
     return success(outcome);
   } catch (error) {
     if (error instanceof LayoutError) return validationFailure(error.message);
-    if ((error as { cause?: { code?: string } })?.cause?.code === "23505")
+    const cause = (error as { cause?: { code?: string; table?: string } })?.cause;
+    if (cause?.code === "23505")
       return validationFailure(
-        "Two units on a floor would share a number. Rename one and try again.",
+        cause.table === "parking_slots"
+          ? "Two parking slots would share an identifier. Rename one and try again."
+          : "Two units on a floor would share an identifier. Rename one and try again.",
       );
     logError("Floor layout save failed", error, { operation: "floor_layout_save" });
     return databaseFailure("The floor layout could not be saved.");

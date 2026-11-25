@@ -5,6 +5,7 @@ import {
   NO_FIRST_MONTH_MESSAGE,
   NO_RESERVATION_MESSAGE,
   paymentMessageForUser,
+  resolveMoveRole,
   canMoveStage,
   canStartDealInStage,
   checkStageTransition,
@@ -189,5 +190,27 @@ describe("moving back", () => {
       });
     expect(reopen("broker", "Financing fell through").allowed).toBe(true);
     expect(reopen("broker", "").allowed).toBe(false);
+  });
+});
+
+describe("resolveMoveRole", () => {
+  it("picks the strongest role a user holds for moving opportunities", () => {
+    const as = (roles: string[], permissions: string[] = ["deals.change_stage"]) =>
+      resolveMoveRole({ roles, permissions: new Set(permissions) });
+    expect(as(["agent", "master-broker"])).toBe("admin");
+    expect(as(["administrator"])).toBe("admin");
+    expect(as(["sales-manager", "agent"])).toBe("sales-manager");
+    expect(as(["license-broker"])).toBe("broker");
+    expect(as(["agent"])).toBe("agent");
+    expect(as(["viewer"])).toBe("viewer");
+  });
+
+  it("moves a custom role by its data access, and not at all without the permission", () => {
+    const custom = (permissions: string[]) =>
+      resolveMoveRole({ roles: ["custom"], permissions: new Set(permissions) });
+    expect(custom(["deals.change_stage"])).toBe("agent");
+    expect(custom(["deals.change_stage", "records.view_team"])).toBe("broker");
+    expect(custom(["deals.change_stage", "records.view_all"])).toBe("sales-manager");
+    expect(custom(["records.view_all"])).toBe("viewer");
   });
 });

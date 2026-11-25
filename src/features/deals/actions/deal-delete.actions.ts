@@ -47,7 +47,7 @@ export async function deleteDeal(input: unknown): Promise<ActionResult<{ id: str
   const { dealId } = parsed.data;
   if (!(await canAccessResource(context, { type: "deal", id: dealId })))
     return notFoundFailure("Opportunity");
-  const role = resolveMoveRole(context.roles);
+  const role = resolveMoveRole(context);
 
   try {
     const outcome = await db.transaction(async (tx) => {

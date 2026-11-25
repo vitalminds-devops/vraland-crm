@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/common/page-header";
 import { FormNavigation } from "@/components/common/form-navigation";
 import { formCardClass } from "@/components/ui/form-kit";
 import { PropertyForm, formatDateForInput, propertyFormSections } from "@/features/properties";
-import { canWriteProperty } from "@/features/properties/lib/property-scope";
+import { canWriteProperty } from "@/features/properties/queries/property-scope.queries";
 import { getProperty, getPropertyOptions } from "@/features/properties/queries/property.queries";
 import type { PropertyInput } from "@/features/properties/schemas/property.schema";
 import { requirePagePermission } from "@/lib/permissions/authorization";

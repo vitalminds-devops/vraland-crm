@@ -13,7 +13,7 @@ import {
   type ActionResult,
 } from "@/lib/types/action-result";
 import { createFloors, HasFloorsError } from "../lib/floor-setup";
-import { canWriteProperty } from "../lib/property-scope";
+import { canWriteProperty } from "../queries/property-scope.queries";
 import { revalidateProperty } from "../lib/revalidate-property";
 import { floorSetupSchema } from "../schemas/floor-setup.schema";
 

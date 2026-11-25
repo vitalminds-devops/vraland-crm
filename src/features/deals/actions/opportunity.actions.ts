@@ -45,7 +45,7 @@ import {
 import { conflict, permissionDenied } from "@/lib/errors";
 import { grantedUnitsCondition } from "@/lib/permissions/property-access";
 import { InactiveAssigneeError } from "@/lib/permissions/active-assignees";
-import type { AuthorizationContext } from "@/lib/permissions/policy";
+import { hasPermission, type AuthorizationContext } from "@/lib/permissions/policy";
 import { getPropertiesForDevelopment } from "@/features/properties/queries/property-floor-unit.queries";
 import { listParkingSlots } from "@/features/properties/queries/parking.queries";
 import {
@@ -216,7 +216,7 @@ async function estimateSelection(
   if (!building)
     return {
       success: false as const,
-      message: "Select an accessible building in this development.",
+      message: "Select a property you have access to in this development.",
     };
   const selected = await db
     .select({
@@ -424,11 +424,11 @@ export async function openOpportunity(formData: FormData): Promise<DealActionRes
     return validationFailure(
       "Only leads can be moved into Opportunity using this form. Refresh the pipeline.",
     );
-  if (!row.contactId) return validationFailure("This opportunity has no client.");
+  if (!row.contactId) return validationFailure("This opportunity has no contact.");
   if (!context.permissions.has("contacts.update"))
     return failure(
       permissionDenied(
-        "You do not have permission to update this client's details. Ask your administrator for access before moving this lead.",
+        "You do not have permission to update this contact's details. Ask your administrator for access before moving this lead.",
       ),
     );
   const contactId = row.contactId;
@@ -695,6 +695,8 @@ export async function changeOpportunityUnits(input: unknown): Promise<DealAction
   const loaded = await loadDeal(v.dealId);
   if (!loaded) return notFoundFailure("Opportunity");
   const { context, row } = loaded;
+  // Changing units changes what is sold and re-totals the bill, so it is an edit, not a stage move.
+  if (!hasPermission(context, "deals.update")) return failure(permissionDenied());
   if (row.stageSlug === "leads")
     return validationFailure("Pick a lead's units when moving it to Opportunity.");
   const estimate = await estimateSelection(context, v, {
@@ -886,7 +888,7 @@ export async function addOpportunityForContact(dealId: string): Promise<DealActi
     .innerJoin(pipelineStages, eq(deals.stageId, pipelineStages.id))
     .where(and(eq(deals.id, dealId), eq(deals.organizationId, context.organizationId)))
     .limit(1);
-  if (!source) return validationFailure("This opportunity has no client.");
+  if (!source) return validationFailure("This opportunity has no contact.");
   if (source.stageSlug === "leads")
     return validationFailure("Move this lead to Opportunity first.");
   try {

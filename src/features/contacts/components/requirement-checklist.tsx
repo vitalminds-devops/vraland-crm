@@ -219,7 +219,10 @@ export function RequirementChecklist({
       <Dialog open={preview !== null} onOpenChange={(open) => !open && setPreview(null)}>
         <DialogPortal>
           <DialogOverlay className="fixed inset-0 z-[60] grid place-items-center bg-black/60 p-4 backdrop-blur-sm">
-            <DialogPopup className="flex h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-border/60 bg-card shadow-2xl">
+            <DialogPopup
+              aria-describedby={undefined}
+              className="flex h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-border/60 bg-card shadow-2xl"
+            >
               <header className="flex items-center justify-between gap-3 border-b border-border/60 px-4 py-3">
                 <DialogTitle className="truncate text-sm font-semibold">
                   {preview?.label}

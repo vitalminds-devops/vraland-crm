@@ -18,11 +18,14 @@ export function UnitTypesPanel({
   unitTypes,
   currency,
   parkingTypes,
+  canManagePrices,
 }: {
   propertyId: string;
   unitTypes: UnitTypeFacts[];
   currency: string;
   parkingTypes: ParkingType[];
+  /** Without "Manage prices", amounts show but can't be changed. */
+  canManagePrices: boolean;
 }) {
   const [editingParking, setEditingParking] = useState<ParkingType | "new" | null>(null);
   const count = unitTypes.length + parkingTypes.length;
@@ -171,6 +174,7 @@ export function UnitTypesPanel({
         <ParkingTypeDialog
           propertyId={propertyId}
           type={editingParking === "new" ? null : editingParking}
+          canManagePrices={canManagePrices}
           onClose={() => setEditingParking(null)}
         />
       )}
@@ -179,6 +183,7 @@ export function UnitTypesPanel({
           propertyId={propertyId}
           type={editing === "new" || "copyOf" in editing ? null : editing}
           copyOf={editing !== "new" && "copyOf" in editing ? editing.copyOf : undefined}
+          canManagePrices={canManagePrices}
           onClose={() => setEditing(null)}
         />
       )}

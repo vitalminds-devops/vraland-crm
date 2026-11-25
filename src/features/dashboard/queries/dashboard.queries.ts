@@ -19,6 +19,7 @@ import {
 } from "drizzle-orm";
 
 import { db } from "@/db";
+import { visibleActivityPrefixes } from "../lib/activity-modules";
 import { activeLead } from "@/features/contacts/lib/contact-stage-sql";
 import {
   activities,
@@ -28,7 +29,6 @@ import {
   deals,
   floors,
   organizations,
-  permissions,
   payments,
   pipelineStages,
   properties,
@@ -42,9 +42,9 @@ import { requirePermission } from "@/lib/permissions/authorization";
 import {
   grantedParkingCondition,
   grantedPropertyCondition,
+  grantedFloorsCondition,
   grantedUnitsCondition,
 } from "@/lib/permissions/property-access";
-import { dashboardPanelKeys } from "@/lib/permissions/catalog";
 import { hasOrganizationWideAccess, resolveDataScope } from "@/lib/permissions/policy";
 import { dataScopeCondition } from "@/lib/permissions/scope";
 import { rankPriorities, revenueSeries } from "../lib/dashboard-shaping";
@@ -164,6 +164,11 @@ export async function getDashboardData() {
     .where(
       and(eq(tasks.organizationId, context.organizationId), isNull(tasks.deletedAt), taskScope),
     );
+  // Each user sees activity only from the modules they can open, even with all-records access.
+  const activityPrefixes = visibleActivityPrefixes((key) => context.permissions.has(key));
+  const activityModules = activityPrefixes.length
+    ? inArray(sql`split_part(${activities.activityType}, '.', 1)`, activityPrefixes)
+    : sql`false`;
   const activityScope = organizationWide
     ? undefined
     : or(
@@ -175,13 +180,11 @@ export async function getDashboardData() {
       );
 
   const [
-    dashboardPanelRows,
     organizationRows,
     activeLeadRows,
     newLeadRows,
     previousLeadRows,
     propertyRows,
-    pipelineRows,
     collectedRows,
     closedSalesRows,
     forecastRows,
@@ -206,11 +209,6 @@ export async function getDashboardData() {
     unitAvailabilityRows,
     parkingAvailabilityRows,
   ] = await Promise.all([
-    db
-      .select({ key: permissions.key })
-      .from(permissions)
-      .where(inArray(permissions.key, dashboardPanelKeys))
-      .limit(1),
     db
       .select({ currency: organizations.currency })
       .from(organizations)
@@ -247,17 +245,6 @@ export async function getDashboardData() {
           isNull(properties.deletedAt),
           grantedPropertyCondition(context, { propertyId: properties.id }),
           propertyScope,
-        ),
-      ),
-    db
-      .select({ count: count(), value: sum(deals.amount) })
-      .from(deals)
-      .where(
-        and(
-          eq(deals.organizationId, context.organizationId),
-          eq(deals.status, "open"),
-          isNull(deals.deletedAt),
-          dealScope,
         ),
       ),
     db
@@ -384,7 +371,9 @@ export async function getDashboardData() {
       })
       .from(activities)
       .leftJoin(users, eq(activities.actorUserId, users.id))
-      .where(and(eq(activities.organizationId, context.organizationId), activityScope))
+      .where(
+        and(eq(activities.organizationId, context.organizationId), activityModules, activityScope),
+      )
       .orderBy(desc(activities.createdAt))
       .limit(8),
     db
@@ -516,16 +505,19 @@ export async function getDashboardData() {
       )
       .groupBy(properties.status)
       .orderBy(desc(count())),
-    // Opportunities in the Reservation stage now.
+    // Reservation payments received this month.
     db
-      .select({ count: count(), value: sum(deals.amount) })
-      .from(deals)
-      .innerJoin(pipelineStages, eq(deals.stageId, pipelineStages.id))
+      .select({ count: count(), value: sum(payments.amount) })
+      .from(payments)
+      .innerJoin(bills, eq(bills.id, payments.billId))
+      .innerJoin(deals, eq(deals.id, bills.dealId))
       .where(
         and(
-          eq(deals.organizationId, context.organizationId),
-          eq(pipelineStages.slug, "reservation"),
-          eq(deals.status, "open"),
+          eq(payments.organizationId, context.organizationId),
+          isNull(payments.deletedAt),
+          eq(payments.classification, "reservation"),
+          gte(payments.paidOn, manilaDate(monthStart)),
+          lte(payments.paidOn, monthEndDate),
           isNull(deals.deletedAt),
           dealScope,
         ),
@@ -542,7 +534,8 @@ export async function getDashboardData() {
         and(
           eq(properties.organizationId, context.organizationId),
           isNull(properties.deletedAt),
-          grantedPropertyCondition(context, { propertyId: properties.id }),
+          // Floor by floor: an agent given 2 floors of a tower counts 2, like the unit meters.
+          grantedFloorsCondition(context, { propertyId: floors.buildingId, floorId: floors.id }),
           propertyScope,
         ),
       ),
@@ -629,10 +622,7 @@ export async function getDashboardData() {
       ),
   ]);
 
-  const sections = dashboardSections(
-    (key) => context.permissions.has(key),
-    dashboardPanelRows.length > 0,
-  );
+  const sections = dashboardSections((key) => context.permissions.has(key));
 
   const priorities = rankPriorities(
     [
@@ -663,12 +653,13 @@ export async function getDashboardData() {
         hint: "Open and past due",
         tone: overdueTasks > 0 ? ("attention" as const) : undefined,
       },
-    canViewCalendar && {
-      key: "viewings",
-      label: "Viewings scheduled",
-      value: (upcomingViewingRows[0]?.value ?? 0).toLocaleString(),
-      hint: "Next 7 days",
-    },
+    canViewCalendar &&
+      !sections.viewings && {
+        key: "viewings",
+        label: "Viewings scheduled",
+        value: (upcomingViewingRows[0]?.value ?? 0).toLocaleString(),
+        hint: "Next 7 days",
+      },
     canViewContacts && {
       key: "activeContacts",
       label: "Active contacts",
@@ -711,12 +702,10 @@ export async function getDashboardData() {
       activeLeads: activeLeadRows[0]?.value ?? 0,
       leadChange: percentageChange(newLeadRows[0]?.value ?? 0, previousLeadRows[0]?.value ?? 0),
       activeProperties: propertyRows[0]?.value ?? 0,
-      pipelineDeals: pipelineRows[0]?.count ?? 0,
-      pipelineValue: Number(pipelineRows[0]?.value ?? 0),
       payments: collectedRows[0]?.count ?? 0,
       collected: Number(collectedRows[0]?.value ?? 0),
-      reservations: reservationRows[0]?.count ?? 0,
-      reservationValue: Number(reservationRows[0]?.value ?? 0),
+      reservationPayments: reservationRows[0]?.count ?? 0,
+      reservationsReceived: Number(reservationRows[0]?.value ?? 0),
       availableUnits: unitAvailabilityRows[0]?.available ?? 0,
       totalUnits: unitAvailabilityRows[0]?.total ?? 0,
       availableParking: parkingAvailabilityRows[0]?.available ?? 0,
@@ -725,7 +714,8 @@ export async function getDashboardData() {
       floorProperties: floorRows[0]?.properties ?? 0,
       wonCount: wonTotalRows[0]?.count ?? 0,
       wonValue: Number(wonTotalRows[0]?.value ?? 0),
-      wonCollected: Number(wonCollectedRows[0]?.value ?? 0),
+      // Billing data: never sent without the payment figures.
+      wonCollected: sections.kpis.collected ? Number(wonCollectedRows[0]?.value ?? 0) : 0,
       monthlyPayments: monthlyPaidRows[0]?.count ?? 0,
       monthlyPaid: Number(monthlyPaidRows[0]?.value ?? 0),
     },

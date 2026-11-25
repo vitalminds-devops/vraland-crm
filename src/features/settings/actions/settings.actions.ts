@@ -37,6 +37,7 @@ import {
   brokerIdTargetRoleSlugs,
   isAgentRoleSlug,
   isPermissionKey,
+  permissionModule,
   masterBrokerRoleSlug,
   permissionMetadata,
   superAdministratorRoleSlug,
@@ -47,6 +48,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { hashPassword } from "better-auth/crypto";
 import { canManageUsers, hasPermission } from "@/lib/permissions/policy";
 import { logError } from "@/lib/logger";
+import { buildChangeSet, isEmptyChangeSet } from "@/lib/audit/redact";
 import {
   type ActionResult,
   databaseFailure,
@@ -930,11 +932,11 @@ const userDeletionSchema = z.object({
 });
 
 export async function setUserDeleted(input: unknown): Promise<SettingsResult> {
+  const context = await requirePermission("users.manage");
   const parsed = userDeletionSchema.safeParse(input);
   if (!parsed.success) return validationFailureFromZod(parsed.error, "Select a valid user.");
   const { id, deleted, handoverToUserId } = parsed.data;
-  const context = await requirePermission(deleted ? "users.delete" : "users.restore");
-  if (!canManageUsers(context))
+  if (!hasPermission(context, deleted ? "users.delete" : "users.restore"))
     return failure(permissionDenied("You don't have permission to manage users."));
   if (id === context.userId) return validationFailure("You cannot archive your own account.");
   const [target] = await db
@@ -1004,7 +1006,7 @@ export async function setUserDeleted(input: unknown): Promise<SettingsResult> {
 
 export async function createAgentAccount(formData: FormData): Promise<SettingsResult> {
   const context = await requireAuthorizationContext();
-  if (!(hasPermission(context, "users.manage") && canManageUsers(context)))
+  if (!canManageUsers(context))
     return failure(permissionDenied("You don't have permission to manage users."));
   const parsed = agentAccountSchema.safeParse({
     firstName: formData.get("firstName"),
@@ -1399,6 +1401,16 @@ export async function updateRolePermissions(input: unknown): Promise<SettingsRes
     return failure(
       permissionDenied("Only a Super Administrator can change the Administrator role."),
     );
+  // What the role has now, for the remove check and the audit log.
+  const current = (
+    await db
+      .select({ key: permissions.key })
+      .from(rolePermissions)
+      .innerJoin(permissions, eq(permissions.id, rolePermissions.permissionId))
+      .where(eq(rolePermissions.roleId, role.id))
+  )
+    .map((row) => row.key)
+    .filter(isPermissionKey);
   if (!isSuperAdministrator) {
     // Editing a role you hold would let you change your own access.
     const [held] = await db
@@ -1413,7 +1425,15 @@ export async function updateRolePermissions(input: unknown): Promise<SettingsRes
     const unavailable = requested.filter((key) => !context.permissions.has(key));
     if (unavailable.length)
       return failure(permissionDenied("You cannot grant permissions you do not hold yourself."));
+    // Taking one away is as much a change as giving it.
+    const removing = current.filter((key) => !requested.includes(key));
+    if (removing.some((key) => !context.permissions.has(key)))
+      return failure(permissionDenied("You cannot remove permissions you do not hold yourself."));
   }
+  const changes = buildChangeSet(
+    { permissionKeys: [...current].sort() },
+    { permissionKeys: [...requested].sort() },
+  );
 
   try {
     await db.transaction(async (tx) => {
@@ -1423,7 +1443,7 @@ export async function updateRolePermissions(input: unknown): Promise<SettingsRes
           .values(
             requested.map((key) => ({
               key,
-              module: key.split(".")[0],
+              module: permissionModule(key),
               description: permissionMetadata[key].description,
             })),
           )
@@ -1441,14 +1461,15 @@ export async function updateRolePermissions(input: unknown): Promise<SettingsRes
         await tx
           .insert(rolePermissions)
           .values(rows.map((v) => ({ roleId: role.id, permissionId: v.id })));
-      await tx.insert(auditLogs).values({
-        organizationId: context.organizationId,
-        actorUserId: context.userId,
-        action: "update",
-        entityType: "role_permissions",
-        entityId: role.id,
-        newValues: { permissionKeys: requested },
-      });
+      if (!isEmptyChangeSet(changes))
+        await tx.insert(auditLogs).values({
+          organizationId: context.organizationId,
+          actorUserId: context.userId,
+          action: "update",
+          entityType: "role_permissions",
+          entityId: role.id,
+          ...changes,
+        });
     });
   } catch (error) {
     logError("Role permissions save failed", error, { operation: "role_permissions_save" });

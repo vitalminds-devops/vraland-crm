@@ -22,7 +22,7 @@ import { getPropertyInventory } from "@/features/properties/queries/property-flo
 import { getProperty } from "@/features/properties/queries/property.queries";
 import { accessPageMode } from "@/features/properties/lib/access-page-mode";
 import { propertyPageActions } from "@/features/properties/lib/property-page-actions";
-import { canWriteProperty } from "@/features/properties/lib/property-scope";
+import { canWriteProperty } from "@/features/properties/queries/property-scope.queries";
 import { requirePagePermission } from "@/lib/permissions/authorization";
 
 export default async function PropertyDetailPage({
@@ -179,6 +179,7 @@ export default async function PropertyDetailPage({
               overlayInfo={presenting ? null : addressLine}
               overlayActions={floorActions}
               propertyId={id}
+              canManagePrices={!presenting && actions.canManagePrices}
               canManageUnits={!presenting && actions.canManageUnits}
               canManageUnitPictures={!presenting && actions.canManageUnitPictures}
               floors={inventory.floors}

@@ -20,7 +20,7 @@ vi.mock("@/lib/permissions/authorization", () => ({
   })),
 }));
 vi.mock("@/lib/permissions/policy", () => ({ hasUnrestrictedInventoryAccess: () => true }));
-vi.mock("../lib/property-scope", () => ({ canWriteProperty: vi.fn(async () => true) }));
+vi.mock("../queries/property-scope.queries", () => ({ canWriteProperty: vi.fn(async () => true) }));
 vi.mock("../lib/parking-sync", () => ({
   syncParkingCount: vi.fn(),
 }));

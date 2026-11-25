@@ -25,6 +25,7 @@ import { documentFileError, requirementFileTypes } from "@/lib/storage/document-
 import { recordPayment, removePayment } from "../actions/billing.actions";
 import { paymentClassificationLabels, paymentClassifications } from "../schemas/billing.schema";
 import { peso } from "../lib/format";
+import { refilledAmount } from "../lib/payment-suggestions";
 import { PaymentMethodSelect } from "./payment-method-select";
 
 export function Modal({
@@ -105,10 +106,26 @@ export function RecordPaymentButton({
   const [pending, start] = useTransition();
   const [selected, setSelected] = useState(billId ?? "");
   const [method, setMethod] = useState("");
-  // Controlled so picking a payment type can fill it in.
+  // Controlled so picking a payment type or a bill can fill it in.
   const [amount, setAmount] = useState("");
+  const [kind, setKind] = useState("");
+  // The amount last filled in for the agent, so a new pick may replace it but not a typed one.
+  const [lastSuggested, setLastSuggested] = useState<string | null>(null);
   const selectedBalance = billId ? balance : bills?.find((b) => b.id === selected)?.balance;
-  const selectedSuggested = billId ? suggested : bills?.find((b) => b.id === selected)?.suggested;
+  // What this payment is usually for: the reservation fee still due, a month of amortization, or
+  // the remaining balance.
+  const suggestionFor = (nextKind: string, nextBill: string) => {
+    const bill = billId ? { balance, suggested } : bills?.find((b) => b.id === nextBill);
+    return (
+      bill?.suggested?.[nextKind] ??
+      (nextKind === "full_payment" && bill?.balance ? Number(bill.balance).toFixed(2) : null)
+    );
+  };
+  const refill = (nextKind: string, nextBill: string) => {
+    const next = refilledAmount(amount, lastSuggested, suggestionFor(nextKind, nextBill));
+    setAmount(next.amount);
+    setLastSuggested(next.suggested);
+  };
 
   return (
     <>
@@ -121,6 +138,8 @@ export function RecordPaymentButton({
           setSelected(billId ?? "");
           setMethod("");
           setAmount("");
+          setKind("");
+          setLastSuggested(null);
           setOpen(true);
         }}
       >
@@ -206,7 +225,10 @@ export function RecordPaymentButton({
               <NativeSelect
                 required
                 value={selected}
-                onChange={(event) => setSelected(event.target.value)}
+                onChange={(event) => {
+                  setSelected(event.target.value);
+                  refill(kind, event.target.value);
+                }}
               >
                 <NativeSelectOption value="" disabled>
                   {bills.length ? "Select a bill" : "No bill has a balance"}
@@ -224,17 +246,10 @@ export function RecordPaymentButton({
             <NativeSelect
               name="classification"
               required
-              defaultValue=""
+              value={kind}
               onChange={(event) => {
-                // Fill in what this payment is usually for: the reservation fee still due, a
-                // month of amortization, or the remaining balance. The agent can still change it.
-                const kind = event.currentTarget.value;
-                const fill =
-                  selectedSuggested?.[kind] ??
-                  (kind === "full_payment" && selectedBalance
-                    ? Number(selectedBalance).toFixed(2)
-                    : null);
-                if (fill) setAmount(fill);
+                setKind(event.target.value);
+                refill(event.target.value, selected);
               }}
             >
               <NativeSelectOption value="" disabled>

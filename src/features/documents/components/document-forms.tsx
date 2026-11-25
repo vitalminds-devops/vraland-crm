@@ -113,7 +113,7 @@ export function DocumentUpload({
                 <input type="hidden" name="dealId" value="" />
                 <p className="text-sm text-muted-foreground">
                   Files are available to everyone in your organization. Upload forms, templates or
-                  reference materials here. Keep a contact's own documents on the contact.
+                  reference materials here. Keep a contact&apos;s own documents on the contact.
                 </p>
               </>
             )}

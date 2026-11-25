@@ -25,15 +25,21 @@ vi.mock("@/db", () => ({
   },
 }));
 vi.mock("@/lib/logger", () => ({ logError: vi.fn() }));
+const access = vi.hoisted(() => ({ prices: true }));
 vi.mock("@/lib/permissions/authorization", () => ({
-  requirePermission: async () => ({ organizationId: "org", userId: "user" }),
+  requirePermission: async () => ({
+    organizationId: "org",
+    userId: "user",
+    permissions: new Set(access.prices ? ["properties.manage_prices"] : []),
+  }),
 }));
-vi.mock("../lib/property-scope", () => ({ canWriteProperty: async () => true }));
+vi.mock("../queries/property-scope.queries", () => ({ canWriteProperty: async () => true }));
 vi.mock("../lib/revalidate-property", () => ({ revalidateProperty: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 beforeEach(() => {
   db.inserted = null;
+  access.prices = true;
 });
 
 it("saves a unit type's own reservation fee and monthly amortization", async () => {
@@ -56,4 +62,16 @@ it("saves a unit type's own reservation fee and monthly amortization", async () 
 it("leaves blank fees as none", async () => {
   await saveUnitType({ propertyId, name: "Studio", price: "", reservationFee: "", layout });
   expect(db.inserted).toMatchObject({ reservationFee: null, monthlyAmortization: null });
+});
+
+it("needs Manage prices to set amounts, but not to design a type", async () => {
+  access.prices = false;
+  const priced = await saveUnitType({ propertyId, name: "2BR", price: "3000000", layout });
+  expect(!priced.success && priced.error.message).toBe(
+    "You can't change prices and fees on this property.",
+  );
+  expect(db.inserted).toBeNull();
+  expect((await saveUnitType({ propertyId, name: "Studio", price: "", layout })).success).toBe(
+    true,
+  );
 });

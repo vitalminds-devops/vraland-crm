@@ -70,7 +70,10 @@ export function AddCountDialog({
       >
         <DialogPortal>
           <DialogOverlay className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm">
-            <DialogPopup className="w-full max-w-sm rounded-xl border border-border bg-card p-5 shadow-xl">
+            <DialogPopup
+              aria-describedby={undefined}
+              className="w-full max-w-sm rounded-xl border border-border bg-card p-5 shadow-xl"
+            >
               <DialogTitle className="text-lg font-semibold">{title}</DialogTitle>
               <form
                 className="mt-4 space-y-4"

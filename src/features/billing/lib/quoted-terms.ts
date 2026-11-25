@@ -6,6 +6,18 @@ const cents = (value: string | null | undefined) =>
 const amount = (value: number | null) => (value === null ? null : (value / 100).toFixed(2));
 
 /**
+ * The units' share of a reservation fee that includes parking: the total less the parking fee.
+ * Null when nothing is left (only parking sets a fee), so it shows as "—", not ₱0.00.
+ */
+export function unitsReservationFee(
+  total: string | null | undefined,
+  parking: string | null | undefined,
+): string | null {
+  const units = (cents(total) ?? 0) - (cents(parking) ?? 0);
+  return cents(total) === null || units <= 0 ? null : amount(units);
+}
+
+/**
  * The quoted price and reservation fee, split into units and parking with their totals. The
  * opportunity saves the total price, the parking price, the total fee and the parking fee; the
  * units' share of each is what is left.
@@ -27,7 +39,7 @@ export function quotedTerms(input: {
       {
         label: "Units",
         price: amount(total === null ? null : total - parking),
-        reservationFee: amount(feeTotal === null ? null : feeTotal - parkingFee),
+        reservationFee: unitsReservationFee(input.reservationFee, input.parkingReservationFee),
       },
       ...(hasParking
         ? [

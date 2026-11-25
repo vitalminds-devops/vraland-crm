@@ -38,9 +38,9 @@ export async function GET(request: Request) {
         "Stage",
         "Broker",
         "Property / unit",
-        "Bill total",
-        "Paid",
-        "Balance",
+        "Bill total (PHP)",
+        "Paid (PHP)",
+        "Balance (PHP)",
         "Status",
       ],
       ...data.rows.map((row) => [

@@ -108,6 +108,22 @@ export function UnitChip({
   );
 }
 
+/** Kept close to the bay surface so perspective doesn't move its number into a neighbour. */
+export function ParkingChip({ code, status, w }: { code: string; status: string; w: number }) {
+  const { texture, pixels } = paintChip(code, statusColor[status] ?? statusColor.inactive);
+  const width = Math.min(w * 0.75, pixels / 120);
+  return (
+    <sprite
+      position={[0, 0.18, 0]}
+      scale={[width, (width * 96) / pixels, 1]}
+      renderOrder={999}
+      raycast={() => null}
+    >
+      <spriteMaterial map={texture} depthTest={false} depthWrite={false} toneMapped={false} />
+    </sprite>
+  );
+}
+
 /**
  * Tells the floor whether the view is close enough for room names to be readable: about 20
  * screen pixels per metre. Checked as the camera moves, and only reported when it flips.

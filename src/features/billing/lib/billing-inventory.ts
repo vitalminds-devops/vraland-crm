@@ -4,7 +4,7 @@ import { and, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import type { db } from "@/db";
 import { bills, deals, pipelineStages, propertyParkingSlots, units } from "@/db/schema";
 import { syncDealInventory } from "@/features/deals/lib/deal-inventory";
-import { dealReservationPaid } from "./deal-payment";
+import { dealReservationReceived } from "./deal-payment";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -81,10 +81,13 @@ export async function readDealPayments(tx: Transaction, dealId: string) {
   };
 }
 
-/** Whether the opportunity's reservation fee is paid (or it has a full payment). */
-export async function readReservationPaid(tx: Transaction, dealId: string): Promise<boolean> {
+/**
+ * Whether the opportunity has any reservation (or full) payment. Any amount holds the units: a
+ * fee raised after paying (a unit or slot added) must not put the paid-for unit back on sale.
+ */
+export async function readReservationReceived(tx: Transaction, dealId: string): Promise<boolean> {
   const [row] = await tx
-    .select({ paid: dealReservationPaid })
+    .select({ paid: dealReservationReceived })
     .from(deals)
     .where(eq(deals.id, dealId));
   return row?.paid === true;
@@ -102,7 +105,7 @@ export function inventoryStatusForDeal(
     isCancelledStage: boolean;
   },
   payment: { total: number; paid: number },
-  /** A paid reservation holds the units even before the stage moves (say, awaiting approval). */
+  /** A reservation payment holds the units even before the stage moves (say, awaiting approval). */
   reservationPaid = false,
 ): "available" | "deposit_paid" | "sold" {
   if (stage.isLostStage || stage.isCancelledStage) return "available";
@@ -126,7 +129,7 @@ export async function syncBillingInventory(
     status: inventoryStatusForDeal(
       deal,
       await readDealPayments(tx, deal.id),
-      await readReservationPaid(tx, deal.id),
+      await readReservationReceived(tx, deal.id),
     ),
   });
 }

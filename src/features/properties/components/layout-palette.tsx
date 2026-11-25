@@ -1,8 +1,6 @@
 "use client";
 
-import { FlipHorizontal2, RotateCw, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
-import { Button } from "@/components/ui/button";
 import { PIECE_MIME } from "./layout-canvas";
 
 /** A piece to drag onto the canvas; tapping it adds it in the first free spot instead. */
@@ -41,65 +39,5 @@ export function PaletteItem({
         )}
       </span>
     </button>
-  );
-}
-
-/** The selected piece's name and its Rotate, Flip and Remove buttons. */
-export function SelectionBar({
-  name,
-  onRotate,
-  onFlip,
-  onRemove,
-  rename,
-}: {
-  name: string | null;
-  /** A name field for the picked unit or slot. */
-  rename?: { value: string; onChange: (value: string) => void; label: string };
-  onRotate: () => void;
-  onFlip?: () => void;
-  onRemove: () => void;
-}) {
-  if (!name)
-    return (
-      <p className="h-8 text-xs leading-8 text-muted-foreground">Drag pieces onto the grid.</p>
-    );
-  return (
-    <div className="flex h-8 items-center gap-1">
-      {rename ? (
-        <label className="mr-1 flex items-center gap-1.5 text-sm font-medium">
-          {rename.label}
-          <input
-            value={rename.value}
-            onChange={(event) => rename.onChange(event.target.value)}
-            onKeyDown={(event) => event.stopPropagation()}
-            maxLength={50}
-            aria-label={`${rename.label} name`}
-            className="h-8 w-24 rounded-md border border-input bg-background px-2 text-sm font-semibold tabular-nums focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none"
-          />
-        </label>
-      ) : (
-        <span className="mr-1 truncate text-sm font-medium">{name}</span>
-      )}
-      <Button type="button" variant="ghost" size="sm" className="h-8 gap-1.5" onClick={onRotate}>
-        <RotateCw className="size-4" />
-        Rotate
-      </Button>
-      {onFlip && (
-        <Button type="button" variant="ghost" size="sm" className="h-8 gap-1.5" onClick={onFlip}>
-          <FlipHorizontal2 className="size-4" />
-          Flip
-        </Button>
-      )}
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="h-8 gap-1.5 text-destructive"
-        onClick={onRemove}
-      >
-        <Trash2 className="size-4" />
-        Remove
-      </Button>
-    </div>
   );
 }

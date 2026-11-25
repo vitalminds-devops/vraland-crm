@@ -59,6 +59,11 @@ export const dealReservationPaid = dealPaidAs(
   "reservation",
   sql`coalesce(${dealReservationFee}, 0)`,
 );
+/**
+ * Any live reservation (or full) payment at all. Holds the units even when the fee quoted later
+ * rose (a unit or slot added), so paid-for units never go back on sale while money is held.
+ */
+export const dealReservationReceived = dealPaidAs("reservation", sql`0`);
 /** Monthly payments covering the monthly amortization (or a Full payment) unlock Reservation → Won; none set means any amount. */
 export const dealFirstMonthPaid = dealPaidAs(
   "monthly",

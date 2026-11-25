@@ -1,6 +1,7 @@
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { logError } from "@/lib/logger";
 import { manilaToday } from "@/lib/utils/manila-time";
 import {
   auditLogs,
@@ -157,7 +158,7 @@ export function startLeadExpiry(): void {
             `Lead expiry: ${count} lead(s) expired after ${LEAD_EXPIRY_DAYS} days in Leads.`,
           );
       })
-      .catch((error) => console.error("Lead expiry failed", error));
+      .catch((error) => logError("Lead expiry failed", error, { operation: "lead_expiry" }));
   void run();
   setInterval(run, HOUR).unref?.();
 }

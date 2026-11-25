@@ -22,7 +22,7 @@ vi.mock("@/lib/logger", () => ({ logError: vi.fn() }));
 vi.mock("@/lib/permissions/authorization", () => ({
   requirePermission: async () => ({ organizationId: "organization", userId: "user" }),
 }));
-vi.mock("../lib/property-scope", () => ({ canWriteProperty: async () => true }));
+vi.mock("../queries/property-scope.queries", () => ({ canWriteProperty: async () => true }));
 vi.mock("../lib/parking-sync", () => ({ syncParkingCount: vi.fn() }));
 
 const id = "10000000-0000-4000-8000-000000000001";

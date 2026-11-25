@@ -114,8 +114,8 @@ export const crmNavigation: readonly NavigationItem[] = [
     label: "Payments",
     href: "/payments",
     icon: "payments",
-    // Shown by `canManageBilling`: View billing and Record payments.
-    permission: "billing.manage",
+    // Shown by `canViewBilling`: read-only without Manage bills and payments.
+    permission: "billing.view",
     section: "Management",
   },
   {

@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from "vitest";
-import { canWriteProperty } from "../lib/property-scope";
+import { canWriteProperty } from "../queries/property-scope.queries";
 import { saveSlotPrices } from "./prices.actions";
 
 const slotId = "88f50ab3-567a-4a37-9271-eaa92a221995";
@@ -30,7 +30,7 @@ vi.mock("@/lib/logger", () => ({ logError: vi.fn() }));
 vi.mock("@/lib/permissions/authorization", () => ({
   requirePermission: async () => ({ organizationId: "org", userId: "user" }),
 }));
-vi.mock("../lib/property-scope", () => ({ canWriteProperty: vi.fn(async () => true) }));
+vi.mock("../queries/property-scope.queries", () => ({ canWriteProperty: vi.fn(async () => true) }));
 vi.mock("../lib/revalidate-property", () => ({ revalidateProperty: vi.fn() }));
 
 beforeEach(() => {

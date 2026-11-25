@@ -61,7 +61,7 @@ vi.mock("@/lib/permissions/authorization", () => ({
     organizationId: "organization",
     userId: "actor",
     roles: ["administrator"],
-    permissions: new Set<string>(),
+    permissions: new Set<string>(["deals.update"]),
   }),
   canAccessResource: async () => true,
 }));

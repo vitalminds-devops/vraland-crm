@@ -5,6 +5,7 @@ import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { Check, ChevronRight, Circle } from "lucide-react";
 
 import { cn } from "@/lib/utils/cn";
+import { overlayRoot } from "./dialog";
 
 // Non-modal by default: a modal menu whose item opens a Dialog leaves `pointer-events: none`
 // on <body> after the Dialog closes, so nothing is clickable until a refresh.
@@ -59,11 +60,11 @@ DropdownMenuSubContent.displayName = DropdownMenuPrimitive.SubContent.displayNam
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> & {
-    /** Where the menu is placed; inside a full-screen element, or it can't be seen there. */
+    /** Where the menu is placed; by default inside the full-screen element, if any. */
     container?: HTMLElement | null;
   }
 >(({ className, sideOffset = 4, container, ...props }, ref) => (
-  <DropdownMenuPrimitive.Portal container={container}>
+  <DropdownMenuPrimitive.Portal container={container ?? overlayRoot()}>
     <DropdownMenuPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}

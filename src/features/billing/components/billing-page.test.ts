@@ -12,8 +12,7 @@ const fixture = vi.hoisted(() => ({
     { dealId: "paid", billId: "bill-paid", status: "paid", total: "1000", paid: "1000" },
   ],
 }));
-vi.mock("@/lib/permissions/authorization", () => ({ getAuthorizationContext: async () => ({}) }));
-vi.mock("@/lib/permissions/policy", () => ({ canViewBilling: () => true }));
+vi.mock("@/lib/permissions/authorization", () => ({ requirePagePermission: async () => ({}) }));
 vi.mock("@/features/billing/queries/billing.queries", () => ({
   billStatuses: ["unbilled", "unpaid", "partial", "paid"],
   listBilling: async () => ({

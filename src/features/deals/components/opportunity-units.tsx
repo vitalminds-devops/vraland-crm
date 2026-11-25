@@ -1,5 +1,6 @@
 "use client";
 
+import { unitsReservationFee } from "@/features/billing/lib/quoted-terms";
 import { ArrowLeftRight, CopyPlus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
@@ -117,6 +118,9 @@ function ChangeUnitsDialog({ dealId, onClose }: { dealId: string; onClose: () =>
   const selection = { developmentId, buildingId: buildingId ?? "", unitIds, parkingSlotIds };
   const key = JSON.stringify(selection);
   const current = estimate?.key === key ? estimate.result : null;
+  const unitsFee = current?.success
+    ? unitsReservationFee(current.reservationFee, current.parkingReservationFee)
+    : null;
   useEffect(() => {
     if (!buildingId || !unitIds.length) return;
     let live = true;
@@ -148,7 +152,10 @@ function ChangeUnitsDialog({ dealId, onClose }: { dealId: string; onClose: () =>
     <Dialog open onOpenChange={(next) => !next && !pending && onClose()}>
       <DialogPortal>
         <DialogOverlay className="fixed inset-0 z-[60] grid place-items-center overflow-y-auto bg-black/60 p-4 backdrop-blur-sm">
-          <DialogPopup className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-xl border border-border/60 bg-card p-5 shadow-2xl">
+          <DialogPopup
+            aria-describedby={undefined}
+            className="max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-y-auto rounded-xl border border-border/60 bg-card p-5 shadow-2xl"
+          >
             <header className="flex items-start justify-between gap-3">
               <DialogTitle className="text-base font-semibold">Change unit</DialogTitle>
               <DialogClose
@@ -238,15 +245,7 @@ function ChangeUnitsDialog({ dealId, onClose }: { dealId: string; onClose: () =>
                       {current.parkingReservationFee ? "Unit reservation fee" : "Reservation fee"}
                     </dt>
                     <dd className="tabular-nums">
-                      {current.reservationFee
-                        ? peso(
-                            (
-                              Number(current.reservationFee) -
-                              Number(current.parkingReservationFee ?? 0)
-                            ).toFixed(2),
-                            current.currency,
-                          )
-                        : "—"}
+                      {unitsFee ? peso(unitsFee, current.currency) : "—"}
                     </dd>
                     {current.parkingReservationFee && (
                       <>

@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 
 import { BackButton } from "@/components/common/back-button";
 import { PageContainer } from "@/components/common/page-container";
@@ -7,11 +6,9 @@ import { OrganizationChart } from "../../../../../src/features/settings/componen
 import { SettingsNav } from "@/features/settings/components/settings-nav";
 import { listUsers } from "@/features/settings/queries/settings.queries";
 import { requirePagePermission } from "@/lib/permissions/authorization";
-import { canManageUsers } from "@/lib/permissions/policy";
 
 export default async function OrganizationChartPage() {
   const context = await requirePagePermission("users.manage");
-  if (!canManageUsers(context)) redirect("/forbidden");
   const { rows } = await listUsers();
 
   return (

@@ -5,6 +5,8 @@ import DashboardPage from "../../../../app/(crm)/dashboard/page";
 
 const fixture = vi.hoisted(() => ({
   enabled: true,
+  summary: true,
+  billing: true,
   data: {
     currency: "PHP",
     organizationWide: true,
@@ -13,12 +15,10 @@ const fixture = vi.hoisted(() => ({
       activeLeads: 124,
       leadChange: 25,
       activeProperties: 18,
-      pipelineDeals: 32,
-      pipelineValue: 85000000,
       collected: 1250000,
       payments: 14,
-      reservations: 5,
-      reservationValue: 15000000,
+      reservationPayments: 5,
+      reservationsReceived: 100000,
       availableUnits: 37,
       totalUnits: 60,
       availableParking: 8,
@@ -84,9 +84,10 @@ vi.mock("@/features/dashboard/queries/dashboard.queries", () => ({
         leads: fixture.enabled,
         properties: fixture.enabled,
         pipeline: fixture.enabled,
-        collected: fixture.enabled,
+        collected: fixture.enabled && fixture.billing,
       },
       revenue: fixture.enabled,
+      summary: fixture.enabled && fixture.summary,
       pipeline: fixture.enabled,
       tasks: fixture.enabled,
       viewings: fixture.enabled,
@@ -106,6 +107,8 @@ vi.mock("@/features/dashboard/components/dashboard-charts", () => ({
 
 beforeEach(() => {
   fixture.enabled = true;
+  fixture.summary = true;
+  fixture.billing = true;
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-11-18T04:00:00Z"));
 });
@@ -120,7 +123,7 @@ it("puts upcoming work before charts and distinguishes sales values from payment
   expect(html.indexOf("Upcoming tasks &amp; viewings")).toBeLessThan(
     html.indexOf("Won sales &amp; forecast"),
   );
-  expect(html).toContain("Open opportunities");
+  expect(html).not.toContain("Open opportunities");
   expect(html).toContain("These are sales values, not payments received.");
   expect(html).not.toContain("+25%");
   expect(html).toContain('href="/deals/opportunity"');
@@ -144,12 +147,14 @@ it("keeps panels hidden when dashboard permissions are absent", async () => {
   expect(html).not.toContain("Won sales &amp; forecast");
 });
 
-it("names reservation value separately from its count and available units", async () => {
+it("shows reservations received this month with their count, and available units", async () => {
   const html = (await render()).replace(/<[^>]+>/g, " ");
-  // Won sales are in the chart, not a card.
+  // Won sales are in the chart, not a card; open reservations are no longer a figure.
   expect(html).not.toContain("Total sales");
-  expect(html).toContain("Reservation value");
-  expect(html).toContain("5 reservations");
+  expect(html).not.toContain("Reservation value");
+  expect(html).toContain("Reservations received this month");
+  expect(html).toContain("₱100.0K");
+  expect(html).toContain("5 payments");
   expect(html).toContain("Available units");
   expect(html).toContain("of 60 units");
   expect(html).toContain("Available parking");
@@ -172,7 +177,26 @@ it("shows money as one strip, availability as meters, and contacts in the summar
   expect(html).toContain('aria-label="Key figures"');
   expect(html.match(/role="meter"/g)).toHaveLength(2);
   expect(html).toContain('aria-valuenow="37"');
-  expect(html).toContain("Inventory");
+  expect(html).toContain(">Properties<");
   // Money comes first, then work, then the charts.
-  expect(html.indexOf("Key figures")).toBeLessThan(html.indexOf("Inventory"));
+  expect(html.indexOf("Key figures")).toBeLessThan(html.indexOf(">Properties<"));
+});
+
+it("shows Active contacts with the key figures when Summary is off", async () => {
+  const strip = (html: string) =>
+    html.slice(html.indexOf("Key figures"), html.indexOf(">Properties<"));
+  expect(strip(await render())).not.toContain("Active contacts");
+  fixture.summary = false;
+  const html = await render();
+  expect(strip(html)).toContain("Active contacts");
+  expect(strip(html)).toContain("124");
+});
+
+it("leaves money collected off Won sales value without View billing", async () => {
+  fixture.billing = false;
+  const html = (await render()).replace(/<[^>]+>/g, " ");
+  expect(html).toContain("Won sales value");
+  expect(html).toContain("3 won");
+  expect(html).not.toContain("collected");
+  expect(html).not.toContain("Payments received this month");
 });

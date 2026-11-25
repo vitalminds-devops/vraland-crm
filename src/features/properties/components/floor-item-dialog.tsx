@@ -23,8 +23,6 @@ const DesignedFloorScene = dynamic(() => import("./designed-floor-scene"), {
 });
 
 /** Opens inside the full-screen view when it is on, or it would be hidden behind it. */
-const overlayRoot = () =>
-  typeof document === "undefined" ? undefined : (document.fullscreenElement as HTMLElement | null);
 
 type SceneProps = Omit<
   ComponentProps<typeof DesignedFloorScene>,
@@ -60,7 +58,7 @@ export function FloorItemDialog({
   const [noWebGl, setNoWebGl] = useState(false);
   return (
     <Dialog open onOpenChange={(next) => !next && onClose()}>
-      <DialogPortal container={overlayRoot()}>
+      <DialogPortal>
         <DialogOverlay className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm">
           <DialogPopup className="relative grid h-[calc(100dvh-2rem)] max-h-[calc(100dvh-2rem)] w-full max-w-5xl grid-rows-[minmax(12rem,34dvh)_minmax(0,1fr)] overflow-hidden rounded-xl bg-card shadow-xl md:h-[min(40rem,calc(100dvh-2rem))] md:grid-cols-[minmax(0,1fr)_24rem] md:grid-rows-[minmax(0,1fr)]">
             <DialogClose

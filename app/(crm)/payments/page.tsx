@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import {
   CalendarCheck,
   CalendarClock,
@@ -31,7 +30,7 @@ import {
   paymentMethodLabels,
 } from "@/features/billing/schemas/billing.schema";
 import { formatContactName } from "@/features/contacts/lib/helpers";
-import { getAuthorizationContext } from "@/lib/permissions/authorization";
+import { requirePagePermission } from "@/lib/permissions/authorization";
 import { canManageBilling } from "@/lib/permissions/policy";
 
 const PAGE_SIZE = 25;
@@ -50,15 +49,15 @@ export default async function PaymentsPage({
 }: {
   searchParams: Promise<{ page?: string; search?: string }>;
 }) {
-  const context = await getAuthorizationContext();
-  if (!context) redirect("/login");
-  if (!canManageBilling(context)) redirect("/forbidden");
+  // View billing reads payments; recording one needs Manage bills and payments too.
+  const context = await requirePagePermission("billing.view");
+  const canManage = canManageBilling(context);
 
   const q = await searchParams;
   const page = Math.max(1, Math.floor(Number(q.page) || 1));
   const [data, openBills] = await Promise.all([
     listPayments({ page, pageSize: PAGE_SIZE, search: q.search }),
-    listOpenBills(),
+    canManage ? listOpenBills() : [],
   ]);
   const pages = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
   const href = (next: number) =>
@@ -81,21 +80,23 @@ export default async function PaymentsPage({
               <Download aria-hidden="true" className="mr-2 h-4 w-4" />
               Export
             </a>
-            <RecordPaymentButton
-              bills={openBills.map((bill) => ({
-                id: bill.id,
-                // First segment only ("Unit 1A"); the full label overflows the dialog.
-                // Multi-unit labels are joined with " + " (billing.actions.ts).
-                label: `${lead(bill)} · ${bill.unitLabel.split(/ · | \+ /)[0]}${bill.unitLabel.includes(" + ") ? "…" : ""} · ${peso(bill.balance)}`,
-                balance: bill.balance,
-                suggested: paymentSuggestions({
-                  reservationFee: bill.reservationFee,
-                  monthlyAmortization: bill.monthlyAmortization,
-                  balance: Number(bill.balance),
-                  payments: [{ amount: bill.reservationPaid, classification: "reservation" }],
-                }),
-              }))}
-            />
+            {canManage && (
+              <RecordPaymentButton
+                bills={openBills.map((bill) => ({
+                  id: bill.id,
+                  // First segment only ("Unit 1A"); the full label overflows the dialog.
+                  // Multi-unit labels are joined with " + " (billing.actions.ts).
+                  label: `${lead(bill)} · ${bill.unitLabel.split(/ · | \+ /)[0]}${bill.unitLabel.includes(" + ") ? "…" : ""} · ${peso(bill.balance)}`,
+                  balance: bill.balance,
+                  suggested: paymentSuggestions({
+                    reservationFee: bill.reservationFee,
+                    monthlyAmortization: bill.monthlyAmortization,
+                    balance: Number(bill.balance),
+                    payments: [{ amount: bill.reservationPaid, classification: "reservation" }],
+                  }),
+                }))}
+              />
+            )}
           </div>
         }
       />

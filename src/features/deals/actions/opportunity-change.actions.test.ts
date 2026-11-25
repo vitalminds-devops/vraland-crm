@@ -15,6 +15,7 @@ const freeSlot = uuid(7);
 const takenSlot = uuid(8);
 
 const mock = vi.hoisted(() => ({
+  canUpdate: true,
   /** Rows returned by each top-level select, in call order. */
   selects: [] as unknown[][],
   /** The stage flags the locked deal reports. */
@@ -74,7 +75,11 @@ vi.mock("@/lib/permissions/authorization", () => ({
   requirePermission: async () => ({
     organizationId: "organization",
     userId: "agent",
-    permissions: new Set(["properties.view", "deals.create"]),
+    permissions: new Set([
+      "properties.view",
+      "deals.create",
+      ...(mock.canUpdate ? ["deals.update"] : []),
+    ]),
   }),
   canAccessResource: async () => true,
 }));
@@ -178,6 +183,7 @@ beforeEach(() => {
   mock.bill = null;
   mock.paid = 0;
   mock.writes = [];
+  mock.canUpdate = true;
 });
 
 it("moves an open opportunity to new units and reprices it", async () => {
@@ -324,7 +330,7 @@ it("opens another opportunity for the same client, agent and deal type", async (
 it("needs a client to copy from", async () => {
   mock.selects = [[]];
   const result = await addOpportunityForContact(dealId);
-  expect(!result.success && result.error.message).toBe("This opportunity has no client.");
+  expect(!result.success && result.error.message).toBe("This opportunity has no contact.");
   expect(openDealForApprovedContact).not.toHaveBeenCalled();
 });
 
@@ -344,4 +350,12 @@ it("names a parking slot that has no price", async () => {
   expect(!result.success && result.error.message).toBe(
     "Parking P1 has no price yet. Set it on the property's Design page, then try again.",
   );
+});
+
+it("needs Edit opportunities to change units, since that re-totals the bill", async () => {
+  mock.canUpdate = false;
+  queueChange();
+  const result = await changeOpportunityUnits(selection);
+  expect(result.success).toBe(false);
+  expect(mock.writes).toEqual([]);
 });

@@ -76,9 +76,10 @@ export default async function DealPage({
             title="Units"
             action={
               <div className="flex flex-wrap gap-2">
-                {data.canChangeStage && data.stageSlug !== "leads" && !data.stageClosed && (
-                  <ChangeUnitsButton dealId={id} />
-                )}
+                {data.canChangeStage &&
+                  data.canUpdate &&
+                  data.stageSlug !== "leads" &&
+                  !data.stageClosed && <ChangeUnitsButton dealId={id} />}
                 {data.canCreate && data.contacts.length > 0 && data.stageSlug !== "leads" && (
                   <AddOpportunityButton dealId={id} />
                 )}

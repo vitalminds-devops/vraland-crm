@@ -14,7 +14,7 @@ import {
   success,
   validationFailureFromZod,
 } from "@/lib/types/action-result";
-import { canWriteProperty } from "../lib/property-scope";
+import { canWriteProperty } from "../queries/property-scope.queries";
 import { revalidateProperty } from "../lib/revalidate-property";
 import { legacyNumbering } from "../lib/unit-numbering";
 import { unitNamingSchema } from "../schemas/unit-naming.schema";
@@ -63,13 +63,17 @@ export async function saveUnitNaming(input: unknown): Promise<ActionResult> {
         ?.map((group) => ({ ...group, floorIds: group.floorIds.filter((id) => own.has(id)) }))
         .filter((group) => group.floorIds.length > 0);
       // Skipped floors and units per floor stay as they were; only the naming changes.
-      const numbering = value.style
-        ? {
-            ...(current.unitNumbering ?? legacyNumbering),
-            style: value.style,
-            endings: value.style === "custom" ? value.endings : [],
-          }
-        : current.unitNumbering;
+      const numbering =
+        value.style || value.parking
+          ? {
+              ...(current.unitNumbering ?? legacyNumbering),
+              ...(value.style && {
+                style: value.style,
+                endings: value.style === "custom" ? value.endings : [],
+              }),
+              ...(value.parking && { parking: value.parking }),
+            }
+          : current.unitNumbering;
       await tx
         .update(properties)
         .set({

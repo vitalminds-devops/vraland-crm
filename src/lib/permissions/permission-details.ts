@@ -43,7 +43,7 @@ export const permissionDetails = {
     conditions: [
       'Needs "View dashboard" to open the dashboard',
       'Active contacts card needs "View contacts & leads"; counts contacts not yet converted',
-      'Active properties card needs "View properties"; only granted properties unless admin role',
+      'Active properties card needs "View properties"; only properties the user has access to, unless they have "Access all properties"',
       'Open opportunities card needs "View sales pipeline"; count and total value of open opportunities',
       'Payments received this month and Monthly payments received cards need "View sales pipeline" and "View billing"',
       "All cards count only records in their data access: own, team or all",
@@ -63,7 +63,7 @@ export const permissionDetails = {
     allows: "Show the Summary panel of quick readings for this month and next 7 days.",
     conditions: [
       'Needs "View dashboard" to open the dashboard',
-      "Each reading needs its own access: tasks, calendar, contacts, deals or properties view",
+      "Each reading needs its own access: tasks, calendar, contacts, opportunities or properties view",
       "Panel hidden when they hold none of those record permissions",
       "Overdue tasks reading hidden while the Open tasks by due date panel is shown",
       "Reserved properties reading hidden while the Properties by status panel is shown",
@@ -101,12 +101,12 @@ export const permissionDetails = {
     ],
   },
   "dashboard.view_inventory": {
-    allows: "Show how many properties are in each listing status.",
+    allows: "Show how many properties are in each status.",
     conditions: [
       'Needs "View dashboard" to open the dashboard',
       'Needs "View properties"',
       "Counts only properties granted to them, unless Administrator or Super Administrator role",
-      "Team or own data access does not narrow properties further than grants",
+      "Team or own data access does not narrow properties further than property access",
       "Hides the Summary panel's reserved properties reading while shown",
     ],
   },
@@ -114,10 +114,10 @@ export const permissionDetails = {
     allows: "Show the 8 latest activity entries on records they can reach.",
     conditions: [
       'Needs "View dashboard" to open the dashboard',
-      "Needs at least one of contacts, deals, properties, tasks or calendar view",
-      'With "See all records", shows all organization activity',
+      "Needs at least one of contacts, opportunities, properties, tasks or calendar view",
+      "Only activity from modules the user can open (contacts, opportunities, tasks, calendar, properties, developments, documents)",
+      'With "See all records", that activity across the organization',
       "Otherwise: their own actions, or activity on contacts/opportunities/properties/tasks in their access",
-      "Not filtered by which record view permissions they hold (unsure if intended)",
     ],
   },
   "contacts.view": {
@@ -227,9 +227,9 @@ export const permissionDetails = {
     conditions: [
       "Covers properties in the user's organization only; archived properties are hidden",
       "Non-administrators see only properties someone granted them",
-      "Partial grants show only the granted floors, units and parking; held-back units are hidden",
+      "Access to part of a property shows only those floors, units and parking; units left out are hidden",
       "Ungranted floors and units have no placeholders or hidden-unit counts",
-      "Administrator and Super Administrator skip grants and see all properties and units",
+      'With "Access all properties", every property and unit shows without property access',
       "Data access (own/team/all) does not narrow viewing properties",
       "Also needed to pick units and parking on an opportunity",
       "Also lights up the dashboard property KPI and properties-by-status panels, when those panels are allowed",
@@ -241,17 +241,18 @@ export const permissionDetails = {
     allows: "Add new properties, including from a development's page.",
     conditions: [
       "The chosen development must belong to the user's organization",
-      "Floors, units and parking are added afterward, needing Manage floors, units and parking",
+      'Floors, units and parking are added afterward, needing "Design properties"',
       "Non-administrators automatically get whole-property access to what they create",
       "Shows the New property button on the list and the development page",
     ],
   },
   "properties.update": {
-    allows: "Edit a property's details, prices, address, features and status.",
+    allows: "Edit a property's details, address, features and status.",
     conditions: [
+      'Prices and fees are set on unit and parking types, with "Manage prices"',
       "Only properties within the user's data access, based on who created them",
       "With own-records access: only properties they created themselves",
-      "Non-administrators also need an access grant to that property",
+      "Non-administrators also need access to the whole property; access to some floors or units is view only",
       "Archived properties cannot be edited",
       "The Edit button shows only for properties the user can actually save",
     ],
@@ -262,15 +263,16 @@ export const permissionDetails = {
       "Archiving hides the property; it is not permanently deleted",
       "Blocked while an open opportunity uses its units, parking or property",
       "Only properties within the user's data access, based on who created them",
-      "Non-administrators also need an access grant to that property",
+      "Non-administrators also need access to the whole property; access to some floors or units is view only",
       "The archive list shows only properties the user could restore",
     ],
   },
   "properties.manage_units": {
-    allows: "Add, rename and remove floors, units and parking slots, and change their status.",
+    allows:
+      "Use the Design page: unit and parking types, floors and floor plans, sections, unit identifiers, and adding, renaming and removing units and parking slots and changing their status.",
     conditions: [
       "Only properties within the user's data access, based on who created them",
-      "Non-administrators also need an access grant to that property",
+      "Non-administrators also need access to the whole property; access to some floors or units is view only",
       "Can't change status of a unit/slot held by an open or won opportunity",
       "Can't remove sold or reserved units/slots, or ones on open opportunities",
       "Removing a floor removes its units; same sold/reserved blocks apply",
@@ -278,12 +280,22 @@ export const permissionDetails = {
       "Hidden in presentation mode",
     ],
   },
+  "properties.manage_prices": {
+    allows:
+      "Set the price, reservation fee and monthly amortization of unit types, parking types, units and parking slots.",
+    conditions: [
+      'Changing a type also needs "Design properties"',
+      "Non-administrators also need access to the whole property",
+      "Without it, types can still be designed and renamed, but no amount changes",
+      "A new price reaches units and slots still available; reserved and sold ones keep theirs",
+    ],
+  },
   "properties.manage_unit_pictures": {
     allows: "Upload, replace and remove unit photos.",
     conditions: [
       "JPEG, PNG or WebP only, 5 MB maximum",
       "Only properties within the user's data access, based on who created them",
-      "Non-administrators also need an access grant to that property",
+      "Non-administrators also need access to the whole property; access to some floors or units is view only",
       "Hidden in presentation mode",
     ],
   },
@@ -291,30 +303,38 @@ export const permissionDetails = {
     allows: "Give or remove other users' access to properties, floors, units and parking.",
     conditions: [
       "Also needs View properties",
-      "Administrators can grant without this permission",
       "Only active, non-administrator users other than yourself can receive access",
-      "Master Broker: may grant only to broker-type roles and agents",
-      "Broker-type roles: may grant only to their own team members",
-      "Other roles with this permission can grant to nobody, not even with it",
+      "Master Broker: may give access only to broker-type roles and agents",
+      "Broker-type roles: may give access only to their own team members",
+      "Who can receive access follows the team structure (Master Broker, broker-type roles, agents), not permissions",
       "Non-administrators can only share what they hold themselves",
       "The editor shows only the caller's granted floors and units; exclusions are inherited when sharing a floor",
       "Sold, reserved or inactive units and parking can't be newly granted",
-      "Only administrators can grant every property at once",
+      'Granting every property at once needs "Access all properties"',
+    ],
+  },
+  "properties.access_all": {
+    allows:
+      "See and change every property, floor, unit and parking slot without being given property access.",
+    conditions: [
+      "Administrators have it by default",
+      "Still needs the matching View, Edit or Design permission for each action",
+      "Can give access to every property at once",
     ],
   },
   "properties.view_all_access": {
-    allows: "See everyone's access grants on a property's Access page.",
+    allows: "See everyone's property access on a property's Access page.",
     conditions: [
-      'Opens the Access page view-only, even without "Grant property access"',
+      'Opens the Access page view-only, even without "Give property access"',
       "View-only shows who has access; nothing can be changed",
-      'With "Grant property access", lists every grant instead of only the user\'s own reach',
+      "With \"Give property access\", lists everyone's access instead of only the user's own reach",
       'Also needs "View properties"',
     ],
   },
   "developments.view": {
     allows: "Open the Developments list, development pages and cover images.",
     conditions: [
-      "Shows every development in the organization, regardless of grants",
+      "Shows every development in the organization, regardless of property access",
       "Properties, floors and units inside show only those granted to non-administrators",
       "Data access (own/team/all) does not narrow developments",
       "Shows the Developments menu item",
@@ -326,7 +346,7 @@ export const permissionDetails = {
   },
   "developments.update": {
     allows: "Edit a development's details and upload or remove its cover photo.",
-    conditions: ["Any development in the organization; no data access or grant limit"],
+    conditions: ["Any development in the organization; no data access or property access limit"],
   },
   "developments.delete": {
     allows: "Delete an empty development from its page.",
@@ -363,11 +383,20 @@ export const permissionDetails = {
       "Without it, the contact form hides the opportunity stage options",
     ],
   },
+  "deals.export": {
+    allows: "Download the Opportunity list, with its filters, as a CSV file.",
+    conditions: [
+      'Also needs "View sales pipeline"',
+      "Only opportunities in the user's data access",
+      "Up to 10,000 rows per file",
+    ],
+  },
   "deals.update": {
     allows:
-      "Edit an opportunity's type, value, expected commission and close date from the contact form.",
+      "Edit an opportunity's type, value, expected commission and expected close from the contact form.",
     conditions: [
       'Also needs "Edit contacts"; edits happen only through the contact\'s edit form',
+      `Changing an opportunity's units, which re-totals its bill, needs this and "Move opportunities between stages"`,
       "Only opportunities in the user's data access",
       "A won opportunity's value and commission cannot be changed",
       'Changing the stage in the same form also needs "Move opportunities between stages"',
@@ -389,12 +418,12 @@ export const permissionDetails = {
     ],
   },
   "deals.change_stage": {
-    allows: "Move opportunities along the pipeline, mark them lost, and change their units.",
+    allows: "Move opportunities along the pipeline and mark them lost.",
     conditions: [
       "Only opportunities in the user's data access",
       "Agents may move only opportunities where they are the primary agent",
       "Brokers may move only opportunities where they are the broker",
-      "Users with no agent, broker, manager or admin role cannot move anything",
+      "Custom roles move by their data access: own records like an Agent, team like a Broker, all like a Sales Manager",
       "Forward moves go one stage at a time; no skipping",
       'Leads to Opportunity needs "Edit contacts", "View properties", TIN, units, payment method, valid ID and appointment form',
       "Opportunity to Reservation needs the reservation fee paid, summed over all units",
@@ -617,7 +646,7 @@ export const permissionDetails = {
       "PDFs open in the browser PDF viewer; images can be printed or saved as PDF through the print dialog",
       "Documents and its archive list shared files separately from contact documents",
       "Documents on contacts and opportunities follow the user's data access",
-      "Property documents follow property access grants",
+      "Property documents follow property access",
       "Unlinked documents: those the user (or team) uploaded, per data access",
       "Sensitive documents hidden unless allowed by sensitive-document rules",
       "User onboarding files are never shown here",
@@ -625,16 +654,21 @@ export const permissionDetails = {
     ],
   },
   "documents.manage": {
-    allows: "Upload shared files or documents the user can manage.",
+    allows: "Upload documents to the records the user can manage.",
     conditions: [
       'Needs "View documents" to reach the Documents pages',
-      "Shared files also require the Administrator or Super Administrator role, even with this permission",
-      "Shared uploads: PDF, JPEG or PNG, up to 15 MB; available to the whole organization",
-      "Shared files cannot be linked to a contact, property or opportunity",
       'Archive and Restore need the separate "Archive documents" permission',
       "Record-linked uploads: PDF, DOCX, JPEG, PNG or text, up to 15 MB",
       "Linked contact, property or opportunity must be within reach",
       "Only documents the user can see, including sensitivity rules",
+    ],
+  },
+  "documents.manage_shared": {
+    allows: "Add and remove shared files: documents the whole organization can open.",
+    conditions: [
+      "Administrators have it by default",
+      "PDF, JPEG or PNG, up to 15 MB",
+      "Shared files cannot be linked to a contact, property or opportunity",
     ],
   },
   "documents.archive": {
@@ -654,7 +688,6 @@ export const permissionDetails = {
     conditions: [
       'Needs "View documents" too',
       "Still limited to records within the user's data access",
-      "Sales Manager, Administrator and Super Administrator see them without this permission",
       "Without it, only sensitive documents on opportunities they work on",
       "Sensitive files on contacts alone are hidden without it",
     ],
@@ -667,13 +700,13 @@ export const permissionDetails = {
       'Agent list limited to themselves, or their team, unless "See all records"',
       "Super Administrators are never listed as agents",
       "Opportunities of archived contacts are left out of sales and agent figures",
-      "Property type filter lists only granted properties, unless admin role",
+      'Property type filter lists only properties the user has access to, unless they have "Access all properties"',
       "Without it, report pages redirect to Forbidden; CSV export returns Forbidden",
     ],
   },
   "billing.view": {
     allows:
-      "See Billing: each opportunity's bill, payments and balance, and export billing to CSV.",
+      "See Billing and Payments: each opportunity's bill, payments and balance, and export both to CSV.",
     conditions: [
       "Only opportunities in the user's data access (own, team or all)",
       "Opportunities whose lead contact is archived are hidden",
@@ -683,8 +716,7 @@ export const permissionDetails = {
     ],
   },
   "billing.manage": {
-    allows:
-      "Create and edit bills, record and remove payments, and see and export the Payments list.",
+    allows: "Create and edit bills, and record and remove payments.",
     conditions: [
       'Does nothing without "View billing"',
       "Only opportunities in the user's data access",
@@ -742,7 +774,7 @@ export const permissionDetails = {
       "Can't archive themselves",
       "Can't archive a Super Administrator, whoever they are",
       "Can't archive a user who has any permission they don't hold",
-      "Open leads, deals, team, tasks and upcoming viewings must be handed to someone",
+      "Open leads, opportunities, team, tasks and upcoming viewings must be handed to someone",
       "The person taking over a team must suit their roles, with no reporting loop",
       "Archived users are signed out immediately",
       "The Archive option only appears with this permission",
@@ -769,7 +801,7 @@ export const permissionDetails = {
       "Can't save a role with permissions they don't hold (Super Administrator exempt)",
       "Commission rates and splits must be 0–100%",
       "Per-user changes: not themselves, not a Super Administrator",
-      "Per-user changes: not users with access they lack; grant only what they hold",
+      "Per-user changes: not users with access they lack; give only what they hold",
       'Reaching a user\'s permission editor also needs "Manage users"',
     ],
   },
@@ -789,7 +821,7 @@ export const permissionDetails = {
       "Team or all records wins if the user also holds either",
       "Covers contacts, opportunities and similar records, each only within their own organization",
       "Records where they are only the broker are not included",
-      "Properties follow their own access grants, not this setting",
+      "Properties follow property access, not this setting",
     ],
   },
   "records.view_team": {
@@ -816,7 +848,7 @@ export const permissionDetails = {
       "Overriding the lock on won sales still needs Super Administrator",
       "With Archive contacts: restore any archived contact",
       "Opens My team only for Broker-type or Master Broker roles",
-      "Properties and units still follow access grants; only Administrator roles skip them",
+      'Properties and units still follow property access, unless the user has "Access all properties"',
     ],
   },
 } satisfies Record<PermissionKey, PermissionDetail>;

@@ -7,6 +7,7 @@ import { revalidateProperty } from "../lib/revalidate-property";
 import { db } from "@/db";
 import { auditLogs, properties, unitTypes, units } from "@/db/schema";
 import { requirePermission } from "@/lib/permissions/authorization";
+import { hasPermission } from "@/lib/permissions/policy";
 import { logError } from "@/lib/logger";
 import { outOfScope } from "@/lib/errors";
 import {
@@ -19,7 +20,8 @@ import {
   validationFailure,
   validationFailureFromZod,
 } from "@/lib/types/action-result";
-import { canWriteProperty } from "../lib/property-scope";
+import { canWriteProperty } from "../queries/property-scope.queries";
+import { changesMoney, pricesNeedPermission } from "../lib/price-changes";
 import { designFacts, REPRICED_STATUSES } from "../lib/floor-layout";
 import { unitDetailsSchema, unitTypeSchema } from "../schemas/floor-layout.schema";
 
@@ -47,6 +49,29 @@ export async function saveUnitType(
     )
     .limit(1);
   if (!property) return notFoundFailure("Property");
+
+  // Amounts need "Manage prices"; without it a type can still be designed and renamed.
+  if (!hasPermission(context, "properties.manage_prices")) {
+    const [current] = value.id
+      ? await db
+          .select({
+            price: unitTypes.price,
+            reservationFee: unitTypes.reservationFee,
+            monthlyAmortization: unitTypes.monthlyAmortization,
+          })
+          .from(unitTypes)
+          .where(and(eq(unitTypes.id, value.id), eq(unitTypes.propertyId, property.id)))
+          .limit(1)
+      : [];
+    if (
+      changesMoney(current, {
+        price: money(value.price),
+        reservationFee: money(value.reservationFee),
+        monthlyAmortization: money(value.monthlyAmortization),
+      })
+    )
+      return failure(outOfScope(pricesNeedPermission));
+  }
 
   // Size and bedrooms follow the design, so the plan and the numbers never disagree.
   const facts = designFacts(value.layout);
@@ -203,6 +228,11 @@ export async function saveUnitDetails(input: unknown): Promise<ActionResult> {
       .limit(1);
     if (!type) return validationFailure("Choose a unit type of this property.");
   }
+  if (
+    !hasPermission(context, "properties.manage_prices") &&
+    changesMoney({ price: unit.price }, { price: money(value.price) })
+  )
+    return failure(outOfScope(pricesNeedPermission));
 
   const fields = {
     unitTypeId: value.unitTypeId,

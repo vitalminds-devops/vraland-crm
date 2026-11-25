@@ -353,7 +353,7 @@ export function ContactForm({
         if (dealValues && wantsDeal) {
           const valid = await triggerDeal(undefined, { shouldFocus: true });
           if (!valid) {
-            setDealError("Review the highlighted deal fields.");
+            setDealError("Review the highlighted fields below.");
             return;
           }
         }

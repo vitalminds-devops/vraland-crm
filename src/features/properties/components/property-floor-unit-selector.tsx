@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useState, useTransition } from "react";
 import { Check } from "lucide-react";
 
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import { notify } from "@/components/ui/toast";
 import { cn } from "@/lib/utils/cn";
 import { unitStatusLabel, unitStatusToneFor } from "../lib/unit-codes";
 import type { UnitGroup } from "../lib/floor-groups";
@@ -118,9 +119,9 @@ export function PropertyFloorUnitSelector({
               : null,
         );
         setSelectedFloorId(null);
-      } catch (error) {
+      } catch {
         if (controller.signal.aborted) return;
-        console.error("Failed to load properties:", error);
+        notify("Properties could not be loaded.", "error");
         setBuildingData({ key: developmentId, rows: EMPTY_PROPERTIES });
       }
     });
@@ -143,9 +144,9 @@ export function PropertyFloorUnitSelector({
         const data = await response.json();
         setFloorData({ key: selectedBuildingId, rows: data });
         setSelectedFloorId(data.length === 1 ? data[0].id : null);
-      } catch (error) {
+      } catch {
         if (controller.signal.aborted) return;
-        console.error("Failed to load floors:", error);
+        notify("Floors could not be loaded.", "error");
         setFloorData({ key: selectedBuildingId, rows: EMPTY_FLOORS });
       }
     });
@@ -170,9 +171,9 @@ export function PropertyFloorUnitSelector({
           key: selectedFloorId,
           rows: data.units ?? EMPTY_UNITS,
         });
-      } catch (error) {
+      } catch {
         if (controller.signal.aborted) return;
-        console.error("Failed to load units:", error);
+        notify("Units could not be loaded.", "error");
         setUnitData({
           key: selectedFloorId,
           rows: EMPTY_UNITS,

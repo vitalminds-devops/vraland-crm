@@ -1,7 +1,7 @@
 "use client";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { permissionKeys } from "@/lib/permissions/catalog";
+import { permissionKeys, permissionModule } from "@/lib/permissions/catalog";
 import {
   applyPermissionOverrides,
   overridesFor,
@@ -10,7 +10,7 @@ import {
 
 import { RolePermissionsPicker } from "../settings-forms";
 
-const catalogPermissions = permissionKeys.map((key) => ({ key, module: key.split(".")[0] }));
+const catalogPermissions = permissionKeys.map((key) => ({ key, module: permissionModule(key) }));
 
 /** The catalog's permissions for one user: ticked from their roles, plus or minus their own changes. */
 export function UserPermissionsPicker({

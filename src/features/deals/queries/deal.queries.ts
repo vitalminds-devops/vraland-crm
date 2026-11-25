@@ -199,7 +199,7 @@ export async function getPipelineBoard() {
       .orderBy(desc(deals.updatedAt)),
   ]);
 
-  const userRole = resolveMoveRole(context.roles);
+  const userRole = resolveMoveRole(context);
 
   return {
     stages,
@@ -576,7 +576,7 @@ export async function getDeal(id: string) {
     canApproveStageChange: context.permissions.has("deals.approve_stage_change"),
     canMoveBack: context.permissions.has("deals.move_back"),
     canReassignAgent: context.permissions.has("deals.reassign_agent"),
-    userRole: resolveMoveRole(context.roles),
+    userRole: resolveMoveRole(context),
   };
 }
 

@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { requirePermission } from "@/lib/permissions/authorization";
 import { createFloors, HasFloorsError } from "../lib/floor-setup";
-import { canWriteProperty } from "../lib/property-scope";
+import { canWriteProperty } from "../queries/property-scope.queries";
 import { setUpFloors } from "./floor-setup.actions";
 
 const insert = vi.hoisted(() => vi.fn(() => ({ values: async () => {} })));
@@ -12,7 +12,7 @@ vi.mock("@/lib/logger", () => ({ logError: vi.fn() }));
 vi.mock("@/lib/permissions/authorization", () => ({
   requirePermission: vi.fn(async () => ({ organizationId: "organization", userId: "user" })),
 }));
-vi.mock("../lib/property-scope", () => ({ canWriteProperty: vi.fn(async () => true) }));
+vi.mock("../queries/property-scope.queries", () => ({ canWriteProperty: vi.fn(async () => true) }));
 vi.mock("../lib/revalidate-property", () => ({ revalidateProperty: vi.fn() }));
 vi.mock("../lib/floor-setup", () => ({
   createFloors: vi.fn(async () => [1, 2, 3]),

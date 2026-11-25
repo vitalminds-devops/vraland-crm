@@ -6,13 +6,15 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/cn";
 import {
   GRID,
+  type LayoutItem,
   MIN_PIECE,
+  copyGroupBeside,
   footprint,
+  moveGroup,
   overlapping,
   placeWithin,
   rotate,
   snap,
-  type LayoutItem,
 } from "../lib/floor-layout";
 import { itemTransform } from "./layout-art";
 
@@ -20,9 +22,16 @@ import { itemTransform } from "./layout-art";
 export const PIECE_MIME = "application/x-layout-piece";
 
 type Piece = LayoutItem & { flip?: boolean };
-type Gesture = { id: string; mode: "move" | "resize"; dx: number; dy: number };
+/** Moving drags every picked piece from where it was; resizing pulls one piece's corner. */
+type Gesture<T> =
+  | { mode: "move"; id: string; from: { x: number; y: number }; origins: T[]; moved: boolean }
+  | { mode: "resize"; id: string };
 /** Dragging the empty canvas pans it; a press that doesn't move just clears the selection. */
 type Pan = { x: number; y: number; left: number; top: number; moved: boolean };
+/** Shift + drag on the empty canvas draws a box that picks every piece it touches. */
+type Box = { x0: number; y0: number; x1: number; y1: number };
+
+const newPieceId = () => crypto.randomUUID().slice(0, 8);
 
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 8;
@@ -31,8 +40,9 @@ const clampZoom = (value: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value
 /**
  * A metre grid to arrange pieces on: drop from a palette, drag to move, drag the corner to resize,
  * R to rotate, F to flip, Delete to remove, arrows to nudge, Ctrl+D to duplicate. Like an editing
- * app: Ctrl/⌘ + scroll zooms at the cursor, dragging the empty canvas pans, double-click zooms to a
- * piece. Overlapping pieces turn red.
+ * app: Shift/Ctrl + click or Shift + drag picks several (Ctrl+A all) to move, copy (Ctrl+C, Ctrl+V)
+ * or remove together; Ctrl/⌘ + scroll zooms at the cursor, dragging the empty canvas pans,
+ * double-click zooms to a piece. Overlapping pieces turn red.
  */
 export function LayoutCanvas<T extends Piece>({
   width,
@@ -42,7 +52,7 @@ export function LayoutCanvas<T extends Piece>({
   render,
   label,
   resizable,
-  selectedId,
+  selectedIds,
   onSelect,
   onDropPiece,
   ariaLabel,
@@ -51,6 +61,8 @@ export function LayoutCanvas<T extends Piece>({
   margin,
   overhang = 0,
   ignoreClash,
+  flippable = (item) => item.flip !== undefined,
+  onOpen,
   history,
 }: {
   width: number;
@@ -62,8 +74,8 @@ export function LayoutCanvas<T extends Piece>({
   /** Text kept upright over the piece, in metres from its footprint's top-left. */
   label?: (item: T, size: [number, number]) => ReactNode;
   resizable: (item: T) => boolean;
-  selectedId: string | null;
-  onSelect: (id: string | null) => void;
+  selectedIds: readonly string[];
+  onSelect: (ids: string[]) => void;
   onDropPiece: (key: string, x: number, y: number) => void;
   ariaLabel: string;
   /** Shown left of the zoom buttons, such as the selected piece's actions. */
@@ -76,13 +88,20 @@ export function LayoutCanvas<T extends Piece>({
   overhang?: number;
   /** Pieces that may sit over others without being flagged, such as a door on a wall. */
   ignoreClash?: (item: T) => boolean;
+  /** Pieces F (and Flip) mirrors; by default those that carry a `flip`. */
+  flippable?: (item: T) => boolean;
+  /** Double-click opens a piece, such as a unit's rooms; without it, double-click zooms to it. */
+  onOpen?: (item: T) => boolean;
   /** Undo and redo for the pieces, shown beside the zoom. */
   history?: { undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean };
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const scroller = useRef<HTMLDivElement | null>(null);
-  const gesture = useRef<Gesture | null>(null);
+  const gesture = useRef<Gesture<T> | null>(null);
   const pan = useRef<Pan | null>(null);
+  const [box, setBox] = useState<Box | null>(null);
+  // Pieces copied with Ctrl+C; each paste lands beside the last one.
+  const clipboard = useRef<T[]>([]);
   const lastPress = useRef<{ id: string; at: number } | null>(null);
   // The metre point to keep under the cursor once a zoom has been drawn.
   const anchor = useRef<{ x: number; y: number; clientX: number; clientY: number } | null>(null);
@@ -148,7 +167,9 @@ export function LayoutCanvas<T extends Piece>({
     : 28;
   const ppm = fit * zoom;
   const clashes = overlapping(ignoreClash ? items.filter((item) => !ignoreClash(item)) : items);
-  const selected = items.find((item) => item.id === selectedId) ?? null;
+  const picked = items.filter((item) => selectedIds.includes(item.id));
+  // Rotate, flip and resize work on one piece at a time.
+  const selected = picked.length === 1 ? picked[0]! : null;
 
   /** Zooms so a piece fills about half the view, centred. */
   const zoomTo = (item: T) => {
@@ -174,11 +195,30 @@ export function LayoutCanvas<T extends Piece>({
     } else setZoom(next);
   };
   const update = (next: T) => onChange(items.map((item) => (item.id === next.id ? next : item)));
+  const replace = (next: readonly T[]) => {
+    const byId = new Map(next.map((item) => [item.id, item]));
+    onChange(items.map((item) => byId.get(item.id) ?? item));
+  };
+  const addCopies = (from: readonly T[]) => {
+    const copies = copyGroupBeside(from, width, depth, newPieceId, marginOf);
+    onChange([...items, ...copies]);
+    onSelect(copies.map((copy) => copy.id));
+    return copies;
+  };
 
-  const start = (event: React.PointerEvent, item: T, mode: Gesture["mode"]) => {
+  const start = (event: React.PointerEvent, item: T, mode: Gesture<T>["mode"]) => {
     event.stopPropagation();
     // The middle button pans from anywhere, as in drawing apps.
     if (event.button === 1) return startPan(event);
+    // Shift or Ctrl + click adds a piece to the picked ones, or takes it out.
+    if (mode === "move" && (event.shiftKey || event.ctrlKey || event.metaKey)) {
+      onSelect(
+        selectedIds.includes(item.id)
+          ? selectedIds.filter((id) => id !== item.id)
+          : [...selectedIds, item.id],
+      );
+      return;
+    }
     // Two quick presses on the same piece zoom to it. Checked here, as dragging captures the
     // pointer and the piece itself never gets a dblclick.
     const now = event.timeStamp;
@@ -186,14 +226,24 @@ export function LayoutCanvas<T extends Piece>({
     lastPress.current = { id: item.id, at: now };
     if (double && mode === "move") {
       lastPress.current = null;
-      onSelect(item.id);
-      zoomTo(item);
+      onSelect([item.id]);
+      if (!onOpen?.(item)) zoomTo(item);
       return;
     }
-    onSelect(item.id);
+    // Dragging one of several picked pieces moves them all.
+    const together = mode === "move" && selectedIds.includes(item.id);
+    if (!together) onSelect([item.id]);
     svgRef.current?.setPointerCapture(event.pointerId);
-    const at = toMetres(event.clientX, event.clientY);
-    gesture.current = { id: item.id, mode, dx: at.x - item.x, dy: at.y - item.y };
+    gesture.current =
+      mode === "move"
+        ? {
+            mode,
+            id: item.id,
+            from: toMetres(event.clientX, event.clientY),
+            origins: together ? items.filter((piece) => selectedIds.includes(piece.id)) : [item],
+            moved: false,
+          }
+        : { mode, id: item.id };
   };
   const move = (event: React.PointerEvent) => {
     const panning = pan.current;
@@ -205,18 +255,29 @@ export function LayoutCanvas<T extends Piece>({
       scroller.current.scrollTop = panning.top - dy;
       return;
     }
+    if (box) {
+      const at = toMetres(event.clientX, event.clientY);
+      setBox({ ...box, x1: at.x, y1: at.y });
+      return;
+    }
     const active = gesture.current;
     const item = active && items.find((piece) => piece.id === active.id);
     if (!active || !item) return;
     const at = toMetres(event.clientX, event.clientY);
     if (active.mode === "move") {
-      const next = placeWithin(
-        { ...item, x: at.x - active.dx, y: at.y - active.dy },
+      const next = moveGroup(
+        active.origins,
+        at.x - active.from.x,
+        at.y - active.from.y,
         width,
         depth,
-        marginOf(item),
+        marginOf,
       );
-      if (next.x !== item.x || next.y !== item.y) update(next);
+      const lead = next.find((piece) => piece.id === item.id);
+      if (lead && (lead.x !== item.x || lead.y !== item.y)) {
+        active.moved = true;
+        replace(next);
+      }
       return;
     }
     const fw = Math.min(width + marginOf(item) - item.x, Math.max(MIN_PIECE, snap(at.x - item.x)));
@@ -225,13 +286,33 @@ export function LayoutCanvas<T extends Piece>({
     if (w !== item.w || h !== item.h) update({ ...item, w, h });
   };
   const end = () => {
+    const active = gesture.current;
+    // A click on one of several picked pieces, without dragging, picks just that one.
+    if (active?.mode === "move" && !active.moved && active.origins.length > 1)
+      onSelect([active.id]);
     gesture.current = null;
-    if (pan.current && !pan.current.moved) onSelect(null);
+    if (box) {
+      const [x0, x1] = [Math.min(box.x0, box.x1), Math.max(box.x0, box.x1)];
+      const [y0, y1] = [Math.min(box.y0, box.y1), Math.max(box.y0, box.y1)];
+      const touched = items.filter((item) => {
+        const [fw, fh] = footprint(item);
+        return item.x < x1 && item.x + fw > x0 && item.y < y1 && item.y + fh > y0;
+      });
+      onSelect([...new Set([...selectedIds, ...touched.map((item) => item.id)])]);
+      setBox(null);
+      return;
+    }
+    if (pan.current && !pan.current.moved) onSelect([]);
     pan.current = null;
   };
   const startPan = (event: React.PointerEvent) => {
     if (!scroller.current) return;
     svgRef.current?.setPointerCapture(event.pointerId);
+    if (event.shiftKey && event.button === 0) {
+      const at = toMetres(event.clientX, event.clientY);
+      setBox({ x0: at.x, y0: at.y, x1: at.x, y1: at.y });
+      return;
+    }
     pan.current = {
       x: event.clientX,
       y: event.clientY,
@@ -242,48 +323,39 @@ export function LayoutCanvas<T extends Piece>({
   };
 
   const keys = (event: React.KeyboardEvent) => {
-    if (!selected) return;
-    const nudge: Record<string, [number, number]> = {
+    const command = event.ctrlKey || event.metaKey;
+    const key = event.key.toLowerCase();
+    const shift: Record<string, [number, number]> = {
       ArrowLeft: [-GRID, 0],
       ArrowRight: [GRID, 0],
       ArrowUp: [0, -GRID],
       ArrowDown: [0, GRID],
     };
-    if (nudge[event.key]) {
-      const [dx, dy] = nudge[event.key]!;
-      update(
-        placeWithin(
-          { ...selected, x: selected.x + dx, y: selected.y + dy },
-          width,
-          depth,
-          marginOf(selected),
-        ),
-      );
+    if (command && key === "a") {
+      onSelect(items.map((item) => item.id));
+    } else if (command && key === "v" && clipboard.current.length) {
+      // Each paste lands beside the last, so pasting again keeps stepping along.
+      clipboard.current = addCopies(clipboard.current);
+    } else if (!picked.length) {
+      return;
+    } else if (command && key === "c") {
+      clipboard.current = picked;
+    } else if (command && key === "d") {
+      // Right beside them, the same size; a copied unit or slot becomes a new one when saved.
+      addCopies(picked);
     } else if (event.key === "Delete" || event.key === "Backspace") {
-      onChange(items.filter((item) => item.id !== selected.id));
-      onSelect(null);
-    } else if (event.key === "r" || event.key === "R") {
-      update(placeWithin(rotate(selected), width, depth, marginOf(selected)));
-    } else if ((event.key === "f" || event.key === "F") && selected.flip !== undefined) {
-      update({ ...selected, flip: !selected.flip });
-    } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "d") {
-      // A copy a step down and right; a copied unit or slot becomes a new one when saved.
-      const copy = {
-        ...selected,
-        id: crypto.randomUUID().slice(0, 8),
-        ...("unitId" in selected ? { unitId: null } : {}),
-        ...("slotId" in selected ? { slotId: null } : {}),
-      } as T;
-      const placed = placeWithin(
-        { ...copy, x: selected.x + 1, y: selected.y + 1 },
-        width,
-        depth,
-        marginOf(selected),
-      );
-      onChange([...items, placed]);
-      onSelect(placed.id);
+      onChange(items.filter((item) => !selectedIds.includes(item.id)));
+      onSelect([]);
     } else if (event.key === "Escape") {
-      onSelect(null);
+      onSelect([]);
+    } else if (shift[event.key]) {
+      const [dx, dy] = shift[event.key]!;
+      replace(moveGroup(picked, dx, dy, width, depth, marginOf));
+    } else if (selected && !command && key === "r") {
+      // Rotate and flip work on one picked piece.
+      update(placeWithin(rotate(selected), width, depth, marginOf(selected)));
+    } else if (selected && !command && key === "f" && flippable(selected)) {
+      update({ ...selected, flip: !selected.flip });
     } else return;
     event.preventDefault();
   };
@@ -432,7 +504,6 @@ export function LayoutCanvas<T extends Piece>({
               />
               {items.map((item) => {
                 const [fw, fh] = footprint(item);
-                const isSelected = item.id === selectedId;
                 return (
                   <g
                     key={item.id}
@@ -443,22 +514,47 @@ export function LayoutCanvas<T extends Piece>({
                     {label && (
                       <g transform={`translate(${item.x} ${item.y})`}>{label(item, [fw, fh])}</g>
                     )}
-                    {(isSelected || clashes.has(item.id)) && (
+                    {clashes.has(item.id) && (
                       <rect
                         x={item.x}
                         y={item.y}
                         width={fw}
                         height={fh}
-                        className={cn(
-                          "pointer-events-none fill-none",
-                          clashes.has(item.id) ? "stroke-destructive" : "stroke-primary",
-                        )}
+                        className="pointer-events-none fill-none stroke-destructive"
                         vectorEffect="non-scaling-stroke"
                         strokeWidth={2.5}
-                        strokeDasharray={isSelected ? "6 3" : undefined}
                       />
                     )}
-                    {isSelected && resizable(item) && (
+                  </g>
+                );
+              })}
+              {/* Picked pieces drawn over their neighbours: a tint, a soft halo and a solid edge. */}
+              {picked.map((item) => {
+                const [fw, fh] = footprint(item);
+                return (
+                  <g key={item.id}>
+                    <rect
+                      x={item.x}
+                      y={item.y}
+                      width={fw}
+                      height={fh}
+                      className="pointer-events-none fill-primary/10 stroke-primary/30"
+                      vectorEffect="non-scaling-stroke"
+                      strokeWidth={9}
+                    />
+                    <rect
+                      x={item.x}
+                      y={item.y}
+                      width={fw}
+                      height={fh}
+                      className={cn(
+                        "pointer-events-none fill-none",
+                        clashes.has(item.id) ? "stroke-destructive" : "stroke-primary",
+                      )}
+                      vectorEffect="non-scaling-stroke"
+                      strokeWidth={3}
+                    />
+                    {selected && resizable(item) && (
                       <rect
                         x={item.x + fw - 12 / ppm}
                         y={item.y + fh - 12 / ppm}
@@ -475,6 +571,18 @@ export function LayoutCanvas<T extends Piece>({
                   </g>
                 );
               })}
+              {box && (
+                <rect
+                  x={Math.min(box.x0, box.x1)}
+                  y={Math.min(box.y0, box.y1)}
+                  width={Math.abs(box.x1 - box.x0)}
+                  height={Math.abs(box.y1 - box.y0)}
+                  className="pointer-events-none fill-primary/10 stroke-primary"
+                  vectorEffect="non-scaling-stroke"
+                  strokeWidth={1}
+                  strokeDasharray="4 3"
+                />
+              )}
             </svg>
           </div>
         </div>

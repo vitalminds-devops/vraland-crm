@@ -27,10 +27,6 @@ import type { UnitGroup } from "../lib/floor-groups";
 
 type Floor = { id: string; label: string; unitCount?: number; sections?: UnitGroup[] };
 
-/** Menus and dialogs open inside the full-screen view when it is on, or they'd be hidden. */
-const overlayRoot = () =>
-  typeof document === "undefined" ? undefined : (document.fullscreenElement as HTMLElement | null);
-
 /**
  * The floor switcher over the floor view: every floor with its unit count, a quick Rename on each,
  * and Add floors. Long lists scroll inside the menu.
@@ -68,7 +64,6 @@ export function FloorMenu({
           align="end"
           side="top"
           className="flex w-64 flex-col overflow-hidden p-0"
-          container={overlayRoot()}
         >
           <div className="max-h-[min(22rem,60dvh)] overflow-y-auto overscroll-contain p-1">
             {floors.map((floor) => {
@@ -104,9 +99,9 @@ export function FloorMenu({
                     </span>
                   )}
                   {canManage && (
+                    // A mouse shortcut; keyboard and screen readers use the Rename item below.
                     <span
-                      role="button"
-                      aria-label={`Rename ${floor.label}`}
+                      aria-hidden="true"
                       title="Rename"
                       onPointerDown={() => {
                         editPress.current = floor;
@@ -124,6 +119,12 @@ export function FloorMenu({
             <>
               <DropdownMenuSeparator className="my-0" />
               <div className="p-1">
+                {active && (
+                  <DropdownMenuItem onSelect={() => setRenaming(active)} className="min-h-9">
+                    <PenLine aria-hidden="true" />
+                    Rename {active.label}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onSelect={() => setAdding(true)} className="min-h-9 text-primary">
                   <Plus aria-hidden="true" />
                   Add floors
@@ -196,9 +197,12 @@ function FloorNameDialog({
   const shown = preview?.(value) ?? [];
   return (
     <Dialog open onOpenChange={(next) => !next && !pending && onClose()}>
-      <DialogPortal container={overlayRoot()}>
+      <DialogPortal>
         <DialogOverlay className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm">
-          <DialogPopup className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl">
+          <DialogPopup
+            aria-describedby={undefined}
+            className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl"
+          >
             <DialogTitle className="text-lg font-semibold">{title}</DialogTitle>
             <form
               className="mt-4 space-y-4"

@@ -27,9 +27,11 @@ export const permissionCatalog = {
     "properties.update",
     "properties.delete",
     "properties.manage_units",
+    "properties.manage_prices",
     "properties.manage_unit_pictures",
     "properties.grant_unit_access",
     "properties.view_all_access",
+    "properties.access_all",
   ],
   developments: [
     "developments.view",
@@ -39,6 +41,7 @@ export const permissionCatalog = {
   ],
   deals: [
     "deals.view",
+    "deals.export",
     "deals.create",
     "deals.update",
     "deals.delete",
@@ -71,6 +74,7 @@ export const permissionCatalog = {
     "documents.manage",
     "documents.archive",
     "documents.view_sensitive",
+    "documents.manage_shared",
   ],
   reports: ["reports.view"],
   billing: ["billing.view", "billing.manage"],
@@ -110,7 +114,7 @@ export const permissionMetadata = {
   "dashboard.view_metrics": {
     label: "Show dashboard figures",
     description:
-      "Show sales values, payments received, available units, floors, active contacts, active properties and open opportunities.",
+      "Show won sales, payments and reservations received, available units and parking, floors and active contacts. Sales figures need View sales pipeline; payments need View billing.",
   },
   "dashboard.view_revenue": {
     label: "Show won sales & forecast",
@@ -134,7 +138,7 @@ export const permissionMetadata = {
   },
   "dashboard.view_inventory": {
     label: "Show properties by status",
-    description: "Properties by listing status. Needs property access.",
+    description: "Properties by status. Needs View properties.",
   },
   "dashboard.view_activity": {
     label: "Show recent activity",
@@ -167,7 +171,8 @@ export const permissionMetadata = {
   },
   "contacts.reassign_broker": {
     label: "Reassign a contact's broker",
-    description: "Move a contact and its records to another broker.",
+    description:
+      "Move a contact and its records to another broker, and change a contact's agent. Needs See all records.",
   },
 
   "requirements.view": {
@@ -181,7 +186,8 @@ export const permissionMetadata = {
 
   "properties.view": {
     label: "View properties",
-    description: "View properties, floors, units and parking slots you have access to.",
+    description:
+      "View properties, floors, units and parking slots you have access to, and export them to CSV.",
   },
   "properties.create": {
     label: "Add properties",
@@ -193,19 +199,29 @@ export const permissionMetadata = {
   },
   "properties.delete": {
     label: "Archive properties",
-    description: "Archive properties and restore them from Archive.",
+    description: "Archive properties and restore them from Archived properties.",
   },
   "properties.manage_units": {
-    label: "Manage floors, units and parking",
-    description: "Add, rename, update and remove floors, units and parking slots.",
+    label: "Design properties",
+    description:
+      "Open the Design page: unit and parking types, floors and floor plans, sections, unit identifiers, units and parking slots.",
+  },
+  "properties.manage_prices": {
+    label: "Manage prices",
+    description:
+      "Set prices, reservation fees and monthly amortization on unit and parking types, units and parking slots.",
   },
   "properties.manage_unit_pictures": {
     label: "Manage unit photos",
     description: "Add, replace and remove unit photos.",
   },
   "properties.grant_unit_access": {
-    label: "Grant property access",
+    label: "Give property access",
     description: "Give access to properties, floors, units and parking slots you have access to.",
+  },
+  "properties.access_all": {
+    label: "Access all properties",
+    description: "See and change every property without being given property access.",
   },
   "properties.view_all_access": {
     label: "See everyone's property access",
@@ -237,9 +253,13 @@ export const permissionMetadata = {
     label: "Add opportunities",
     description: "Open a new opportunity.",
   },
+  "deals.export": {
+    label: "Export opportunities",
+    description: "Download opportunities, with their amounts, as a CSV file.",
+  },
   "deals.update": {
     label: "Edit opportunities",
-    description: "Change the details of an opportunity.",
+    description: "Change the details of an opportunity, and its units with Move between stages.",
   },
   "deals.delete": {
     label: "Delete opportunities",
@@ -264,7 +284,8 @@ export const permissionMetadata = {
 
   "tasks.view": {
     label: "View tasks",
-    description: "Open Tasks and My tasks. View Assignee and Created by for each task.",
+    description:
+      "Open Tasks and My tasks, see each task's Assignee and Created by, and export tasks to CSV.",
   },
   "tasks.create": {
     label: "Add tasks",
@@ -340,12 +361,15 @@ export const permissionMetadata = {
   },
   "documents.manage": {
     label: "Manage documents",
-    description:
-      "Upload documents. Shared file uploads require the Administrator or Super Administrator role.",
+    description: 'Upload documents. Shared files need "Manage shared files".',
   },
   "documents.archive": {
     label: "Archive documents",
     description: "Open Archive, archive documents and restore archived documents.",
+  },
+  "documents.manage_shared": {
+    label: "Manage shared files",
+    description: "Add and remove the files everyone in the organization can open.",
   },
   "documents.view_sensitive": {
     label: "View sensitive documents",
@@ -360,11 +384,12 @@ export const permissionMetadata = {
   "billing.view": {
     label: "View billing",
     description:
-      "Open Billing to view Bill summary, Payments and Remaining balance, or Print bill.",
+      "Open Billing and Payments to view bills, payments and balances, print bills and export them.",
   },
   "billing.manage": {
     label: "Manage bills and payments",
-    description: "Save bill, Edit bill, Record payment and Remove payment in Billing and Payments.",
+    description:
+      "Save bill, Edit bill, Record payment and Remove payment in Billing and Payments. Needs View billing.",
   },
 
   "settings.view": {
@@ -398,7 +423,7 @@ export const permissionMetadata = {
 
   "records.view_own": {
     label: "See own records",
-    description: "Records you own or are assigned, based on each page's access rules.",
+    description: "Always on: everyone sees the records they own or are assigned.",
   },
   "records.view_team": {
     label: "See team records",
@@ -431,6 +456,17 @@ export function moduleLabel(module: string): string {
   return moduleLabels[module] ?? module;
 }
 
+/**
+ * The catalog group a permission is listed under: users.manage and roles.manage are Settings, not
+ * groups of their own. A key outside the catalog falls back to its prefix.
+ */
+export function permissionModule(key: string): string {
+  const group = Object.entries(permissionCatalog).find(([, keys]) =>
+    (keys as readonly string[]).includes(key),
+  );
+  return group?.[0] ?? key.split(".")[0]!;
+}
+
 const agentPermissions = permissionKeys.filter((key) =>
   [
     "dashboard.view",
@@ -449,6 +485,7 @@ const agentPermissions = permissionKeys.filter((key) =>
     "properties.view",
     "developments.view",
     "deals.view",
+    "deals.export",
     "deals.create",
     "deals.update",
     "deals.change_stage",
@@ -504,7 +541,8 @@ export const roleDescriptions: Record<RoleSlug, string> = {
     "All organization records and Reports & analytics, with properties they can access. No Settings, Users or Roles & permissions.",
   agent:
     "Works on own records in Contacts & leads, Sales pipeline and Tasks; views Properties and Documents they can access.",
-  viewer: "Views records, Properties and Documents they can access. Cannot make changes.",
+  viewer:
+    "Views every module it can open, including Reports, Marketing and the Settings overview. Cannot make changes.",
   "license-broker": brokerAccessDescription,
   "network-partner-ih": brokerAccessDescription,
   "network-partner-ind": brokerAccessDescription,
@@ -515,12 +553,19 @@ export const roleDescriptions: Record<RoleSlug, string> = {
   "sales-executive": brokerAccessDescription,
 };
 
+/** Kept to Administrators by default: skipping property access, and the organization's shared files. */
+const administratorOnlyKeys: readonly PermissionKey[] = [
+  "properties.access_all",
+  "documents.manage_shared",
+];
+
 const administratorMinusSettings = permissionKeys.filter(
   (key) =>
     !(permissionCatalog.settings as readonly string[]).includes(key) &&
     key !== "documents.archive" &&
     !key.startsWith("billing.") &&
-    key !== "properties.view_all_access",
+    key !== "properties.view_all_access" &&
+    !administratorOnlyKeys.includes(key),
 );
 
 export const rolePermissionDefaults = {
@@ -535,14 +580,18 @@ export const rolePermissionDefaults = {
       key !== "roles.manage" &&
       key !== "documents.archive" &&
       key !== "properties.grant_unit_access" &&
-      key !== "deals.move_back",
+      key !== "deals.move_back" &&
+      !administratorOnlyKeys.includes(key),
   ),
   broker: brokerPermissions,
   "master-broker": administratorMinusSettings,
   agent: agentPermissions,
   viewer: permissionKeys.filter(
     (key) =>
-      (key.endsWith(".view") || dashboardPanelKeys.includes(key) || key === "records.view_all") &&
+      (key.endsWith(".view") ||
+        dashboardPanelKeys.includes(key) ||
+        key === "records.view_all" ||
+        key === "deals.export") &&
       key !== "documents.view_sensitive" &&
       !key.startsWith("billing."),
   ),

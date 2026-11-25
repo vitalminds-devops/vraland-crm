@@ -8,9 +8,9 @@ const BURST_MS = 400;
 
 /**
  * A designer's pieces with undo and redo, like an editing app: Ctrl+Z, Ctrl+Shift+Z or Ctrl+Y.
- * Shortcuts are ignored while typing in a field.
+ * Shortcuts are ignored while typing in a field, and while `active` is off (another editor is open).
  */
-export function useLayoutHistory<T>(initial: () => T) {
+export function useLayoutHistory<T>(initial: () => T, active = true) {
   const [history, setHistory] = useState<History<T>>(() => ({
     past: [],
     value: initial(),
@@ -40,6 +40,7 @@ export function useLayoutHistory<T>(initial: () => T) {
   }, []);
 
   useEffect(() => {
+    if (!active) return;
     const onKey = (event: KeyboardEvent) => {
       if (!(event.ctrlKey || event.metaKey)) return;
       const target = event.target as HTMLElement | null;
@@ -52,7 +53,7 @@ export function useLayoutHistory<T>(initial: () => T) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [undo, redo]);
+  }, [undo, redo, active]);
 
   return {
     value: history.value,

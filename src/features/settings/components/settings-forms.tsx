@@ -603,6 +603,8 @@ export function RolePermissionsPicker({
                     const copy = permissionCopy(row.key);
                     const detail = permissionDetail(row.key);
                     const id = `perm-${roleId}-${row.key}`;
+                    // Everyone sees their own records, so this one can't be turned off.
+                    const implied = row.key === "records.view_own";
                     return (
                       <li
                         key={row.key}
@@ -614,8 +616,8 @@ export function RolePermissionsPicker({
                         >
                           <Checkbox
                             id={id}
-                            checked={checked.has(row.key)}
-                            disabled={disabled}
+                            checked={implied || checked.has(row.key)}
+                            disabled={disabled || implied}
                             onCheckedChange={() => toggle(row.key)}
                             className="mt-0.5 size-4 shrink-0 accent-primary"
                           />

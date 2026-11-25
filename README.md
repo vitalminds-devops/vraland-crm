@@ -49,6 +49,7 @@ npm run db:generate        # writes the next numbered migration in src/db/migrat
 
 ```bash
 npm run db:migrate         # applies new migrations only
+npm run db:sync-permissions # adds new permissions and refreshes their descriptions
 npm run db:check-schema    # read-only: fails if a table or column the code uses is missing
 ```
 

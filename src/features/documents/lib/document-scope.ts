@@ -56,15 +56,9 @@ export function documentScope(context: AuthorizationContext) {
   return or(shared, linkedToContact, linkedToDeal, linkedToProperty, unlinked)!;
 }
 
-const sensitiveReaderRoles = ["sales-manager", "administrator", "super-administrator"] as const;
-
-function canViewSensitiveDocuments(context: AuthorizationContext): boolean {
-  if (context.permissions.has("documents.view_sensitive")) return true;
-  return sensitiveReaderRoles.some((role) => context.roles.includes(role));
-}
-
+// The permission alone decides, for every role, so unticking it on a role or user takes effect.
 export function sensitiveDocumentCondition(context: AuthorizationContext) {
-  if (canViewSensitiveDocuments(context)) return sql`true`;
+  if (context.permissions.has("documents.view_sensitive")) return sql`true`;
 
   // A deal participant: listed in `deal_agents`, or named on the deal itself.
   const participantDeal = and(

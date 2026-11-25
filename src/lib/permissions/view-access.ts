@@ -22,12 +22,7 @@ export type DashboardSections = {
   activity: boolean;
 };
 
-export function dashboardSections(
-  has: PermissionLookup,
-  panelsInstalled = true,
-): DashboardSections {
-  const panel = (key: PermissionKey) => (panelsInstalled ? has(key) : true);
-
+export function dashboardSections(has: PermissionLookup): DashboardSections {
   const canViewDeals = has("deals.view");
   const canViewContacts = has("contacts.view");
   const canViewProperties = has("properties.view");
@@ -35,23 +30,23 @@ export function dashboardSections(
   const canViewCalendar = has("calendar.view");
 
   return {
-    pipeline: panel("dashboard.view_pipeline") && canViewDeals,
+    pipeline: has("dashboard.view_pipeline") && canViewDeals,
     kpis: {
-      leads: panel("dashboard.view_metrics") && canViewContacts,
-      properties: panel("dashboard.view_metrics") && canViewProperties,
-      pipeline: panel("dashboard.view_metrics") && canViewDeals,
+      leads: has("dashboard.view_metrics") && canViewContacts,
+      properties: has("dashboard.view_metrics") && canViewProperties,
+      pipeline: has("dashboard.view_metrics") && canViewDeals,
       // Money received is billing data, not just deal data.
-      collected: panel("dashboard.view_metrics") && canViewDeals && has("billing.view"),
+      collected: has("dashboard.view_metrics") && canViewDeals && has("billing.view"),
     },
-    revenue: panel("dashboard.view_revenue") && canViewDeals,
-    summary: panel("dashboard.view_summary"),
-    tasks: panel("dashboard.view_priorities") && canViewTasks,
-    viewings: panel("dashboard.view_priorities") && canViewCalendar,
-    closings: panel("dashboard.view_closings") && canViewDeals,
-    taskLoad: panel("dashboard.view_task_load") && canViewTasks,
-    inventory: panel("dashboard.view_inventory") && canViewProperties,
+    revenue: has("dashboard.view_revenue") && canViewDeals,
+    summary: has("dashboard.view_summary"),
+    tasks: has("dashboard.view_priorities") && canViewTasks,
+    viewings: has("dashboard.view_priorities") && canViewCalendar,
+    closings: has("dashboard.view_closings") && canViewDeals,
+    taskLoad: has("dashboard.view_task_load") && canViewTasks,
+    inventory: has("dashboard.view_inventory") && canViewProperties,
     activity:
-      panel("dashboard.view_activity") &&
+      has("dashboard.view_activity") &&
       (canViewContacts || canViewDeals || canViewProperties || canViewTasks || canViewCalendar),
   };
 }

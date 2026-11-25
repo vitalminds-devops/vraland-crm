@@ -1,6 +1,7 @@
 import { expect, it } from "vitest";
 import {
   brokerAccessRoleSlugs,
+  permissionModule,
   roleDataScopeDefaults,
   rolePermissionDefaults,
   type RoleSlug,
@@ -26,4 +27,11 @@ it("grants document archive permission only to administrator roles by default", 
       role === "administrator" || role === "super-administrator",
     );
   }
+});
+
+it("files users and roles permissions under Settings", () => {
+  expect(permissionModule("users.manage")).toBe("settings");
+  expect(permissionModule("roles.manage")).toBe("settings");
+  expect(permissionModule("deals.view")).toBe("deals");
+  expect(permissionModule("retired.key")).toBe("retired");
 });

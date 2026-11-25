@@ -19,7 +19,7 @@ function select(fields: Record<string, unknown> | undefined) {
   let table: unknown;
   const rows = async () => {
     if (fields && "total" in fields) return [{ total: mock.floorLevels.length }];
-    if (table === floors && fields && "level" in fields && !("label" in fields))
+    if (table === floors && fields && "level" in fields && !("label" in fields || "id" in fields))
       return mock.floorLevels.map((level) => ({ level }));
     if (table === floors)
       return [
@@ -72,7 +72,7 @@ vi.mock("@/lib/permissions/authorization", () => ({
   requirePermission: vi.fn(async () => ({ organizationId: "organization", userId: "admin" })),
 }));
 vi.mock("@/lib/storage/document-storage", () => ({ getDocumentStorage: vi.fn() }));
-vi.mock("../lib/property-scope", () => ({ canWriteProperty: vi.fn(async () => true) }));
+vi.mock("../queries/property-scope.queries", () => ({ canWriteProperty: vi.fn(async () => true) }));
 vi.mock("../lib/parking-sync", () => ({
   syncParkingCount: vi.fn(),
   placeOnDesignedFloor: vi.fn(),

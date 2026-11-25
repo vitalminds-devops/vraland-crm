@@ -16,11 +16,11 @@ import {
   type UnitPlacement,
 } from "../lib/floor-layout";
 import type { Surroundings as SurroundingsKind } from "../lib/surroundings";
-import { PaintedText, RoomFloor, RoomName, UnitFloor } from "./game-look";
+import { RoomFloor, RoomName, UnitFloor } from "./game-look";
 import { DrivingIn, ParkedCar, ParkingBayModel, PieceModel } from "./parking-scene";
 import { FloorMenu } from "./floor-menu";
 import { Surroundings } from "./surroundings";
-import { SelectedOutline, UnitChip, ZoomWatch } from "./unit-markers";
+import { ParkingChip, SelectedOutline, UnitChip, ZoomWatch } from "./unit-markers";
 import {
   Bathroom,
   Bed,
@@ -120,6 +120,8 @@ export default function DesignedFloorScene({
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   // Room names only once the view is close enough to read them.
   const [closeUp, setCloseUp] = useState(false);
+  // On the Design page (nothing to pick) hovering only shows wall sizes; the unit keeps its chip.
+  const taggedUnitId = onSelect ? (hoveredId ?? selectedUnitId) : selectedUnitId;
   const detailedUnitId = hoveredId ?? selectedUnitId;
 
   return (
@@ -204,7 +206,9 @@ export default function DesignedFloorScene({
                     status={slot?.status ?? "available"}
                     selected={Boolean(slot) && slot?.id === selectedSlotId}
                   />
-                  {slot && showLabels && <PaintedText text={slot.code} w={spot.w * 0.7} />}
+                  {slot && showLabels && (
+                    <ParkingChip code={slot.code} status={slot.status} w={spot.w} />
+                  )}
                   {taken && (
                     // The parking scene's car, scaled up from its smaller lot to a 2.5 m bay.
                     <DrivingIn from={[0, spot.h]}>
@@ -231,6 +235,7 @@ export default function DesignedFloorScene({
                 );
               const isSelected = unit.id === selectedUnitId;
               const hasDetails = unit.id === detailedUnitId;
+              const hasTag = unit.id === taggedUnitId;
               return (
                 <group
                   key={placement.id}
@@ -251,7 +256,7 @@ export default function DesignedFloorScene({
                   </group>
                   {/* Outside the mirrored group, so nothing reads backwards. */}
                   {isSelected && <SelectedOutline w={fw} h={fh} />}
-                  {showLabels && !hasDetails && (
+                  {showLabels && !hasTag && (
                     <UnitChip
                       code={unit.code}
                       status={unit.status}
@@ -261,7 +266,7 @@ export default function DesignedFloorScene({
                     />
                   )}
                   {/* The full tag (group, price, status) only for the unit pointed at or picked. */}
-                  {showLabels && hasDetails && <UnitPlaque unit={unit} selected={isSelected} />}
+                  {showLabels && hasTag && <UnitPlaque unit={unit} selected={isSelected} />}
                   {/* Each size sits on the wall it measures: width on the front, depth on the left. */}
                   {showLabels && hasDetails && (
                     <>

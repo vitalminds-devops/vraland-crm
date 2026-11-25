@@ -15,7 +15,8 @@ describe("accessPageMode", () => {
     expect(accessPageMode(context(["properties.view", "properties.grant_unit_access"]))).toBe(
       "edit",
     );
-    expect(accessPageMode(context(["properties.view"], ["administrator"]))).toBe("edit");
+    // The Administrator role name alone no longer gives it.
+    expect(accessPageMode(context(["properties.view"], ["administrator"]))).toBeNull();
   });
 
   it("lets see-everyone's-access holders view only", () => {

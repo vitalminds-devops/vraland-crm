@@ -1,6 +1,7 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { PgDialect } from "drizzle-orm/pg-core";
 import { revalidatePath } from "next/cache";
+import type { PermissionKey } from "@/lib/permissions/catalog";
 
 const mock = vi.hoisted(() => ({
   record: null as Record<string, unknown> | null,
@@ -78,7 +79,7 @@ vi.mock("@/lib/permissions/authorization", () => ({
   requirePermission: async () => ({
     organizationId: "org",
     userId: "creator",
-    permissions: new Set(["records.organization"]),
+    permissions: new Set<PermissionKey>(["records.view_all"]),
   }),
   canAccessResource: async () => true,
 }));

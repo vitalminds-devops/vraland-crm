@@ -8,9 +8,10 @@ import { auditLogs, floors, properties, propertyParkingSlots } from "@/db/schema
 import { logError } from "@/lib/logger";
 import { requirePermission } from "@/lib/permissions/authorization";
 import { activeHold, heldMessage, InventoryHeldError } from "../lib/inventory-hold";
-import { canWriteProperty } from "../lib/property-scope";
+import { canWriteProperty } from "../queries/property-scope.queries";
 import { unitStatuses } from "../lib/unit-codes";
-import { nextParkingCode } from "../lib/parking-codes";
+import { nextSlotCode } from "../lib/parking-codes";
+import { legacyNumbering } from "../lib/unit-numbering";
 import { placeOnDesignedFloor, syncParkingCount } from "../lib/parking-sync";
 import { parkingRemovalBlocker } from "../lib/parking-removal";
 import { dropFromFloorPlans } from "../lib/floor-plan-cleanup";
@@ -54,7 +55,7 @@ async function loadWritableSlot(slotId: string) {
   return { context, slot };
 }
 
-/** Adds the next free slot (P1, P2, …), on `floorId` when one is given. */
+/** Adds the next free slot (P1, P2… or by floor, P2A…), on `floorId` when one is given. */
 export async function addParkingSlot(
   propertyId: string,
   floorId: string | null = null,
@@ -65,15 +66,17 @@ export async function addParkingSlot(
     return { success: false, message: "Property not found." };
   if (!z.number().int().min(1).max(100).safeParse(count).success)
     return { success: false, message: "Enter between 1 and 100." };
+  let level: number | null = null;
   if (floorId !== null) {
     const [floor] = z.uuid().safeParse(floorId).success
       ? await db
-          .select({ id: floors.id })
+          .select({ id: floors.id, level: floors.level })
           .from(floors)
           .where(and(eq(floors.id, floorId), eq(floors.buildingId, propertyId)))
           .limit(1)
       : [];
     if (!floor) return { success: false, message: "That floor is not on this property." };
+    level = floor.level;
   }
 
   try {
@@ -84,10 +87,15 @@ export async function addParkingSlot(
           .from(propertyParkingSlots)
           .where(eq(propertyParkingSlots.buildingId, propertyId))
       ).map((slot) => slot.code);
+      const [property] = await tx
+        .select({ numbering: properties.unitNumbering })
+        .from(properties)
+        .where(eq(properties.id, propertyId));
+      const numbering = property?.numbering ?? legacyNumbering;
       let next = "";
       const added: string[] = [];
       for (let made = 0; made < count; made += 1) {
-        next = nextParkingCode(taken);
+        next = nextSlotCode(numbering, level, taken);
         taken.push(next);
         const [slot] = await tx
           .insert(propertyParkingSlots)

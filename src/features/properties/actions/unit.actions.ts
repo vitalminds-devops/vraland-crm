@@ -12,7 +12,7 @@ import { logError } from "@/lib/logger";
 import { getDocumentStorage } from "@/lib/storage/document-storage";
 import { matchesDeclaredType } from "@/lib/storage/file-signature";
 import { activeHold, heldMessage, InventoryHeldError } from "../lib/inventory-hold";
-import { canWriteProperty } from "../lib/property-scope";
+import { canWriteProperty } from "../queries/property-scope.queries";
 import { removalBlocker } from "../lib/unit-removal";
 import { dropFromFloorPlans } from "../lib/floor-plan-cleanup";
 import { floorLabel, unitStatuses } from "../lib/unit-codes";

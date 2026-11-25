@@ -10,6 +10,9 @@ import {
   overlapping,
   placeWithin,
   REPRICED_STATUSES,
+  copyGroupBeside,
+  slotsByPosition,
+  moveGroup,
   resolvePlacements,
   rotate,
   unitEnding,
@@ -221,4 +224,84 @@ it("resizes slots placed as a parking type to the type's current size", () => {
   expect(fitPlacements(fitted, {}, [{ id: "tandem", w: 2.5, h: 10 }]).parking?.[0]).toBe(
     fitted.parking?.[0],
   );
+});
+
+it("copies a piece beside itself at the same size, as a new one", () => {
+  const slot = {
+    id: "s1",
+    x: 2,
+    y: 0,
+    w: 2.5,
+    h: 5,
+    rotation: 0 as const,
+    slotId: "slot-1",
+    code: "VIP",
+  };
+  // To its right, same size, no slot or typed name.
+  expect(copyGroupBeside([slot], 30, 20, () => "s2")[0]).toMatchObject({
+    id: "s2",
+    x: 4.5,
+    y: 0,
+    w: 2.5,
+    h: 5,
+    slotId: null,
+    code: undefined,
+  });
+  // No room on the right: below instead.
+  expect(copyGroupBeside([{ ...slot, x: 27.5 }], 30, 20, () => "s3")[0]).toMatchObject({
+    x: 27.5,
+    y: 5,
+  });
+});
+
+it("copies a group beside itself, keeping its arrangement", () => {
+  let next = 0;
+  const copies = copyGroupBeside([piece("a", 0, 0), piece("b", 2, 1)], 20, 10, () => `c${++next}`);
+  // The group is 4 m wide, so the copies start 4 m to the right.
+  expect(copies).toMatchObject([
+    { id: "c1", x: 4, y: 0 },
+    { id: "c2", x: 6, y: 1 },
+  ]);
+});
+
+it("moves a group together and stops it at the edge without breaking formation", () => {
+  const group = [piece("a", 1, 1), piece("b", 5, 3)];
+  expect(moveGroup(group, 2, 1, 20, 10)).toMatchObject([
+    { x: 3, y: 2 },
+    { x: 7, y: 4 },
+  ]);
+  // b's right edge is at 7; on a 10 m canvas the group can only go 3 m right.
+  expect(moveGroup(group, 8, 0, 10, 10)).toMatchObject([{ x: 4 }, { x: 8 }]);
+  expect(moveGroup(group, -5, 0, 10, 10)).toMatchObject([{ x: 0 }, { x: 4 }]);
+});
+
+it("leaves a resized unit its own size", () => {
+  const design = { width: 8, depth: 6, rooms: [] };
+  const layout = {
+    width: 40,
+    depth: 16,
+    spaces: [],
+    units: [
+      { ...piece("u", 0, 0, 10, 6), typeId: "t", unitId: null, flip: false, sized: true },
+      { ...piece("v", 12, 0, 10, 6), typeId: "t", unitId: null, flip: false },
+    ],
+  };
+  const [kept, fitted] = fitPlacements(layout, { t: design }).units;
+  expect([kept!.w, fitted!.w]).toEqual([10, 8]);
+});
+
+it("pairs copied parking with the floor's own slots in plan order", () => {
+  const spot = (id: string, x: number, y: number, slotId: string | null = null) => ({
+    ...piece(id, x, y, 2.5, 5),
+    slotId,
+  });
+  const kept = slotsByPosition(
+    [spot("c", 0, 6), spot("a", 0, 0), spot("b", 3, 0)],
+    [spot("y", 3, 0, "slot-2"), spot("x", 0, 0, "slot-1"), spot("z", 9, 9)],
+  );
+  // Two slots on the floor: the first two copies (top-left first) take them; the third is new.
+  expect([...kept]).toEqual([
+    ["a", "slot-1"],
+    ["b", "slot-2"],
+  ]);
 });

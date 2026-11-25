@@ -68,7 +68,7 @@ function sharedUpload() {
   return form;
 }
 
-it("rejects shared uploads by non-administrators even with documents.manage", async () => {
+it("rejects shared uploads without Manage shared files, even with documents.manage", async () => {
   expect(await uploadDocument(sharedUpload())).toMatchObject({
     success: false,
     error: { code: "PERMISSION_DENIED" },
@@ -79,6 +79,7 @@ it("rejects shared uploads by non-administrators even with documents.manage", as
 
 it("stores an admin's shared file without client links or sensitivity", async () => {
   mocks.roles = ["administrator"];
+  mocks.permissions.add("documents.manage_shared");
   const inserts: { table: unknown; values: Record<string, unknown> }[] = [];
   mocks.transaction.mockImplementation(async (work) =>
     work({
@@ -105,6 +106,7 @@ it("stores an admin's shared file without client links or sensitivity", async ()
 
 it("rejects client-linked files in the shared library", async () => {
   mocks.roles = ["administrator"];
+  mocks.permissions.add("documents.manage_shared");
   const form = sharedUpload();
   form.set("contactId", "11111111-1111-4111-8111-111111111111");
   expect(await uploadDocument(form)).toMatchObject({ success: false });
@@ -113,6 +115,7 @@ it("rejects client-linked files in the shared library", async () => {
 
 it("rejects non-printable formats in the shared library", async () => {
   mocks.roles = ["administrator"];
+  mocks.permissions.add("documents.manage_shared");
   const form = sharedUpload();
   form.set("file", new File(["Text"], "notes.txt", { type: "text/plain" }));
   expect(await uploadDocument(form)).toMatchObject({
@@ -137,6 +140,7 @@ it.each([archiveDocument, restoreDocument])(
   "denies document archive actions when the permission is removed, including administrators",
   async (action) => {
     mocks.roles = ["administrator"];
+    mocks.permissions.add("documents.manage_shared");
     mocks.permissions.delete("documents.archive");
     await expect(action("shared")).rejects.toThrow("Forbidden");
     expect(mocks.transaction).not.toHaveBeenCalled();

@@ -17,6 +17,7 @@ import {
 import { listDeals } from "@/features/deals/queries/deal.queries";
 import { dealLabel } from "@/features/deals/lib/deal-label";
 import { requirePagePermission } from "@/lib/permissions/authorization";
+import { hasPermission } from "@/lib/permissions/policy";
 export default async function DealListPage({
   searchParams,
 }: {
@@ -27,7 +28,8 @@ export default async function DealListPage({
     stage?: string;
   }>;
 }) {
-  await requirePagePermission("deals.view");
+  const context = await requirePagePermission("deals.view");
+  const canExport = hasPermission(context, "deals.export");
   const q = await searchParams;
   const page = Math.max(1, Number(q.page) || 1);
   const data = await listDeals({
@@ -50,17 +52,19 @@ export default async function DealListPage({
         description="Every lead and opportunity."
         actions={
           <div className="flex flex-wrap gap-2">
-            <a
-              href={`/api/deals/export?${new URLSearchParams({
-                ...(q.search ? { search: q.search } : {}),
-                ...(q.stage ? { stage: q.stage } : {}),
-                ...(q.status ? { status: q.status } : {}),
-              }).toString()}`}
-              className={buttonVariants({ variant: "secondary" })}
-            >
-              <Download aria-hidden="true" className="size-4" />
-              Export
-            </a>
+            {canExport && (
+              <a
+                href={`/api/deals/export?${new URLSearchParams({
+                  ...(q.search ? { search: q.search } : {}),
+                  ...(q.stage ? { stage: q.stage } : {}),
+                  ...(q.status ? { status: q.status } : {}),
+                }).toString()}`}
+                className={buttonVariants({ variant: "secondary" })}
+              >
+                <Download aria-hidden="true" className="size-4" />
+                Export
+              </a>
+            )}
             <ButtonLink href="/pipeline" variant="secondary">
               <Columns3 className="size-4" />
               Kanban

@@ -216,7 +216,10 @@ export function ContactFilters({
       <Dialog open={filtersOpen} onOpenChange={setFiltersOpen}>
         <DialogPortal>
           <DialogOverlay className="fixed inset-0 z-50 flex items-end bg-black/40 sm:hidden">
-            <DialogPopup className="w-full rounded-t-2xl border-t border-border bg-card px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl">
+            <DialogPopup
+              aria-describedby={undefined}
+              className="w-full rounded-t-2xl border-t border-border bg-card px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl"
+            >
               <div aria-hidden="true" className="mx-auto mb-3 h-1 w-10 rounded-full bg-border" />
               <DialogTitle className="text-base font-semibold">Filters</DialogTitle>
               <div className="mt-4 grid gap-4">

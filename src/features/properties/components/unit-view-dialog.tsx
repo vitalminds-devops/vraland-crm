@@ -33,6 +33,7 @@ export function UnitViewDialog({
   imageUrl,
   unitTypes,
   canManageUnits,
+  canManagePrices,
   canManageUnitPictures,
   onPreviewPhoto,
   onEditPhoto,
@@ -62,6 +63,7 @@ export function UnitViewDialog({
   imageUrl: string | null;
   unitTypes: UnitTypeFacts[];
   canManageUnits: boolean;
+  canManagePrices: boolean;
   canManageUnitPictures: boolean;
   onPreviewPhoto: () => void;
   onEditPhoto: () => void;
@@ -152,6 +154,7 @@ export function UnitViewDialog({
                     price: unit.price ?? null,
                   }}
                   unitTypes={unitTypes}
+                  canManagePrices={canManagePrices}
                 />
               </div>
             )}

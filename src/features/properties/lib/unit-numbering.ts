@@ -12,6 +12,8 @@ export type UnitNumbering = {
   endings: string[];
   /** Floor levels that are never built, such as 4 or 13. */
   skipFloors: number[];
+  /** Parking across the property (P1, P2) or by floor like its units (P2A, P201); unset is property. */
+  parking?: "property" | "floor";
 };
 
 /** Properties set up before numbering was chosen: letters, with floor 4 skipped. */

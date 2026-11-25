@@ -1,18 +1,22 @@
+import "server-only";
+
 import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
+import { z } from "zod";
 import { db } from "@/db";
 import { properties } from "@/db/schema";
 import type { AuthorizationContext } from "@/lib/permissions/policy";
-import { grantedPropertyCondition } from "@/lib/permissions/property-access";
+import { wholePropertyGrantCondition } from "@/lib/permissions/property-access";
 import { dataScopeCondition } from "@/lib/permissions/scope";
 
-// Writes also need the property-access grant, so nobody edits a listing they cannot see.
+// Writes also need access to the whole property: someone given a few floors or units can see
+// those, but must not rename, re-price or remove the rest.
 export function propertyWriteScope(context: AuthorizationContext) {
   return and(
     dataScopeCondition(context, {
       organizationId: properties.organizationId,
       ownerUserId: properties.createdBy,
     }),
-    grantedPropertyCondition(context, { propertyId: properties.id }),
+    wholePropertyGrantCondition(context, { propertyId: properties.id }),
   );
 }
 
@@ -22,6 +26,8 @@ export async function canWriteProperty(
   id: string,
   { archived = false } = {},
 ): Promise<boolean> {
+  // A malformed id is simply not writable, rather than a database error page.
+  if (!z.uuid().safeParse(id).success) return false;
   const [record] = await db
     .select({ id: properties.id })
     .from(properties)

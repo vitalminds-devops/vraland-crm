@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { CircleDollarSign, Download, FileClock, ReceiptText, Search, Wallet } from "lucide-react";
 import { FilterForm } from "@/components/common/filter-form";
 import { PageContainer } from "@/components/common/page-container";
@@ -24,8 +23,7 @@ import {
 } from "@/features/billing/queries/billing.queries";
 import { formatContactName } from "@/features/contacts/lib/helpers";
 import { RecordPaymentButton } from "@/features/billing/components/payment-dialogs";
-import { getAuthorizationContext } from "@/lib/permissions/authorization";
-import { canViewBilling } from "@/lib/permissions/policy";
+import { requirePagePermission } from "@/lib/permissions/authorization";
 
 const PAGE_SIZE = 25;
 const input = "rounded-md border bg-background px-3 py-2 text-sm";
@@ -35,9 +33,7 @@ export default async function BillingPage({
 }: {
   searchParams: Promise<{ page?: string; search?: string; status?: string }>;
 }) {
-  const context = await getAuthorizationContext();
-  if (!context) redirect("/login");
-  if (!canViewBilling(context)) redirect("/forbidden");
+  await requirePagePermission("billing.view");
 
   const q = await searchParams;
   const status = (billStatuses as readonly string[]).includes(q.status ?? "")

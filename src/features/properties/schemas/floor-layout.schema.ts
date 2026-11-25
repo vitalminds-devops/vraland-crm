@@ -74,6 +74,7 @@ export const unitDesignSchema = z
           x: z.number().min(-OVERHANG).max(MAX_CANVAS),
           y: z.number().min(-OVERHANG).max(MAX_CANVAS),
           kind: z.enum(roomKinds),
+          flip: z.boolean().optional(),
         }),
       )
       .max(MAX_PIECES),
@@ -121,6 +122,7 @@ export const floorLayoutSchema = z
           unitId: z.uuid().nullable(),
           flip: z.boolean(),
           code: placedCode,
+          sized: z.boolean().optional(),
         }),
       )
       .max(MAX_PIECES),

@@ -95,7 +95,7 @@ export function LayoutUnitPicker({
           >
             {design && (
               <g transform={itemTransform(placement)}>
-                <UnitArt design={design} />
+                <UnitArt design={design} size={[placement.w, placement.h]} />
               </g>
             )}
             <rect

@@ -22,7 +22,7 @@ import {
   hasUnrestrictedInventoryAccess,
   type AuthorizationContext,
 } from "@/lib/permissions/policy";
-import { canWriteProperty } from "../lib/property-scope";
+import { canWriteProperty } from "../queries/property-scope.queries";
 import { syncParkingCount } from "../lib/parking-sync";
 import { propertySchema, type PropertyInput } from "../schemas/property.schema";
 import { logError } from "@/lib/logger";

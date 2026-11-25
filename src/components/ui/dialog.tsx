@@ -10,7 +10,19 @@ const Dialog = DialogPrimitive.Root;
 
 const DialogTrigger = DialogPrimitive.Trigger;
 
-const DialogPortal = DialogPrimitive.Portal;
+/** The element in full screen (a 3D floor view), so windows opened from it show over it, not behind. */
+export const overlayRoot = () =>
+  typeof document === "undefined"
+    ? undefined
+    : ((document.fullscreenElement as HTMLElement | null) ?? undefined);
+
+/** Every window opens inside the full-screen element when there is one. */
+function DialogPortal({
+  container,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Portal>) {
+  return <DialogPrimitive.Portal container={container ?? overlayRoot()} {...props} />;
+}
 
 const DialogClose = DialogPrimitive.Close;
 

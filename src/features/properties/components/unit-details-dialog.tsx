@@ -22,6 +22,7 @@ import type { UnitTypeFacts } from "../lib/floor-layout";
 export function UnitDetailsButton({
   unit,
   unitTypes,
+  canManagePrices,
 }: {
   unit: {
     id: string;
@@ -31,6 +32,8 @@ export function UnitDetailsButton({
     price: string | null;
   };
   unitTypes: UnitTypeFacts[];
+  /** Without "Manage prices", the price shows but can't be changed. */
+  canManagePrices: boolean;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -46,7 +49,12 @@ export function UnitDetailsButton({
         Price & type
       </Button>
       {open && (
-        <UnitDetailsDialog unit={unit} unitTypes={unitTypes} onClose={() => setOpen(false)} />
+        <UnitDetailsDialog
+          unit={unit}
+          unitTypes={unitTypes}
+          canManagePrices={canManagePrices}
+          onClose={() => setOpen(false)}
+        />
       )}
     </>
   );
@@ -55,10 +63,12 @@ export function UnitDetailsButton({
 function UnitDetailsDialog({
   unit,
   unitTypes,
+  canManagePrices,
   onClose,
 }: {
   unit: Parameters<typeof UnitDetailsButton>[0]["unit"];
   unitTypes: UnitTypeFacts[];
+  canManagePrices: boolean;
   onClose: () => void;
 }) {
   const [values, setValues] = useState({
@@ -77,7 +87,10 @@ function UnitDetailsDialog({
     <Dialog open onOpenChange={(next) => !next && !pending && onClose()}>
       <DialogPortal>
         <DialogOverlay className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm">
-          <DialogPopup className="w-full max-w-sm rounded-xl border border-border bg-card p-5 shadow-xl">
+          <DialogPopup
+            aria-describedby={undefined}
+            className="w-full max-w-sm rounded-xl border border-border bg-card p-5 shadow-xl"
+          >
             <DialogTitle className="text-lg font-semibold">Unit {unit.code}</DialogTitle>
             <form
               className="mt-4 space-y-4"
@@ -111,6 +124,7 @@ function UnitDetailsDialog({
                   step="0.01"
                   value={values.price}
                   onChange={set("price")}
+                  disabled={!canManagePrices}
                   placeholder={type?.price ? `${formatMoney(type.price)} (type)` : undefined}
                 />
               </label>

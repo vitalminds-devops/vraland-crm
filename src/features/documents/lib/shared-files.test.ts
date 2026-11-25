@@ -2,19 +2,19 @@ import { expect, it } from "vitest";
 import { canManageSharedFiles } from "./shared-files";
 
 it.each([
-  ["administrator", true, true],
-  ["super-administrator", true, true],
-  ["administrator", false, false],
-  ["agent", true, false],
-  ["sales-manager", true, false],
-])("limits shared file management for %s with manage permission %s", (role, manage, expected) => {
+  ["administrator", ["documents.manage_shared"], true],
+  ["agent", ["documents.manage_shared"], true],
+  // The role name alone, or Manage documents, no longer opens shared files.
+  ["administrator", ["documents.manage"], false],
+  ["super-administrator", [], false],
+])("lets %s with %j manage shared files: %s", (role, permissions, expected) => {
   expect(
     canManageSharedFiles({
       authUserId: "auth",
       userId: "user",
       organizationId: "org",
       roles: [role],
-      permissions: new Set(manage ? ["documents.manage"] : []),
+      permissions: new Set(permissions),
     }),
   ).toBe(expected);
 });

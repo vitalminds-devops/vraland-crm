@@ -14,7 +14,7 @@ import {
   success,
   validationFailureFromZod,
 } from "@/lib/types/action-result";
-import { canWriteProperty } from "../lib/property-scope";
+import { canWriteProperty } from "../queries/property-scope.queries";
 import { revalidateProperty } from "../lib/revalidate-property";
 import { slotPricesSchema } from "../schemas/property-prices.schema";
 
@@ -22,7 +22,7 @@ const amount = (value: number | null) => (value === null ? null : String(value))
 
 /** Sets one parking slot's price and reservation fee. */
 export async function saveSlotPrices(input: unknown): Promise<ActionResult> {
-  const context = await requirePermission("properties.manage_units");
+  const context = await requirePermission("properties.manage_prices");
   const parsed = slotPricesSchema.safeParse(input);
   if (!parsed.success) return validationFailureFromZod(parsed.error);
   const value = parsed.data;

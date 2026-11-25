@@ -346,13 +346,15 @@ export function RoomArt({
   h,
   label = false,
   rotation = 0,
+  flip = false,
 }: {
   kind: RoomKind;
   w: number;
   h: number;
   label?: boolean;
-  /** How the room is turned, so its name can stay the right way up. */
+  /** How the room is turned and mirrored, so its name can stay the right way up. */
   rotation?: number;
+  flip?: boolean;
 }) {
   const Furniture = furniture[kind];
   if (kind === "door") return <Door w={w} h={h} />;
@@ -369,7 +371,15 @@ export function RoomArt({
       {/* Small rooms leave their name off rather than spill out of their walls. */}
       {label && w >= 1.4 && h >= 1 && (
         // A room turned upside down spins its name back round, so it reads upright at the top.
-        <g transform={rotation === 180 ? `rotate(180 ${w / 2} ${h / 2})` : undefined}>
+        // A mirrored room mirrors its name back, so it never reads backwards.
+        <g
+          transform={
+            [
+              flip ? `translate(${w} 0) scale(-1 1)` : "",
+              rotation === 180 ? `rotate(180 ${w / 2} ${h / 2})` : "",
+            ].join(" ") || undefined
+          }
+        >
           <PlanText
             x={w / 2}
             y={h - 0.16}
@@ -385,13 +395,18 @@ export function RoomArt({
 }
 
 /** A unit's rooms inside its walls, drawn at the design's size. */
-export function UnitArt({ design }: { design: UnitDesign }) {
+export function UnitArt({ design, size }: { design: UnitDesign; size?: [number, number] }) {
+  // A unit resized on its floor stretches its type's drawing to fit.
+  const scale =
+    size && (size[0] !== design.width || size[1] !== design.depth)
+      ? `scale(${size[0] / design.width} ${size[1] / design.depth})`
+      : undefined;
   return (
-    <g>
+    <g transform={scale}>
       <rect width={design.width} height={design.depth} className="fill-card" />
       {design.rooms.map((room) => (
         <g key={room.id} transform={itemTransform(room)}>
-          <RoomArt kind={room.kind} w={room.w} h={room.h} />
+          <RoomArt kind={room.kind} w={room.w} h={room.h} flip={room.flip} />
         </g>
       ))}
       <rect

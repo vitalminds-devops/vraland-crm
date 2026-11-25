@@ -22,7 +22,7 @@ export function OpportunityParkingSelector({
   selectedIds: string[];
   onChange: (ids: string[]) => void;
   disabled: boolean;
-  /** The floor chosen above: only its slots show, with no floor list of their own. */
+  /** The floor chosen above: its slots and those with no floor show, with no floor list of their own. */
   floorId?: string;
   /** The opportunity being changed: the slots it holds stay selectable, only for it. */
   dealId?: string;
@@ -81,36 +81,64 @@ export function OpportunityParkingSelector({
   const unavailable = selectedIds.some(
     (id) => !slots.some((slot) => slot.id === id && slot.status === "available"),
   );
-  // Picked with its floor's units: no list of its own, and nothing when the floor has no parking.
+  const toggle = (id: string) =>
+    onChange(
+      selectedIds.includes(id) ? selectedIds.filter((value) => value !== id) : [...selectedIds, id],
+    );
+  // Picked with its floor's units, plus parking with no floor, which belongs to every floor.
   if (chosenFloor) {
-    if (!visible.length) return null;
+    const noFloor = slots.filter((slot) => !slot.floorId);
+    const shown = new Set([...visible, ...noFloor].map((slot) => slot.id));
+    // Chosen on another floor: named here, so a selection is never invisible.
+    const elsewhere = slots.filter((slot) => selectedIds.includes(slot.id) && !shown.has(slot.id));
+    if (!visible.length && !noFloor.length && !selectedIds.length) return null;
     return (
       <div className="space-y-2">
-        <p className="text-[13px] font-medium">Parking on this floor</p>
-        <ParkingPicker
-          compact
-          slots={visible}
-          selectedIds={selectedIds}
-          selectionLabel="selected"
-          availableOnly
-          disabled={disabled}
-          onToggle={(id) =>
-            onChange(
-              selectedIds.includes(id)
-                ? selectedIds.filter((value) => value !== id)
-                : [...selectedIds, id],
-            )
-          }
-        />
+        {(
+          [
+            ["Parking on this floor", visible],
+            ["Parking with no floor", noFloor],
+          ] as const
+        ).map(
+          ([title, group]) =>
+            group.length > 0 && (
+              <div key={title} className="space-y-2">
+                <p className="text-[13px] font-medium">{title}</p>
+                <ParkingPicker
+                  compact
+                  slots={[...group]}
+                  selectedIds={selectedIds}
+                  selectionLabel="selected"
+                  availableOnly
+                  disabled={disabled}
+                  onToggle={toggle}
+                />
+              </div>
+            ),
+        )}
         {unavailable && (
           <p role="alert" className="text-sm text-destructive">
             Some selected slots are no longer available. Choose available slots.
           </p>
         )}
         {selectedIds.length > 0 && (
-          <p className="text-xs text-muted-foreground">
-            {selectedIds.length} parking {selectedIds.length === 1 ? "slot" : "slots"} selected
-          </p>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span>
+              {selectedIds.length} parking {selectedIds.length === 1 ? "slot" : "slots"} selected
+              {elsewhere.length > 0 &&
+                ` · ${elsewhere.map((slot) => slot.code).join(", ")} on another floor`}
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-auto px-1 py-0 text-xs text-primary"
+              disabled={disabled}
+              onClick={() => onChange([])}
+            >
+              Clear parking selection
+            </Button>
+          </div>
         )}
       </div>
     );
@@ -145,13 +173,7 @@ export function OpportunityParkingSelector({
               selectionLabel="selected"
               availableOnly
               disabled={disabled}
-              onToggle={(id) =>
-                onChange(
-                  selectedIds.includes(id)
-                    ? selectedIds.filter((value) => value !== id)
-                    : [...selectedIds, id],
-                )
-              }
+              onToggle={toggle}
             />
           )}
         </>

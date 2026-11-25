@@ -7,7 +7,7 @@ import { db } from "@/db";
 import { dealFirstMonthPaid, dealReservationPaid } from "@/features/billing/lib/deal-payment";
 import {
   inventoryStatusForDeal,
-  readReservationPaid,
+  readReservationReceived,
   isFullyPaid,
   readDealPayments,
 } from "@/features/billing/lib/billing-inventory";
@@ -31,7 +31,7 @@ import { eligibleAgent } from "@/features/contacts/lib/assignment";
 import { formatContactName } from "@/features/contacts/lib/helpers";
 import { InactiveAssigneeError, lockActiveAssignees } from "@/lib/permissions/active-assignees";
 import { scopedAgentCondition } from "@/lib/permissions/scope";
-import { canManageBilling } from "@/lib/permissions/policy";
+import { canManageBilling, hasPermission } from "@/lib/permissions/policy";
 import { dealTitleFor } from "../lib/deal-label";
 import { recordDealCommissions } from "../lib/record-commissions";
 import { enrollByTrigger } from "@/features/marketing/lib/auto-enroll";
@@ -251,7 +251,7 @@ export async function saveDealForContact(
     .limit(1);
   if (!existing) return createDealForContact(contactId, primaryAgentUserId, input);
 
-  await requirePermission("deals.update");
+  if (!hasPermission(context, "deals.update")) return failure(permissionDenied());
   if (!(await canAccessResource(context, { type: "deal", id: existing.id })))
     return notFoundFailure("Opportunity");
   const parsed = contactDealSchema.safeParse(input);
@@ -414,7 +414,7 @@ async function applyStageChange(
     return notFoundFailure("Opportunity");
   const canApprove = context.permissions.has("deals.approve_stage_change");
   const canMoveBack = context.permissions.has("deals.move_back");
-  const role = resolveMoveRole(context.roles);
+  const role = resolveMoveRole(context);
 
   try {
     const outcome = await db.transaction(async (tx) => {
@@ -626,7 +626,7 @@ async function applyStageChange(
         status: inventoryStatusForDeal(
           stage,
           await readDealPayments(tx, dealId),
-          await readReservationPaid(tx, dealId),
+          await readReservationReceived(tx, dealId),
         ),
       });
       await tx

@@ -29,7 +29,7 @@ import { manilaDate } from "@/lib/utils/manila-time";
 import { leadNotArchived } from "@/features/deals/lib/lead-not-archived";
 import { isContactsFirstDeal } from "@/features/deals/lib/first-deal";
 import { billApplicantSchema } from "../schemas/bill-applicant.schema";
-import { suggestedUnitPrices } from "../lib/suggested-prices";
+import { suggestedParkingPrices, suggestedUnitPrices } from "../lib/suggested-prices";
 import {
   dealMonthlyAmortization,
   dealReservationFee,
@@ -267,13 +267,33 @@ async function billLinesFor(
         unitPrice: prices[index] ?? "",
         miscellaneousFee: "",
       }));
-      // One line per parking slot, named by its identifier, at its own price.
-      for (const slot of (row.parkingSlotIds ?? [])
+      // One line per parking slot, named by its identifier, at the price quoted for it.
+      const slots = (row.parkingSlotIds ?? [])
         .flatMap((id) => slotById.get(id) ?? [])
-        .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true })))
+        .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
+      const slotPrices = suggestedParkingPrices(
+        slots.map((slot) => slot.price),
+        row.parkingAmount,
+      );
+      slots.forEach((slot, index) =>
         suggested.push({
           unitLabel: [`Parking ${slot.code}`, row.propertyTitle].filter(Boolean).join(" · "),
-          unitPrice: slot.price ?? "",
+          unitPrice: slotPrices[index] ?? "",
+          miscellaneousFee: "",
+        }),
+      );
+      // Opportunities from before slots were listed have a parking amount but no slots.
+      if (!slots.length && Number(row.parkingAmount) > 0)
+        suggested.push({
+          unitLabel: [
+            row.parkingSlots
+              ? `Parking (${row.parkingSlots} ${row.parkingSlots === 1 ? "slot" : "slots"})`
+              : "Parking",
+            row.propertyTitle,
+          ]
+            .filter(Boolean)
+            .join(" · "),
+          unitPrice: row.parkingAmount!,
           miscellaneousFee: "",
         });
       return [
@@ -520,9 +540,10 @@ export async function getPaymentSlip(id: string) {
   return record ?? null;
 }
 
-/** Recorded payments on the opportunities in the user's data access, newest first. */
+/** Recorded payments on the opportunities in the user's data access, newest first. Reading them needs View billing. */
 export async function listPayments(input: { page: number; pageSize: number; search?: string }) {
-  const context = await paymentsContext();
+  const context = await requireAuthorizationContext();
+  if (!canViewBilling(context)) throw new AuthorizationError();
   const base = and(
     eq(payments.organizationId, context.organizationId),
     isNull(payments.deletedAt),

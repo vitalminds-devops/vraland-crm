@@ -23,3 +23,18 @@ export function paymentSuggestions(input: {
     full_payment: capped(balance),
   };
 }
+
+/**
+ * The amount box after the bill or payment type changes: the new suggestion replaces an empty box
+ * or the previous suggestion (cleared when there is none), but never an amount the agent typed.
+ */
+export function refilledAmount(
+  current: string,
+  lastSuggested: string | null,
+  suggestion: string | null,
+): { amount: string; suggested: string | null } {
+  const untouched = current === "" || current === lastSuggested;
+  return untouched
+    ? { amount: suggestion ?? "", suggested: suggestion }
+    : { amount: current, suggested: lastSuggested };
+}

@@ -41,6 +41,7 @@ export function ParkingSlotDialog({
   floorLabel,
   currency,
   canManage,
+  canManagePrices,
   onClose,
 }: {
   slot: { id: string; code: string; status: string } & SlotAmounts;
@@ -49,6 +50,8 @@ export function ParkingSlotDialog({
   floorLabel: string;
   currency: string;
   canManage: boolean;
+  /** Its own price and fee; without "Manage prices" they aren't offered. */
+  canManagePrices: boolean;
   onClose: () => void;
 }) {
   const [pending, startTransition] = useTransition();
@@ -69,7 +72,7 @@ export function ParkingSlotDialog({
 
   return (
     <FloorItemDialog
-      title={`Parking ${slot.code}`}
+      title={`Parking slot ${slot.code}`}
       subtitle={floorLabel}
       scene={{
         floorKey: slot.id,
@@ -114,7 +117,7 @@ export function ParkingSlotDialog({
           <label className="grid gap-1 text-xs text-muted-foreground">
             Status
             <NativeSelect
-              aria-label={`Parking ${slot.code} status`}
+              aria-label={`Parking slot ${slot.code} status`}
               value={slot.status}
               disabled={pending}
               className="h-9 border-border bg-background text-foreground"
@@ -138,7 +141,7 @@ export function ParkingSlotDialog({
           </span>
         )}
       </div>
-      {canManage && (
+      {canManage && canManagePrices && (
         <form
           className="grid gap-2 border-t border-border/60 p-5"
           onSubmit={(event) => {
@@ -194,12 +197,12 @@ export function ParkingSlotDialog({
             disabled={pending || taken}
             title={taken ? "Reserved and sold slots can't be removed" : undefined}
             onClick={() => {
-              if (!window.confirm(`Remove parking ${slot.code}?`)) return;
+              if (!window.confirm(`Remove parking slot ${slot.code}?`)) return;
               run(() => deleteParkingSlot(slot.id), onClose);
             }}
           >
             <Trash2 aria-hidden="true" className="size-3.5" />
-            Remove
+            Remove slot
           </Button>
         </div>
       )}

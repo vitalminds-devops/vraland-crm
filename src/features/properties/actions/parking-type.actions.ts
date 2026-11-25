@@ -7,6 +7,7 @@ import { auditLogs, properties, propertyParkingSlots } from "@/db/schema";
 import { outOfScope } from "@/lib/errors";
 import { logError } from "@/lib/logger";
 import { requirePermission } from "@/lib/permissions/authorization";
+import { hasPermission } from "@/lib/permissions/policy";
 import {
   type ActionResult,
   databaseFailure,
@@ -16,7 +17,8 @@ import {
   validationFailureFromZod,
 } from "@/lib/types/action-result";
 import type { ParkingType } from "../lib/parking-types";
-import { canWriteProperty } from "../lib/property-scope";
+import { canWriteProperty } from "../queries/property-scope.queries";
+import { changesMoney, pricesNeedPermission } from "../lib/price-changes";
 import { revalidateProperty } from "../lib/revalidate-property";
 import { parkingTypeSchema } from "../schemas/parking-type.schema";
 
@@ -67,6 +69,12 @@ export async function saveParkingType(input: unknown): Promise<ActionResult<{ id
       if (!types) return "missing" as const;
       const before = types.find((type) => type.id === next.id);
       if (value.id && !before) return "missing" as const;
+      // Amounts need "Manage prices"; without it a type can still be renamed or resized.
+      if (
+        !hasPermission(context, "properties.manage_prices") &&
+        changesMoney(before, { price: next.price, reservationFee: next.reservationFee })
+      )
+        return "prices" as const;
       await tx
         .update(properties)
         .set({
@@ -107,6 +115,7 @@ export async function saveParkingType(input: unknown): Promise<ActionResult<{ id
       return "saved" as const;
     });
     if (saved === "missing") return notFoundFailure("Parking type");
+    if (saved === "prices") return failure(outOfScope(pricesNeedPermission));
     revalidateProperty(propertyId);
     return success({ id: next.id });
   } catch (error) {

@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { paymentSuggestions } from "./payment-suggestions";
+import { paymentSuggestions, refilledAmount } from "./payment-suggestions";
 
 const base = {
   reservationFee: "15000",
@@ -38,4 +38,18 @@ it("suggests nothing for a fee that's paid, unset, or more than the balance allo
   });
   // Never more than what's left on the bill.
   expect(paymentSuggestions({ ...base, balance: 8000 }).monthly).toBe("8000.00");
+});
+
+it("refills the amount from a new suggestion but keeps what the agent typed", () => {
+  expect(refilledAmount("", null, "20000.00")).toEqual({
+    amount: "20000.00",
+    suggested: "20000.00",
+  });
+  // Reservation, then Monthly with no monthly amount set: the old suggestion is cleared.
+  expect(refilledAmount("20000.00", "20000.00", null)).toEqual({ amount: "", suggested: null });
+  expect(refilledAmount("20000.00", "20000.00", "8000.00").amount).toBe("8000.00");
+  expect(refilledAmount("15000", "20000.00", "8000.00")).toEqual({
+    amount: "15000",
+    suggested: "20000.00",
+  });
 });

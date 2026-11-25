@@ -108,10 +108,13 @@ export function ParkingTypeRow({
 export function ParkingTypeDialog({
   propertyId,
   type,
+  canManagePrices,
   onClose,
 }: {
   propertyId: string;
   type: ParkingType | null;
+  /** Without "Manage prices", the amounts show but can't be changed. */
+  canManagePrices: boolean;
   onClose: () => void;
 }) {
   const [draft, setDraft] = useState({
@@ -130,7 +133,10 @@ export function ParkingTypeDialog({
     <Dialog open onOpenChange={(next) => !next && !pending && onClose()}>
       <DialogPortal>
         <DialogOverlay className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm">
-          <DialogPopup className="w-full max-w-lg rounded-xl border border-border bg-card p-5 shadow-xl">
+          <DialogPopup
+            aria-describedby={undefined}
+            className="w-full max-w-lg rounded-xl border border-border bg-card p-5 shadow-xl"
+          >
             <DialogTitle className="text-lg font-semibold">
               {type ? `Edit ${type.name}` : "Design parking"}
             </DialogTitle>
@@ -200,7 +206,7 @@ export function ParkingTypeDialog({
                       value={draft.price}
                       onValueChange={(next) => setDraft({ ...draft, price: next || null })}
                       placeholder="0.00"
-                      disabled={pending}
+                      disabled={pending || !canManagePrices}
                     />
                   </label>
                   <label className="grid gap-1.5 text-sm font-medium">
@@ -209,7 +215,7 @@ export function ParkingTypeDialog({
                       value={draft.reservationFee}
                       onValueChange={(next) => setDraft({ ...draft, reservationFee: next || null })}
                       placeholder="0.00"
-                      disabled={pending}
+                      disabled={pending || !canManagePrices}
                     />
                   </label>
                 </div>

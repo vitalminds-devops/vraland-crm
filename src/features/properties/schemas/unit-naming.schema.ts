@@ -31,6 +31,7 @@ export const unitNamingSchema = z
   .object({
     propertyId: z.uuid(),
     style: z.enum(["letter", "number", "custom"]).optional(),
+    parking: z.enum(["property", "floor"]).optional(),
     endings: z
       .array(z.string().regex(/^[0-9A-Z]{1,4}$/))
       .max(60)

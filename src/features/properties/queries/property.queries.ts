@@ -21,7 +21,7 @@ import {
   grantedPropertyCondition,
   grantedUnitsCondition,
 } from "@/lib/permissions/property-access";
-import { propertyWriteScope } from "../lib/property-scope";
+import { propertyWriteScope } from "../queries/property-scope.queries";
 
 type PropertyListFilters = { search?: string; status?: string; type?: string };
 

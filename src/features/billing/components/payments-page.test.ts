@@ -1,16 +1,22 @@
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { expect, it, vi } from "vitest";
+import { beforeEach, expect, it, vi } from "vitest";
 import PaymentsPage from "../../../../app/(crm)/payments/page";
 
-vi.mock("@/lib/permissions/authorization", () => ({ getAuthorizationContext: async () => ({}) }));
-vi.mock("@/lib/permissions/policy", () => ({ canManageBilling: () => true }));
-vi.mock("@/components/common/page-header", () => ({ PageHeader: () => null }));
+vi.mock("@/lib/permissions/authorization", () => ({ requirePagePermission: async () => ({}) }));
+const access = vi.hoisted(() => ({ manage: true }));
+vi.mock("@/lib/permissions/policy", () => ({
+  canViewBilling: () => true,
+  canManageBilling: () => access.manage,
+}));
+vi.mock("@/components/common/page-header", () => ({
+  PageHeader: ({ actions }: { actions: ReactNode }) => createElement("div", null, actions),
+}));
 vi.mock("@/components/common/filter-form", () => ({
   FilterForm: ({ children }: { children: ReactNode }) => createElement("form", null, children),
 }));
 vi.mock("@/features/billing/components/payment-dialogs", () => ({
-  RecordPaymentButton: () => null,
+  RecordPaymentButton: () => createElement("button", null, "Record payment"),
 }));
 vi.mock("@/features/billing/queries/billing.queries", () => ({
   listOpenBills: async () => [],
@@ -61,6 +67,10 @@ vi.mock("@/features/billing/queries/billing.queries", () => ({
   }),
 }));
 
+beforeEach(() => {
+  access.manage = true;
+});
+
 async function render() {
   return renderToStaticMarkup(await PaymentsPage({ searchParams: Promise.resolve({}) }));
 }
@@ -94,4 +104,13 @@ it("leads each summary with the amount, the number of payments underneath", asyn
   expect(html).toContain("1 payment");
   expect(html).toContain("Date paid");
   expect(html).not.toContain("Paid on");
+});
+
+it("lets View billing read payments, with Record payment only for Manage", async () => {
+  expect(await render()).toContain("Record payment");
+  access.manage = false;
+  const html = await render();
+  expect(html).not.toContain("Record payment");
+  expect(html).toContain("DEAL-6FC1B03C");
+  expect(html).toContain("Export");
 });

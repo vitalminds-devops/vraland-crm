@@ -5,6 +5,60 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+- An "Export opportunities" permission for the Opportunity list's CSV, like Export contacts. Every role that can view opportunities keeps it (migration 0077); without it, the Export button is hidden.
+- "Access all properties" and "Manage shared files" permissions. Administrators had both by role; they keep them (migration 0076), and unticking them now works. Giving property access no longer skips its permission for Administrators.
+- Custom roles with "Move opportunities between stages" can move opportunities: like an Agent with own records, a Broker with team records, a Sales Manager with all records. Built-in roles move as before.
+- A "Manage prices" permission for prices, reservation fees and monthly amortization on unit types, parking types, units and parking slots. Every role with "Design properties" keeps it (migration 0074); without it, types can still be designed and renamed, and prices and fees show but can't be edited.
+- In Design floor and Design unit, pick several pieces with Shift or Ctrl + click, or Shift + drag a box (Ctrl+A picks all), then move, duplicate, copy (Ctrl+C, Ctrl+V) or remove them together.
+- A unit on Design floor can be resized from its corner; its rooms stretch to fit, while its unit type, area and price stay the same.
+- The Identifier window also names parking: across the whole property (P1, P2, P3) or by floor like the units (P2A, P2B or P201, P202). New slots follow it, and saving renames this floor's slots, or every floor's when "Apply to every floor" is ticked.
+
+### Changed
+- The Properties list is tidier: filters sit in a grid on tablets, rows breathe more, and granted access reads "of 12 units" with the floors underneath.
+- On the 3D floor view, each parking slot shows a small chip with its identifier, coloured by its status, in place of the painted number.
+- `db:sync-permissions` also refreshes permission descriptions from the catalog and lists keys the catalog no longer has; run it after `db:migrate` (now in the README).
+- Permission names and descriptions follow the wording guide ("Give property access", opportunities, expected close, property access instead of grants), say what else each one needs, and "See own records" shows as always on. Some opportunity errors now say contact and property instead of client and building.
+- The "Manage floors, units and parking" permission is now called "Design properties" and says what it covers: the Design page with unit and parking types, floors and floor plans, sections, unit identifiers, units and parking. "Edit properties" no longer mentions prices, which are set with "Manage prices".
+- "View billing" opens Payments too, read-only: brokers can see and export the payments on their opportunities, and the dashboard's payment figures no longer lead them to Forbidden. Recording and removing payments still need "Manage bills and payments".
+- The dashboard shows Reservations received this month (reservation payments since the 1st, with how many) in place of Reservation value, and no longer shows Open opportunities. The Summary leaves out Viewings scheduled while Upcoming tasks & viewings already lists them.
+- Wording follows the guide in a few more places: the dashboard's availability panel is called Properties, the parking window says "Parking slot P1" and "Remove slot", the contact form's error reads "Review the highlighted fields below.", and the billing and payments CSV money columns say "(PHP)".
+- If properties, floors or units can't load in the unit picker, a message says so instead of the list just staying empty.
+- Design floor works like Figma: Assets and Layers on the left, the plan in the middle, and a Properties panel on the right (identifier, unit or parking type, X, Y, W, H, rotate, flip, duplicate, remove; with nothing picked, the floor size, identifier and copying to other floors). Double-click a unit, or use Edit rooms, to edit its unit type's rooms right there; saving it updates every unit of that type. New unit types can be added from Assets.
+- Design unit uses the same layout, and rooms can now be flipped (Flip or F), such as a door swinging the other way.
+- A picked piece in Design floor and Design unit stands out clearly: tinted, with a solid outline and halo drawn over its neighbours.
+- On the Design page's 3D view, pointing at a unit no longer swaps its chip for the large tag (identifier, section, status); only its wall sizes show.
+- "Apply to every floor" in the Identifier window starts unticked, so saving changes only the floor you're designing unless you tick it.
+- In Design floor and Design unit, a picked piece has a Duplicate button (also Ctrl+D): the copy is the same size and sits right beside the original instead of overlapping it, and a copied parking slot or unit gets its own identifier.
+
+### Fixed
+- A development's page shows Edit only on the properties you can actually save, instead of opening an edit page that then refuses.
+- On Settings → Roles and a user's Permissions, Manage users, Delete and Restore users and Manage roles are listed under Settings instead of as separate "users" and "roles" groups at the bottom.
+- Broker-type roles (License Broker, Network Partner, Sales Executive, Sales Director, Consultant) can invite others to events on older databases too, as on new ones (migration 0075).
+- The floor menu has a Rename item for the current floor, so floors can be renamed from the keyboard or a screen reader. Windows such as Design floor, Identifier and Price & type no longer log a missing-description warning.
+- A broken property link in floor setup (or any property change) shows a message instead of an error page.
+- Units renamed in Design floor or with "Apply to every floor" get a "Unit 301 was renamed to 310" entry in their history, like a single rename.
+- The dashboard's Floors count only counts the floors an agent has access to, like the units and parking beside it.
+- When only parking sets a reservation fee, the unit reservation fee shows "—" instead of ₱0.00 on the bill and in the opportunity windows.
+- Saving two floors of a property at the same time no longer gives two new parking slots the same identifier, and swapping two slots' identifiers in one save works. A clash between slot names now says "Two parking slots would share an identifier" instead of talking about units.
+- Renaming units and copying the floor in the same save gives the copies the new identifiers (301 renamed to 310 becomes 510 on the 5th floor, not 501).
+- Record payment refills the amount when you change the payment type or the bill, and clears a suggestion that no longer applies, such as the reservation fee left after switching to Monthly. An amount you typed yourself is kept.
+- Roles that can see dashboard figures but not Summary see Active contacts again, in the key figures.
+- In the full-screen floor view, windows and menus opened from a unit (View photos, Add photo, Price & type, Rename) show on top instead of hidden behind it.
+- In the opportunity windows, parking with no floor can be picked again (listed under the chosen floor's parking). The selected count, Clear parking selection and the "no longer available" warning show even on a floor without parking, and slots chosen on another floor are named ("P5 on another floor").
+- A suggested bill's parking lines add up to the parking amount quoted on the opportunity, even if a parking price changed since. Very old opportunities with a parking amount but no slots listed get one "Parking (2 slots)" line instead of none.
+- A unit or parking slot with a reservation payment stays Reserved when units or parking are added to the opportunity afterwards, even though the reservation fee due goes up. Before, it went back to Available.
+- Copying a floor's layout to other floors keeps the parking slots already on them, by position, with their identifiers, prices and fees, instead of removing and re-adding them (and no longer stops when one of them is reserved). Only extra or missing slots are added or removed.
+
+### Security
+- Recent activity on the dashboard shows only activity from modules the user can open, so someone without Documents or Tasks no longer sees those entries.
+- Dashboard panels follow each panel permission even on a database whose permissions haven't been synced yet, instead of showing every panel to everyone.
+- Editing a role can no longer take away permissions the editor doesn't hold themselves (Super Administrators excepted), and the role's history now records which permissions it had before and after.
+- Changing an opportunity's units, which re-totals its bill, needs "Edit opportunities" as well as "Move opportunities between stages". Agents and brokers have both by default.
+- Changing a property (its details, floors, units, parking, types or design) needs access to the whole property. Someone given only some floors or units can still see them, but can no longer rename, re-price or remove anything in that property. Administrators are unaffected.
+- Roles without "View billing" (Agent and Sales Manager by default) no longer see the money collected under Won sales value on the dashboard.
+- "View sensitive documents" now decides on its own who reads contracts, IDs and income proofs. Sales Manager and Administrators used to see them whatever the setting; they keep the permission (migration 0073), and unticking it on a role or user now works.
+
 ## [0.5.1] - 2026-11-25
 
 ### Changed

@@ -1,4 +1,5 @@
 import { isBrokerAccessRoleSlug } from "@/lib/permissions/catalog";
+import { resolveDataScope, type AuthorizationContext } from "@/lib/permissions/policy";
 
 export type StagePosition = {
   /** `pipeline_stages.position`; ascending means further along the pipeline. */
@@ -74,7 +75,15 @@ export function missingPaymentFor(input: {
   return null;
 }
 
-export function resolveMoveRole(roles: readonly string[]): Role {
+/**
+ * How the user moves opportunities. Built-in roles by name; a custom role with "Move opportunities
+ * between stages" by its data access: own records like an Agent, team like a Broker, all records
+ * like a Sales Manager.
+ */
+export function resolveMoveRole(
+  context: Pick<AuthorizationContext, "roles" | "permissions">,
+): Role {
+  const { roles } = context;
   if (
     roles.includes("super-administrator") ||
     roles.includes("administrator") ||
@@ -84,7 +93,9 @@ export function resolveMoveRole(roles: readonly string[]): Role {
   if (roles.includes("sales-manager")) return "sales-manager";
   if (roles.some(isBrokerAccessRoleSlug)) return "broker";
   if (roles.includes("agent")) return "agent";
-  return "viewer";
+  if (roles.includes("viewer") || !context.permissions.has("deals.change_stage")) return "viewer";
+  const scope = resolveDataScope(context);
+  return scope === "organization" ? "sales-manager" : scope === "broker_team" ? "broker" : "agent";
 }
 
 export type MoveCheck = { allowed: true } | { allowed: false; message: string };

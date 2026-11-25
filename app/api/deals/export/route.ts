@@ -12,7 +12,8 @@ const EXPORT_LIMIT = 10_000;
 export async function GET(request: Request) {
   const context = await getAuthorizationContext();
   if (!context) return new Response("Authentication is required", { status: 401 });
-  if (!hasPermission(context, "deals.view")) return new Response("Forbidden", { status: 403 });
+  if (!hasPermission(context, "deals.view") || !hasPermission(context, "deals.export"))
+    return new Response("Forbidden", { status: 403 });
 
   const params = new URL(request.url).searchParams;
   const data = await listDeals({

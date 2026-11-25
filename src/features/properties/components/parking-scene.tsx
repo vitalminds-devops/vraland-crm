@@ -282,7 +282,7 @@ export function PieceModel({ piece }: { piece: FloorSpace }) {
       const dashes = Math.max(1, Math.floor(length / 1.6));
       return (
         <>
-          <Block position={[0, 0.006, 0]} size={[w, 0.012, h]} color="#6c757b" />
+          <Block position={[0, 0.006, 0]} size={[w, 0.012, h]} color="#525e67" />
           {Array.from({ length: dashes }, (_, index) => {
             const at = -length / 2 + (index + 0.5) * (length / dashes);
             return (
