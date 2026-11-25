@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-11-25
+
 ### Changed
 - The dashboard's Won sales & forecast chart has its own legend, and a user's profile details in Settings are easier to read.
 
