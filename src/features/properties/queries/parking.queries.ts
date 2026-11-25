@@ -13,7 +13,17 @@ export type ParkingSlot = {
   code: string;
   status: string;
   floorId: string | null;
+  /** The opportunity holding it while reserved or sold; null when free. */
+  reservedDealId: string | null;
+  /** Its parking type, such as Tandem; null for a plain slot. */
+  parkingTypeName: string | null;
   accessible: boolean;
+  /** What the slot costs, set on the slot or by its parking type. */
+  price: string | null;
+  reservationFee: string | null;
+  /** The same amounts, for the slot window's price fields. */
+  ownPrice: string | null;
+  ownReservationFee: string | null;
 };
 
 /**
@@ -36,7 +46,16 @@ export async function listParkingSlots(
       code: propertyParkingSlots.code,
       status: propertyParkingSlots.status,
       floorId: propertyParkingSlots.floorId,
+      reservedDealId: propertyParkingSlots.reservedDealId,
+      // Its parking type's name, from the property's types.
+      parkingTypeName: sql<string | null>`(select t->>'name'
+        from jsonb_array_elements(${properties.parkingTypes}) t
+        where t->>'id' = ${propertyParkingSlots.parkingTypeId})`,
       accessible: sql<boolean>`${granted}`,
+      price: propertyParkingSlots.price,
+      reservationFee: propertyParkingSlots.reservationFee,
+      ownPrice: propertyParkingSlots.price,
+      ownReservationFee: propertyParkingSlots.reservationFee,
     })
     .from(propertyParkingSlots)
     .innerJoin(properties, eq(propertyParkingSlots.buildingId, properties.id))

@@ -11,6 +11,8 @@ The [root README](../README.md) owns setup, environment and deployment instructi
 
 ## Implementation conventions
 
+- Page action groups use a three-dot menu when more than one permitted action is available. If only one action is available, show its labeled button directly; if none are available, show neither. Count actions after permission checks, preserve their destinations and behavior, and give icon-only triggers an accessible name. Explicit page designs can override this default. The Properties list keeps Export, Archive, and Add property as separate labeled buttons, wrapping on smaller screens.
+
 - Keep route composition under `app/`, feature behavior under `src/features/`, reusable infrastructure under `src/lib/`, and shared UI under `src/components/`. `@/*` maps to `src/*`.
 - Server pages/queries read data; interactive client components handle browser state. Keep server-only imports out of client bundles. Use installed Next.js guidance for Server Actions, async route parameters, caching and revalidation.
 - Validate action inputs using the feature's Zod schema and enforce server permissions plus related-record scope. Filtering a dropdown is not authorization.

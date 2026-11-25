@@ -144,7 +144,8 @@ export function canMoveStage(context: MoveContext): MoveCheck {
     if (!backward && role !== "admin")
       return {
         allowed: false,
-        message: "Only admins can change a won or cancelled outcome.",
+        message:
+          "Only Master Brokers, Administrators and Super Administrators can change a won or cancelled outcome.",
       };
     if (backward && !reason?.trim())
       return {

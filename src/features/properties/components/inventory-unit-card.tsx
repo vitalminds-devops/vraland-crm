@@ -90,7 +90,7 @@ export function InventoryUnitCard({
                 type="button"
                 variant="ghost"
                 className="relative z-20 h-auto flex-col gap-2"
-                aria-label={`Edit ${code} picture`}
+                aria-label={`Edit ${code} photo`}
                 onClick={onEditPicture}
               >
                 <ImagePlus aria-hidden="true" className="size-6" />
@@ -135,7 +135,7 @@ export function InventoryUnitCard({
                 variant="ghost"
                 size="icon"
                 className="size-7"
-                aria-label={`Edit ${code} picture`}
+                aria-label={`Edit ${code} photo`}
                 onClick={onEditPicture}
               >
                 <ImagePlus aria-hidden="true" className="size-4" />

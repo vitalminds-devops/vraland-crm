@@ -17,7 +17,7 @@ export default async function ArchivePage({
   return (
     <PageContainer>
       <PageHeader
-        title="Shared file archive"
+        title="Archived documents"
         actions={<BackButton fallbackHref="/documents" label="Back to documents" />}
       />
       <div className="mt-6 rounded-xl border bg-card">

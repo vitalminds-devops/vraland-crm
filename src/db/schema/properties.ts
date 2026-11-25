@@ -3,6 +3,7 @@ import {
   date,
   index,
   integer,
+  jsonb,
   numeric,
   pgTable,
   primaryKey,
@@ -19,6 +20,11 @@ import { deals } from "./deals";
 import { organizations, users } from "./organization";
 import { createdAt, updatedAt } from "./shared";
 import type { UnitIdentifierStyle } from "@/features/properties/lib/unit-codes";
+import type { UnitNumbering } from "@/features/properties/lib/unit-numbering";
+import type { FloorGroup } from "@/features/properties/lib/floor-groups";
+import type { ParkingType } from "@/features/properties/lib/parking-types";
+import type { FloorLayout, UnitDesign } from "@/features/properties/lib/floor-layout";
+import type { ParkingLayout } from "@/features/properties/lib/parking-layout";
 
 export const developments = pgTable(
   "developments",
@@ -72,6 +78,8 @@ export const properties = pgTable(
     monthlyRent: numeric("monthly_rent", { precision: 18, scale: 2 }),
     parkingPrice: numeric("parking_price", { precision: 18, scale: 2 }),
     reservationFee: numeric("reservation_fee", { precision: 18, scale: 2 }),
+    /** Per parking slot, unless the slot sets its own. */
+    parkingReservationFee: numeric("parking_reservation_fee", { precision: 18, scale: 2 }),
     commissionRate: numeric("commission_rate", { precision: 7, scale: 4 }),
     lotAreaSqm: numeric("lot_area_sqm", { precision: 12, scale: 2 }),
     floorAreaSqm: numeric("floor_area_sqm", { precision: 12, scale: 2 }),
@@ -96,6 +104,12 @@ export const properties = pgTable(
       .default("letter")
       .notNull()
       .$type<UnitIdentifierStyle>(),
+    /** Chosen when floors are first set up; null keeps the old letters with floor 4 skipped. */
+    unitNumbering: jsonb("unit_numbering").$type<UnitNumbering>(),
+    /** Floors named together with a colour (e.g. Tower A, teal), shown on each of their units. */
+    floorGroups: jsonb("floor_groups").$type<FloorGroup[]>().default([]).notNull(),
+    /** Slot designs (size, price, reservation fee) dragged onto floors in Design floor. */
+    parkingTypes: jsonb("parking_types").$type<ParkingType[]>().default([]).notNull(),
     createdBy: uuid("created_by").references(() => users.id, {
       onDelete: "set null",
     }),
@@ -167,6 +181,29 @@ export const propertyStatusHistory = pgTable("property_status_history", {
   changedAt: timestamp("changed_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+/** A kind of unit in a property (e.g. "3 BR corner"): its size and price, shared by its units. */
+export const unitTypes = pgTable(
+  "unit_types",
+  {
+    id: uuid().defaultRandom().primaryKey(),
+    propertyId: uuid("property_id")
+      .notNull()
+      .references(() => properties.id, { onDelete: "cascade" }),
+    name: varchar({ length: 60 }).notNull(),
+    bedrooms: smallint(),
+    floorArea: numeric("floor_area", { precision: 10, scale: 2 }),
+    price: numeric({ precision: 18, scale: 2 }),
+    /** Per unit of this type; null uses the property's. */
+    reservationFee: numeric("reservation_fee", { precision: 18, scale: 2 }),
+    monthlyAmortization: numeric("monthly_amortization", { precision: 18, scale: 2 }),
+    /** The unit's top-view design: its outline and rooms. */
+    layout: jsonb().$type<UnitDesign>(),
+    createdAt,
+    updatedAt,
+  },
+  (t) => [unique().on(t.propertyId, t.name)],
+);
+
 export const floors = pgTable(
   "floors",
   {
@@ -178,6 +215,10 @@ export const floors = pgTable(
     label: varchar({ length: 60 }).notNull(),
     imageStorageKey: text("image_storage_key"),
     imageMimeType: varchar("image_mime_type", { length: 100 }),
+    /** The designed top view: units placed on the floor and its shared spaces. */
+    layout: jsonb().$type<FloorLayout>(),
+    /** The designed parking: where each slot is, and the drive paths, ramps and pillars. */
+    parkingLayout: jsonb("parking_layout").$type<ParkingLayout>(),
     createdAt,
     updatedAt,
   },
@@ -204,11 +245,16 @@ export const units = pgTable(
     }),
     imageStorageKey: text("image_storage_key"),
     imageMimeType: varchar("image_mime_type", { length: 100 }),
+    unitTypeId: uuid("unit_type_id").references(() => unitTypes.id, { onDelete: "set null" }),
+    /** This unit's own size and price; empty uses its type's. */
+    floorArea: numeric("floor_area", { precision: 10, scale: 2 }),
+    price: numeric({ precision: 18, scale: 2 }),
     createdAt,
     updatedAt,
   },
   (t) => [
     unique().on(t.floorId, t.code),
+    index("units_unit_type_idx").on(t.unitTypeId),
     index("units_building_status_idx").on(t.buildingId, t.status),
     index("units_development_idx").on(t.developmentId),
     index("units_reserved_deal_id_idx").on(t.reservedDealId),
@@ -227,6 +273,11 @@ export const propertyParkingSlots = pgTable(
     floorId: uuid("floor_id").references(() => floors.id, { onDelete: "set null" }),
     code: varchar({ length: 50 }).notNull(),
     status: varchar({ length: 20 }).default("available").notNull(),
+    /** This slot's own price and reservation fee; null uses the property's parking amounts. */
+    price: numeric({ precision: 18, scale: 2 }),
+    reservationFee: numeric("reservation_fee", { precision: 18, scale: 2 }),
+    /** The parking type it was placed as; its price follows the type while it is available. */
+    parkingTypeId: varchar("parking_type_id", { length: 40 }),
     reservedDealId: uuid("reserved_deal_id").references((): AnyPgColumn => deals.id, {
       onDelete: "restrict",
     }),

@@ -1,7 +1,7 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
 import { and, eq, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { nextRecordCode } from "@/lib/record-codes";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import {
@@ -138,14 +138,6 @@ const valuesFor = (value: PropertyInput, context: { organizationId: string; user
   listingType: value.listingType,
   status: value.status,
   currency: value.currency,
-  askingPrice: money(value.askingPrice),
-  monthlyRent: money(value.monthlyRent),
-  parkingPrice: money(value.parkingPrice),
-  reservationFee: money(value.reservationFee),
-  lotAreaSqm: money(value.lotAreaSqm),
-  floorAreaSqm: money(value.floorAreaSqm),
-  bedrooms: value.bedrooms,
-  bathrooms: money(value.bathrooms),
   parkingSpaces: value.parkingSpaces,
   addressLine1: value.addressLine1,
   addressLine2: value.addressLine2,
@@ -186,7 +178,7 @@ export async function createProperty(input: PropertyInput): Promise<PropertyActi
         .insert(properties)
         .values({
           ...valuesFor(parsed.data, context),
-          propertyCode: `PROP-${randomUUID().toUpperCase()}`,
+          propertyCode: await nextRecordCode(tx, context.organizationId, "property"),
           createdBy: context.userId,
         })
         .returning({ id: properties.id });

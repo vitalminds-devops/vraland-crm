@@ -78,7 +78,8 @@ it("puts per-unit prices and fees before expandable applicant details on bill cr
   const html = await render();
   expect(html.indexOf("Bill items")).toBeLessThan(html.indexOf("Review applicant details"));
   expect(html.match(/Miscellaneous fee \(₱\)/g)).toHaveLength(5);
-  expect(html).toContain("Opportunity payment terms");
+  expect(html).toContain("Quoted prices and fees");
+  expect(html).not.toContain("Parking fee");
   expect(html).toContain("Monthly amortization");
   expect(html).toContain("Payments can be recorded after the bill is saved.");
   expect(html).toContain('value="DOE"');
@@ -102,7 +103,7 @@ it("shows saved totals, payment history and edit controls without a create form"
     "₱8,750,000.00",
     "Edit bill",
     "Record payment",
-    "Invoice: INV-2026-001",
+    "Invoice no. INV-2026-001",
   ])
     expect(html).toContain(text);
   expect(html).not.toContain("Create bill");

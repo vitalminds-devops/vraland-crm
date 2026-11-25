@@ -39,7 +39,7 @@ export function ClosingSoon({
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               {deal.expectedCloseDate
-                ? format(parseISO(deal.expectedCloseDate), "d MMM")
+                ? format(parseISO(deal.expectedCloseDate), "MMM d")
                 : "No date"}
             </p>
           </div>

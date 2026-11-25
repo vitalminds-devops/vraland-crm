@@ -94,7 +94,7 @@ export function DocumentUpload({
                   setError(
                     `Upload confirmation was not received. Check Documents before uploading again. Accepted formats: ${shared ? "PDF, JPG or PNG" : "PDF, DOCX, JPG, PNG or TXT"}; maximum 15 MB per file.`,
                   );
-                  notify("Could not confirm upload", "error", {
+                  notify("Couldn't confirm upload", "error", {
                     id: toastId,
                     description:
                       "Check Documents before uploading again. Your entries and selected file are still here.",
@@ -113,7 +113,7 @@ export function DocumentUpload({
                 <input type="hidden" name="dealId" value="" />
                 <p className="text-sm text-muted-foreground">
                   Files are available to everyone in your organization. Upload forms, templates or
-                  reference materials here. Keep personal client documents on the client record.
+                  reference materials here. Keep a contact's own documents on the contact.
                 </p>
               </>
             )}
@@ -152,7 +152,7 @@ export function DocumentUpload({
                   ))}
                 </NativeSelect>
                 <NativeSelect name="dealId" className={input}>
-                  <NativeSelectOption value="">No deal</NativeSelectOption>
+                  <NativeSelectOption value="">No opportunity</NativeSelectOption>
                   {options?.deals.map((v) => (
                     <NativeSelectOption key={v.id} value={v.id}>
                       {v.title}
@@ -221,7 +221,7 @@ export function ArchiveButton({ id }: { id: string }) {
         start(async () => {
           const r = await archiveDocument(id);
           if (!r.success) {
-            notify(r.error.message || "Unable to archive.", "error");
+            notify(r.error.message || "Couldn't archive.", "error");
             return;
           }
           notify("Document archived.", "success");
@@ -246,7 +246,7 @@ export function RestoreButton({ id }: { id: string }) {
         start(async () => {
           const r = await restoreDocument(id);
           if (!r.success) {
-            notify(r.error.message || "Unable to restore.", "error");
+            notify(r.error.message || "Couldn't restore.", "error");
             return;
           }
           notify("Document restored.", "success");

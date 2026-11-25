@@ -46,7 +46,7 @@ export function AvatarField({
         notify(done, "success", toastId);
         router.refresh();
       } catch {
-        notify("Could not confirm photo update", "error", {
+        notify("Couldn't confirm photo update", "error", {
           id: toastId,
           description:
             "Refresh your profile to check whether the photo was saved before uploading again.",
@@ -74,8 +74,8 @@ export function AvatarField({
         type="button"
         onClick={choose}
         disabled={pending}
-        title={src ? "Change photo" : "Add a photo"}
-        aria-label={src ? "Change photo" : "Add a photo"}
+        title={src ? "Change photo" : "Add photo"}
+        aria-label={src ? "Change photo" : "Add photo"}
         className="group relative -mt-10 block size-20 rounded-full ring-4 ring-card focus-visible:ring-primary/50 focus-visible:outline-none"
       >
         <span className="grid size-full place-items-center overflow-hidden rounded-full bg-gradient-to-br from-primary to-fuchsia-600 text-2xl font-semibold text-white">
@@ -112,7 +112,7 @@ export function AvatarField({
             className="gap-1.5"
           >
             <ImagePlus aria-hidden="true" className="size-3.5" />
-            {src ? "Change photo" : "Upload photo"}
+            {src ? "Change photo" : "Add photo"}
           </Button>
           {src && (
             <Button

@@ -1,7 +1,7 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
 import { and, eq } from "drizzle-orm";
+import { nextRecordCode } from "@/lib/record-codes";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { activities, auditLogs, developments } from "@/db/schema";
@@ -58,7 +58,7 @@ export async function createDevelopment(input: DevelopmentInput): Promise<Develo
         .values({
           ...valuesFor(parsed.data),
           organizationId: context.organizationId,
-          code: `DEV-${randomUUID().toUpperCase()}`,
+          code: await nextRecordCode(tx, context.organizationId, "development"),
         })
         .returning({ id: developments.id });
       await tx.insert(activities).values({

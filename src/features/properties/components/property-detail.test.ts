@@ -14,13 +14,11 @@ const fixture = vi.hoisted(() => ({
       listingType: "sale",
       status: "active",
       currency: "PHP",
-      askingPrice: "2300000",
-      monthlyRent: null,
       parkingPrice: null as string | null,
       reservationFee: null,
       bedrooms: 2,
       bathrooms: "1",
-      parkingSpaces: null,
+      parkingSpaces: 1,
       lotAreaSqm: null,
       floorAreaSqm: "42",
       listedAt: null,
@@ -58,8 +56,19 @@ const fixture = vi.hoisted(() => ({
     property: { id: "property" },
     floors: [{ id: "floor", label: "Floor 1", level: 1, unitCount: 1, imageStorageKey: null }],
     units: [
-      { id: "unit", code: "1A", floorId: "floor", status: "available", imageStorageKey: null },
+      {
+        id: "unit",
+        code: "1A",
+        floorId: "floor",
+        status: "available",
+        imageStorageKey: null,
+        unitTypeId: null,
+        floorArea: null,
+        price: "2300000",
+      },
     ],
+    unitTypes: [],
+    plans: [],
   },
 }));
 
@@ -84,13 +93,47 @@ vi.mock("@/features/properties/queries/parking.queries", () => ({
 vi.mock("@/components/common/back-button", () => ({
   BackButton: () => createElement("button", null, "Back to properties"),
 }));
-vi.mock("@/components/common/page-header", () => ({ PageHeader: () => null }));
+vi.mock("@/components/common/page-header", () => ({
+  PageHeader: ({ title, actions }: { title: string; actions?: React.ReactNode }) =>
+    createElement("header", null, title, actions),
+}));
+vi.mock("./property-actions-menu", () => ({
+  PropertyActionsMenu: (props: {
+    propertyId: string;
+    canEdit: boolean;
+    canAccess: boolean;
+    canArchive: boolean;
+    history: React.ReactNode;
+  }) =>
+    createElement(
+      "div",
+      { "data-property-actions-menu": true, "data-can-archive": props.canArchive },
+      createElement("button", { "aria-haspopup": "menu" }, "Actions"),
+      createElement(
+        "a",
+        { href: `/properties/${props.propertyId}?presentation=true` },
+        "Present to client",
+      ),
+      props.canEdit && createElement("a", { href: `/properties/${props.propertyId}/edit` }, "Edit"),
+      props.canAccess &&
+        createElement("a", { href: `/properties/${props.propertyId}/access` }, "Access"),
+      props.history && createElement("span", null, "History"),
+    ),
+}));
+vi.mock("@/features/properties/components/floor-plans-panel", () => ({
+  FloorPlansPanel: () => null,
+}));
+vi.mock("@/features/properties/components/unit-types-panel", () => ({
+  UnitTypesPanel: () => null,
+}));
 vi.mock("@/features/properties", async () => ({
   ...(await import("../lib/constants")),
   FloorsAndUnits: (props: {
     canManageUnits: boolean;
     canManageUnitPictures: boolean;
     units: { code: string }[];
+    overlayInfo?: React.ReactNode;
+    overlayActions?: React.ReactNode;
   }) =>
     createElement(
       "div",
@@ -98,9 +141,12 @@ vi.mock("@/features/properties", async () => ({
         "data-manage-units": props.canManageUnits,
         "data-manage-pictures": props.canManageUnitPictures,
       },
+      props.overlayInfo,
+      props.overlayActions,
       props.units.map((unit) => unit.code).join(", "),
     ),
-  ParkingSlots: () => null,
+  ParkingSlots: (props: { price?: string | null }) =>
+    createElement("p", { "data-parking-price": props.price ?? "" }),
 }));
 
 async function render(presentation?: string | string[]) {
@@ -122,7 +168,7 @@ describe("property presentation", () => {
     fixture.permissions.add("properties.manage_unit_pictures");
   });
 
-  it("keeps management available and history collapsed in the agent view", async () => {
+  it("groups presentation and permitted actions in the menu over the floor view", async () => {
     const html = await render();
     expect(html).toContain('data-property-presentation="false"');
     expect(html).toContain("Present to client");
@@ -130,8 +176,19 @@ describe("property presentation", () => {
     expect(html).toContain('href="/properties/property/access"');
     expect(html).toContain('data-manage-units="true"');
     expect(html).toContain('data-manage-pictures="true"');
-    expect(html).toContain("Internal status note");
-    expect(html).not.toContain("<details open");
+    expect(html).toContain('aria-haspopup="menu"');
+    expect(html).toContain('data-property-actions-menu="true"');
+    expect(html).toContain("</div><button>Back to properties</button>");
+    expect(html.indexOf("Present to client")).toBeGreaterThan(
+      html.indexOf("data-property-actions-menu"),
+    );
+    expect(html.indexOf(">History<")).toBeGreaterThan(0);
+    // The actions menu floats over the floor view now, not in the page header.
+    expect(html.indexOf(">History<")).toBeGreaterThan(
+      html.indexOf(`aria-label="Floors, units and parking"`),
+    );
+    expect(html).not.toContain("Internal status note");
+    expect(html).not.toContain("<details");
   });
 
   it("shows client details and inventory without editing controls or internal history", async () => {
@@ -139,8 +196,8 @@ describe("property presentation", () => {
     expect(html).toContain('data-property-presentation="true"');
     expect(html).toContain("Exit presentation");
     expect(html).toContain("QA Tower 1");
-    expect(html).toContain("₱2,300,000");
-    expect(html).toContain("42 sqm");
+    // Size and rooms belong to each unit now, not the property.
+    expect(html).not.toContain("42 sqm");
     expect(html).toContain("Swimming pool");
     expect(html).toContain("1A");
     expect(html).toContain('data-manage-units="false"');
@@ -150,11 +207,18 @@ describe("property presentation", () => {
     expect(html).not.toContain("Added ");
     expect(html).not.toContain("/edit");
     expect(html).not.toContain("/access");
+    expect(html).not.toContain('data-property-actions-menu="true"');
     expect(html).toContain("https://www.google.com/maps?q=Ortigas%20Avenue%2C%20Pasig%20City");
     expect(html).not.toContain("Monthly fee");
-    expect(html.indexOf('aria-label="Property overview"')).toBeLessThan(
-      html.indexOf('id="floors-units"'),
-    );
+    expect(html).not.toContain(">Address<");
+    expect(html.indexOf("<address")).toBeLessThan(html.indexOf('id="floors-units"'));
+    expect(html).toContain("<address");
+    expect(html).toContain("Ortigas Avenue, Pasig City");
+    expect(html).not.toContain("Parking slots");
+    // The floor view is the page itself, with no card title or summary above it.
+    expect(html).toContain(`aria-label="Floors, units and parking"`);
+    expect(html).not.toContain("1 available");
+    expect(html).not.toContain("A bright city home.");
   });
 
   it("does not grant editing permissions when exiting presentation", async () => {
@@ -172,16 +236,19 @@ describe("property presentation", () => {
     expect(html).not.toContain("/edit");
     expect(html).toContain('data-manage-units="false"');
     expect(html).toContain('data-manage-pictures="false"');
+    expect(html).toContain('data-can-archive="false"');
   });
 
-  it("shows the parking price in the property's currency when presenting", async () => {
-    fixture.data.record.parkingPrice = "350000";
-    const html = await render("true");
-    expect(html).toContain("Parking price");
-    expect(html).toContain("₱350,000");
+  it("offers archive in the menu only with permission and access to the property", async () => {
+    fixture.permissions.add("properties.delete");
+    expect(await render()).toContain('data-can-archive="true"');
+    fixture.canWrite = false;
+    expect(await render()).toContain('data-can-archive="false"');
   });
 
-  it("omits the parking price when none is set", async () => {
-    expect(await render()).not.toContain("Parking price");
+  it("leaves unit prices to each unit's tag, with no property-wide price", async () => {
+    const html = await render();
+    expect(html).not.toContain("Unit prices");
+    expect(html).not.toContain("Gross list price");
   });
 });

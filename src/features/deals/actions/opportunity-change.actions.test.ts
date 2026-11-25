@@ -2,6 +2,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { activities, auditLogs, billItems, bills, deals } from "@/db/schema";
 import { openDealForApprovedContact } from "../lib/open-deal";
 import { addOpportunityForContact, changeOpportunityUnits } from "./opportunity.actions";
+import { listParkingSlots } from "@/features/properties/queries/parking.queries";
 
 const uuid = (n: number) => `12345678-1234-4234-8234-${String(n).padStart(12, "0")}`;
 const dealId = uuid(1);
@@ -22,7 +23,6 @@ const mock = vi.hoisted(() => ({
     unknown
   > | null,
   bill: null as Record<string, string> | null,
-  unitCodes: [] as string[],
   paid: 0,
   writes: [] as { kind: string; table: unknown; values: unknown }[],
 }));
@@ -52,7 +52,6 @@ vi.mock("@/db", () => ({
             from: () => chain,
             where: () => chain,
             for: async () => (mock.bill ? [mock.bill] : []),
-            orderBy: async () => mock.unitCodes.map((code) => ({ code })),
           };
           return chain;
         },
@@ -95,7 +94,6 @@ vi.mock("@/features/properties/queries/property-floor-unit.queries", () => ({
     {
       id: buildingId,
       title: "Tower 2",
-      askingPrice: "2500000",
       parkingPrice: "500000",
       parkingSpaces: 10,
       currency: "PHP",
@@ -103,11 +101,32 @@ vi.mock("@/features/properties/queries/property-floor-unit.queries", () => ({
   ],
 }));
 vi.mock("@/features/properties/queries/parking.queries", () => ({
-  listParkingSlots: async () => [
-    { id: heldSlot, code: "P1", status: "deposit_paid", floorId: null },
-    { id: freeSlot, code: "P2", status: "available", floorId: null },
-    { id: takenSlot, code: "P3", status: "sold", floorId: null },
-  ],
+  listParkingSlots: vi.fn(async () => [
+    {
+      id: heldSlot,
+      code: "P1",
+      status: "deposit_paid",
+      floorId: null,
+      price: "500000",
+      reservedDealId: dealId,
+    },
+    {
+      id: freeSlot,
+      code: "P2",
+      status: "available",
+      floorId: null,
+      price: "500000",
+      reservedDealId: null,
+    },
+    {
+      id: takenSlot,
+      code: "P3",
+      status: "sold",
+      floorId: null,
+      price: "500000",
+      reservedDealId: "someone-else",
+    },
+  ]),
 }));
 vi.mock("@/lib/permissions/property-access", () => ({ grantedUnitsCondition: vi.fn() }));
 vi.mock("./deal.actions", () => ({ changeDealStage: vi.fn() }));
@@ -132,7 +151,13 @@ const selection = {
   parkingSlotIds: [heldSlot],
 };
 /** Queues the three reads a change makes: the deal, the chosen units, the development. */
-const queueChange = (deal = reserved, unitRows = [{ id: unitA }, { id: unitB }]) => {
+const queueChange = (
+  deal = reserved,
+  unitRows = [
+    { id: unitB, code: "1B", price: "2500000" },
+    { id: unitA, code: "1A", price: "2500000" },
+  ],
+) => {
   mock.selects = [[deal], unitRows, [{ name: "Fairfield" }]];
 };
 const written = (kind: string, table: unknown) =>
@@ -151,7 +176,6 @@ beforeEach(() => {
     parkingSlotIds: [],
   };
   mock.bill = null;
-  mock.unitCodes = ["1A", "1B"];
   mock.paid = 0;
   mock.writes = [];
 });
@@ -197,7 +221,7 @@ it("keeps hand-set bill prices when the same selection is saved again", async ()
   expect(written("delete", billItems)).toEqual([]);
 });
 
-it("rebuilds the bill for the new units, keeping its fee rate", async () => {
+it("rebuilds the bill for the new units at their fee rate, with a line per parking slot", async () => {
   // A 5% fee on the old 2,000,000 bill.
   mock.bill = {
     id: "bill",
@@ -209,15 +233,33 @@ it("rebuilds the bill for the new units, keeping its fee rate", async () => {
   expect((await changeOpportunityUnits(selection)).success).toBe(true);
   expect(written("update", bills)[0].values).toMatchObject({
     unitPrice: "5500000.00",
-    miscellaneousFee: "275000.00",
+    // 5% on the units only; parking carries no miscellaneous fee.
+    miscellaneousFee: "250000.00",
   });
   expect(written("delete", billItems)).toHaveLength(1);
   const lines = written("insert", billItems)[0].values as { unitLabel: string }[];
   expect(lines.map((line) => line.unitLabel)).toEqual([
     "Unit 1A · Tower 2 · Fairfield",
     "Unit 1B · Tower 2 · Fairfield",
-    "Parking (1 slot) · Tower 2",
+    "Parking P1 · Tower 2",
   ]);
+});
+
+it("prices each unit by its own price and refuses an unpriced unit", async () => {
+  queueChange(reserved, [
+    { id: unitA, code: "1A", price: "2000000" },
+    { id: unitB, code: "1B", price: "3000000" },
+  ]);
+  expect((await changeOpportunityUnits(selection)).success).toBe(true);
+  expect(written("update", deals)[0].values).toMatchObject({ amount: "5500000.00" });
+  queueChange(reserved, [
+    { id: unitA, code: "1A", price: "2000000" },
+    { id: unitB, code: "1B", price: null as unknown as string },
+  ]);
+  const result = await changeOpportunityUnits(selection);
+  expect(!result.success && result.error.message).toBe(
+    "Unit 1B has no price yet. Set it on the property's Design page, then try again.",
+  );
 });
 
 it("refuses a new total below what is already paid and writes nothing", async () => {
@@ -284,4 +326,22 @@ it("needs a client to copy from", async () => {
   const result = await addOpportunityForContact(dealId);
   expect(!result.success && result.error.message).toBe("This opportunity has no client.");
   expect(openDealForApprovedContact).not.toHaveBeenCalled();
+});
+
+it("names a parking slot that has no price", async () => {
+  vi.mocked(listParkingSlots).mockResolvedValueOnce([
+    {
+      id: heldSlot,
+      code: "P1",
+      status: "deposit_paid",
+      floorId: null,
+      price: null,
+      reservedDealId: dealId,
+    } as never,
+  ]);
+  queueChange();
+  const result = await changeOpportunityUnits(selection);
+  expect(!result.success && result.error.message).toBe(
+    "Parking P1 has no price yet. Set it on the property's Design page, then try again.",
+  );
 });

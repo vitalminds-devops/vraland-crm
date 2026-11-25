@@ -51,14 +51,6 @@ export const propertySchema = z
       .trim()
       .regex(/^[A-Za-z]{3}$/)
       .transform((v) => v.toUpperCase()),
-    askingPrice: optionalNonnegative,
-    monthlyRent: optionalNonnegative,
-    parkingPrice: optionalNonnegative,
-    reservationFee: optionalNonnegative,
-    lotAreaSqm: optionalNonnegative,
-    floorAreaSqm: optionalNonnegative,
-    bedrooms: optionalNonnegative,
-    bathrooms: optionalNonnegative,
     parkingSpaces: optionalNonnegative,
     addressLine1: optionalText(),
     addressLine2: optionalText(),

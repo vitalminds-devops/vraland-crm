@@ -546,14 +546,14 @@ export function ContactForm({
           </FormRow>
           <div className="space-y-2">
             <label className="text-[14px] font-medium text-[var(--text)]">Contact channels</label>
-            <p className="text-[12px] text-[var(--text-muted)]">Tick how to reach this client.</p>
-            <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-7">
+            <p className="text-[12px] text-[var(--text-muted)]">Tick how to reach this contact.</p>
+            <div className="flex flex-wrap gap-2 sm:grid sm:grid-cols-7 sm:gap-1.5">
               {preferredMethodOptions.map((method) => {
                 const selected = channels.includes(method);
                 return (
                   <label
                     key={method}
-                    className={`flex min-w-0 cursor-pointer items-center justify-center gap-1 rounded-full border px-1.5 py-1.5 text-[12px] font-medium whitespace-nowrap transition-colors select-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary/35 ${
+                    className={`flex min-w-0 cursor-pointer items-center justify-center gap-1.5 rounded-full border px-3 py-2 text-[13px] font-medium whitespace-nowrap sm:gap-1 sm:px-1.5 sm:py-1.5 sm:text-[12px] transition-colors select-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary/35 ${
                       selected
                         ? "border-[var(--form-accent)] bg-[var(--accent-light)] text-[var(--text)]"
                         : "border-[var(--border)] bg-[var(--surface-raised)] text-[var(--text-muted)] hover:border-[var(--border-strong)] hover:text-[var(--text)]"
@@ -592,7 +592,7 @@ export function ContactForm({
               {mobilePhoneFields.slice(0, phoneSlots).map((field, index) => (
                 <FormField
                   key={field}
-                  label={`Mobile Phone ${index + 1}`}
+                  label={`Mobile phone ${index + 1}`}
                   required={index === 0}
                   hint={index === 0 ? "Main number" : undefined}
                   error={errors[field]?.message}
@@ -793,19 +793,19 @@ export function ContactForm({
             </FormSection>
           </>
         )}
-        <FormSection id="section-4" number={contactId ? 4 : 2} title="Deal">
+        <FormSection id="section-4" number={contactId ? 4 : 2} title="Opportunity">
           <p className="text-[13px] text-[var(--text-muted)]">
             {!canEditDeal
               ? initialDeal
-                ? "You can't edit this deal."
-                : "You can't create deals."
+                ? "You can't edit this opportunity."
+                : "You can't create opportunities."
               : options.dealStages.length === 0
                 ? "No pipeline stages yet."
                 : !hasUsableStage
                   ? "No stage is open to you."
                   : initialDeal
-                    ? "Changes here update this contact's existing deal."
-                    : "A deal opens in Leads automatically."}
+                    ? "Changes here update this contact's existing opportunity."
+                    : "It starts in Leads."}
           </p>
           <FormRow>
             <FormField label="Agent" required error={errors.assignedAgentId?.message}>
@@ -849,7 +849,7 @@ export function ContactForm({
               rows={4}
               {...register("notes")}
               className={formTextareaClass}
-              placeholder="Notes about this client"
+              placeholder="Notes about this contact"
             />
           </FormField>
           <label className="flex items-center gap-2 text-sm">
@@ -863,8 +863,9 @@ export function ContactForm({
         </FormSection>
       </div>
 
-      <div className={cn(formActionsClass, "static bg-card")}>
-        <div className="flex w-full flex-wrap justify-end gap-3 sm:w-auto sm:ml-auto">
+      {/* Phones keep Cancel and Save pinned to the bottom of the screen. */}
+      <div className={cn(formActionsClass, "bg-card sm:static")}>
+        <div className="flex w-full flex-wrap justify-end gap-3 max-sm:[&>button]:flex-1 sm:ml-auto sm:w-auto">
           <Button
             type="button"
             variant="secondary"
@@ -874,7 +875,7 @@ export function ContactForm({
             Cancel
           </Button>
           <Button type="submit" disabled={pending}>
-            {pending ? "Saving..." : contactId ? "Save changes" : "Create contact"}
+            {pending ? "Saving…" : contactId ? "Save changes" : "Create contact"}
           </Button>
         </div>
       </div>

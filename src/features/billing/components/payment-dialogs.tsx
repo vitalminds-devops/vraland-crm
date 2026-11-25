@@ -85,11 +85,19 @@ export function RecordPaymentButton({
   balance,
   bills,
   size,
+  suggested,
 }: {
   billId?: string;
   balance?: string;
-  bills?: { id: string; label: string; balance: string }[];
+  bills?: {
+    id: string;
+    label: string;
+    balance: string;
+    suggested?: Partial<Record<string, string | null>>;
+  }[];
   size?: ButtonProps["size"];
+  /** Amounts to fill in when a payment type is picked: reservation still due, a month, the balance. */
+  suggested?: Partial<Record<string, string | null>>;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -97,7 +105,10 @@ export function RecordPaymentButton({
   const [pending, start] = useTransition();
   const [selected, setSelected] = useState(billId ?? "");
   const [method, setMethod] = useState("");
+  // Controlled so picking a payment type can fill it in.
+  const [amount, setAmount] = useState("");
   const selectedBalance = billId ? balance : bills?.find((b) => b.id === selected)?.balance;
+  const selectedSuggested = billId ? suggested : bills?.find((b) => b.id === selected)?.suggested;
 
   return (
     <>
@@ -109,6 +120,7 @@ export function RecordPaymentButton({
           setError(undefined);
           setSelected(billId ?? "");
           setMethod("");
+          setAmount("");
           setOpen(true);
         }}
       >
@@ -179,7 +191,7 @@ export function RecordPaymentButton({
                 setError(
                   "Payment confirmation was not received. Check this bill's payments before submitting again.",
                 );
-                notify("Could not confirm payment", "error", {
+                notify("Couldn't confirm payment", "error", {
                   id: toastId,
                   description:
                     "Check this bill's payments before submitting again. Your entries are still here.",
@@ -214,14 +226,15 @@ export function RecordPaymentButton({
               required
               defaultValue=""
               onChange={(event) => {
-                // A full payment is the remaining balance; fill it in.
-                const amount = event.currentTarget.form?.elements.namedItem("amount");
-                if (
-                  event.currentTarget.value === "full_payment" &&
-                  selectedBalance &&
-                  amount instanceof HTMLInputElement
-                )
-                  amount.value = Number(selectedBalance).toFixed(2);
+                // Fill in what this payment is usually for: the reservation fee still due, a
+                // month of amortization, or the remaining balance. The agent can still change it.
+                const kind = event.currentTarget.value;
+                const fill =
+                  selectedSuggested?.[kind] ??
+                  (kind === "full_payment" && selectedBalance
+                    ? Number(selectedBalance).toFixed(2)
+                    : null);
+                if (fill) setAmount(fill);
               }}
             >
               <NativeSelectOption value="" disabled>
@@ -237,7 +250,14 @@ export function RecordPaymentButton({
           <div className="grid gap-4 sm:grid-cols-2">
             <label className={field}>
               <span className={fieldLabel}>Amount (₱)</span>
-              <MoneyInput name="amount" required autoFocus placeholder="e.g. 25,000" />
+              <MoneyInput
+                name="amount"
+                value={amount}
+                onValueChange={setAmount}
+                required
+                autoFocus
+                placeholder="e.g. 25,000"
+              />
             </label>
             <label className={field}>
               <span className={fieldLabel}>Date paid</span>

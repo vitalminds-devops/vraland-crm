@@ -1,12 +1,13 @@
 ﻿"use server";
 
-import { randomUUID } from "node:crypto";
 import { and, asc, eq, isNull } from "drizzle-orm";
+import { nextRecordCode } from "@/lib/record-codes";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { dealFirstMonthPaid, dealReservationPaid } from "@/features/billing/lib/deal-payment";
 import {
   inventoryStatusForDeal,
+  readReservationPaid,
   isFullyPaid,
   readDealPayments,
 } from "@/features/billing/lib/billing-inventory";
@@ -164,7 +165,7 @@ export async function createDealForContact(
         .insert(deals)
         .values({
           organizationId: context.organizationId,
-          dealCode: `DEAL-${randomUUID().toUpperCase()}`,
+          dealCode: await nextRecordCode(tx, context.organizationId, "opportunity"),
           title,
           dealType: v.dealType,
           stageId: v.stageId,
@@ -622,7 +623,11 @@ async function applyStageChange(
         buildingId: before.propertyId,
         unitIds: before.unitIds.length ? before.unitIds : before.unitId ? [before.unitId] : [],
         parkingSlotIds: before.parkingSlotIds,
-        status: inventoryStatusForDeal(stage, await readDealPayments(tx, dealId)),
+        status: inventoryStatusForDeal(
+          stage,
+          await readDealPayments(tx, dealId),
+          await readReservationPaid(tx, dealId),
+        ),
       });
       await tx
         .update(deals)

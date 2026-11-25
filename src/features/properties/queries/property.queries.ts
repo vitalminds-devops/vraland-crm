@@ -11,6 +11,7 @@ import {
   propertyStatusHistory,
   units,
   users,
+  unitTypes,
 } from "@/db/schema";
 import { canAccessResource, requirePermission } from "@/lib/permissions/authorization";
 import type { AuthorizationContext } from "@/lib/permissions/policy";
@@ -60,8 +61,6 @@ export async function listProperties(input: PropertyListFilters & { page: number
         type: properties.propertyType,
         listingType: properties.listingType,
         status: properties.status,
-        askingPrice: properties.askingPrice,
-        monthlyRent: properties.monthlyRent,
         currency: properties.currency,
         city: properties.city,
         province: properties.province,
@@ -126,8 +125,8 @@ export async function exportPropertyUnits(input: PropertyListFilters) {
         type: properties.propertyType,
         listingType: properties.listingType,
         status: properties.status,
-        askingPrice: properties.askingPrice,
-        monthlyRent: properties.monthlyRent,
+        // Each unit's own price, else its unit type's: what it sells for.
+        unitPrice: sql<string | null>`coalesce(${units.price}, ${unitTypes.price})`,
         currency: properties.currency,
         city: properties.city,
         province: properties.province,
@@ -149,6 +148,7 @@ export async function exportPropertyUnits(input: PropertyListFilters) {
         ),
       )
       .leftJoin(floors, eq(units.floorId, floors.id))
+      .leftJoin(unitTypes, eq(units.unitTypeId, unitTypes.id))
       .where(propertyListWhere(context, input))
       .orderBy(asc(properties.title), asc(floors.level), asc(units.code))
       // shortcut: capped at 20,000 unit rows; stream it if the inventory ever outgrows that.

@@ -9,5 +9,5 @@ it("shows an instant at Manila's clock time whatever the browser's zone", () => 
 
 it("labels all-day events instead of giving them a clock time", () => {
   expect(timeLabel({ allDay: true, startAt: new Date(2026, 10, 12, 9, 30) })).toBe("All day");
-  expect(timeLabel({ allDay: false, startAt: new Date(2026, 10, 12, 9, 30) })).toBe("09:30");
+  expect(timeLabel({ allDay: false, startAt: new Date(2026, 10, 12, 9, 30) })).toBe("9:30 AM");
 });

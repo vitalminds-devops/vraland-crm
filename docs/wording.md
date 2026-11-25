@@ -4,7 +4,18 @@ Use these exact words everywhere users read them: pages, buttons, toasts, CSV ex
 Sentence case ("Gross list price"). Keep UI text short: a few words, no explanations in dialogs, headers or hints.
 When a word isn't here, copy what the nearest existing page says, then add it here.
 
+**One word per idea, everywhere.** A thing has one name across the whole app: page titles, tabs, buttons, dialog titles, field labels, toasts, errors, aria labels, CSV headers, permissions and `CHANGELOG.md`. When a term is renamed, rename every place users read it in the same change, add the new word here with the old one under Not, and search the code for the old word before calling it done. Names inside the code (types, columns) may stay as they are.
+
 ## Preferred terms
+
+### Dashboard figures
+
+| Say | Not | Where / notes |
+|---|---|---|
+| Reservation value | Total reservations (for an amount) | Value of open opportunities currently in Reservation; show the reservation count underneath. |
+| Won sales value | Won (for an amount) | All-time value of won opportunities; collected payments are a separate amount. |
+| Monthly payments received | Monthly paid | All-time payments classified as Monthly, not payments received during this month. Show "All time" underneath. |
+| Payments received this month | Collected this month | All payment classifications received during the current calendar month. |
 
 ### People
 
@@ -42,6 +53,9 @@ When a word isn't here, copy what the nearest existing page says, then add it he
 | Floor | level, storey | |
 | Unit | lot, room, inventory | |
 | Parking slot | parking space, Parking Slots | One slot. "Parking" as a section or list name. |
+| Section | floor group, wing, zone | A named, coloured set of a property's floors, or their odd, even or picked units, such as Tower A or Sunrise. Set on the Design page. |
+| Unit identifier, Identifier | numbering, unit number, unit code | What names a unit: letters (2A), numbers (201) or custom endings. Set with Identifier in Design floor. |
+| Unit ending | suffix, unit letter | The part of a unit identifier after its floor: A in 2A, 03 in 203. |
 | Photo | picture, image | Profile, cover and unit photos. "Add photo", "Change photo". |
 | Property access | grants, unit access | "Give access", "Save access", "Manage access". |
 
@@ -166,44 +180,8 @@ A button says exactly what it does: verb + thing. The toast repeats the verb in 
 
 ## Inconsistencies found
 
-Found on 2026-11-20. Line numbers drift; search for the quoted text. Most visible first.
+Found on 2026-11-20; items 1–38 were fixed on 2026-11-24 across contacts, opportunities, reports, billing, exports, permissions, settings, calendar and properties. Still open:
 
-1. `src/features/contacts/components/pipeline-stage-badge.tsx:20` "No deal" → "No opportunity" (contacts list).
-2. `app/(crm)/contacts/new/page.tsx:27` step "Deal" → "Opportunity".
-3. `src/features/contacts/components/contact-form.tsx:796-808` section "Deal", "You can't edit this deal.", "You can't create deals.", "A deal opens in Leads automatically." → "Opportunity", "opportunity", "It starts in Leads."
-4. `app/(crm)/dashboard/page.tsx:210` "Closed sales & forecast" → "Won sales & forecast"; same in `src/lib/permissions/catalog.ts:116-117` ("Show closed sales & forecast").
-5. `src/features/dashboard/components/dashboard-charts.tsx:81`, `src/features/reports/components/report-charts.tsx:71,206` "Closed sales" → "Won sales".
-6. `app/(crm)/reports/sales/page.tsx:169` "No closed sales in this period" → "No won sales in this period".
-7. `app/(crm)/reports/forecast/page.tsx:88` "No open deals are expected in this period." → "No open opportunities expected in this period."
-8. `app/(crm)/billing/page.tsx:144` "Search client, broker, …" → "Search contact, broker, …".
-9. `app/(crm)/properties/[id]/page.tsx:89` "Present to client" → "Present".
-10. `src/features/contacts/components/contact-form.tsx:852` "Notes about this client" → "Notes about this contact".
-11. `src/features/deals/components/opportunity-dialog.tsx:697` "Enter the client's TIN number" → "Enter the contact's TIN".
-12. `src/features/deals/components/opportunity-units.tsx:45` "…for this client?" → "…for this contact?"
-13. `src/features/deals/components/opportunity-dialog.tsx:1064` "Select a building and unit…" → "Select a property and unit…".
-14. `src/features/properties/components/property-floor-unit-selector.tsx:193,203` "Building" → "Property".
-15. `app/(crm)/billing/[dealId]/page.tsx:404` label "Project" → "Development"; `app/(crm)/developments/[id]/edit/page.tsx:39` "Update this project." → "Update this development."
-16. `app/api/billing/export/route.ts:36` and `app/api/payments/export/route.ts:26` column "Deal" → "Opportunity"; payments "Paid on" → "Date paid".
-17. `app/api/tasks/export/route.ts:42` column "Assigned to" → "Assignee".
-18. `app/(crm)/payments/page.tsx:200` "Invoice: …" / "No invoice number" → "Invoice no. …" / "No invoice no."
-19. `src/features/marketing/components/enrollment-form.tsx:75,79,84,96,98` "deal" → "opportunity"; `src/features/documents/components/document-forms.tsx:155` "No deal" → "No opportunity".
-20. `src/lib/permissions/catalog.ts:174,178` and module label "Client documents" → "Contact documents" ("View contact documents", "Manage contact documents"); same wording in `permission-details.ts:129,206-220,619,649`.
-21. `src/lib/permissions/catalog.ts` "Create tasks" → "Add tasks" (every other add permission says "Add").
-22. `src/lib/permissions/permission-details.ts:227,232,233,236,820` "inventory" → "properties" / "units".
-23. `app/(crm)/marketing/campaigns/new/page.tsx:18`, `automations/new/page.tsx:16`, `email-templates/new/page.tsx:18`, `sms-templates/new/page.tsx:18` "New …" → "Add …".
-24. `src/features/settings/components/settings-forms.tsx:418,482` "Create account" → "Create user" (the heading says "Create user").
-25. `src/features/reports/components/report-shell.tsx:58` "Export CSV" → "Export".
-26. `app/(crm)/account/page.tsx:20` and `src/features/contacts/lib/contact-write-error.ts:24` "Ask an admin…" → "Ask an Administrator…"; `src/features/deals/lib/stage-transitions.ts:138` "Only admins can…" → name the roles.
-27. Three dots instead of `…`: `contact-form.tsx:877` "Saving...", `property-form.tsx:621` "Saving...", `contact-row.tsx:281` "Archiving...", `broker-reassign-modal.tsx:282` "Reassigning...", `sign-out-button.tsx:25` "Signing out...", `src/components/ui/toolbar-helpers.tsx:13` "Search name, email, code...".
-28. `src/features/contacts/components/contact-row.tsx:93` "Contact archived" → "Contact archived."
-29. "Could not" / "Unable to" → "Couldn't": `document-forms.tsx:224,249` "Unable to archive." / "Unable to restore.", `parking-slots.tsx:64` "Parking could not be updated.", `pipeline-board.tsx:238` "Could not move to …", "Could not confirm …" in `avatar-field.tsx:49`, `payment-dialogs.tsx:182`, `import-form.tsx:62`, `requirement-checklist.tsx:77`, `document-forms.tsx:97`, `unit-picture-dialog.tsx:81`; `password-forms.tsx:98` "Passwords do not match." → "Passwords don't match."
-30. `src/features/developments/components/development-form.tsx:173` "Review the highlighted fields." → "Review the highlighted fields below."
-31. Viewing statuses shown raw and lowercase ("no show"): `src/features/calendar/components/viewing-status.tsx:48`, `app/(crm)/calendar/viewings/page.tsx:71,101` → "Scheduled", "No-show", ….
-32. `src/features/tasks/lib/task-options.ts:75` task type shows "Follow up" → "Follow-up".
-33. Title Case: `src/features/billing/components/bill-form.tsx:231` "Applicant Information", `src/features/billing/lib/bill-applicant.ts:12-24` "Last Name", "Civil Status", …, `contact-form.tsx:595` "Mobile Phone 1", `opportunity-dialog.tsx:959` "Parking Slots (Optional)", `floors-and-units.tsx:221` and `parking-slots.tsx:169` "Top View", `src/components/layout/navigation.ts` section "Real Estate".
-34. Day before month: `src/features/dashboard/components/closing-soon.tsx:42` and `src/features/dashboard/queries/dashboard.queries.ts:551` use "d MMM" ("20 Nov") → "MMM d".
-35. 24-hour times: `src/features/calendar/components/event-popover.tsx:128` "HH:mm" and the default in `src/features/calendar/lib/calendar-helpers.ts:15` → "h:mm a".
-36. "Picture" → "Photo": `src/features/properties/components/unit-picture-dialog.tsx:55,59,150,174` ("Add picture", "Replace picture", "No picture yet", "Uploading unit picture…"), permission "Manage unit pictures" and `permission-details.ts:283,329,339`. Also `avatar-field.tsx:77,115` "Add a photo" / "Upload photo" → "Add photo".
-37. `src/features/deals/components/pipeline-board.tsx:596` "Expected close date" → "Expected close".
-38. `app/(crm)/documents/archive/page.tsx:20` "Shared file archive" → "Archived documents".
-39. Calendar (in progress): `event-form.tsx:222` "On the calendar" → "Invite"; permission "Assign events to others" → reword with "Invite" once the change lands.
+1. Calendar (in progress): `event-form.tsx` "On the calendar" → "Invite"; permission "Assign events to others" → reword with "Invite" once the change lands.
+
+When you find a new one, add it here with the file and the quoted text, most visible first.

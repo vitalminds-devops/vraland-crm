@@ -42,7 +42,7 @@ export function AddOpportunityButton({ dealId }: { dealId: string }) {
       className="gap-1.5"
       disabled={pending}
       onClick={() => {
-        if (!window.confirm("Open another opportunity for this client? It starts in Leads."))
+        if (!window.confirm("Open another opportunity for this contact? It starts in Leads."))
           return;
         startTransition(async () => {
           const result = await addOpportunityForContact(dealId);
@@ -197,21 +197,21 @@ function ChangeUnitsDialog({ dealId, onClose }: { dealId: string; onClose: () =>
                     onUnitsChange={setUnitIds}
                     selectClassName={field}
                     disabled={pending}
+                    floorExtras={(floorId) =>
+                      buildingId && (
+                        <OpportunityParkingSelector
+                          key={buildingId}
+                          developmentId={developmentId}
+                          buildingId={buildingId}
+                          floorId={floorId}
+                          selectedIds={parkingSlotIds}
+                          dealId={dealId}
+                          onChange={(ids) => setParking({ buildingId, ids })}
+                          disabled={pending}
+                        />
+                      )
+                    }
                   />
-                )}
-                {buildingId && (
-                  <section className="space-y-2 rounded-xl border border-border/60 p-3">
-                    <h3 className="text-[13px] font-medium">Parking (optional)</h3>
-                    <OpportunityParkingSelector
-                      key={buildingId}
-                      developmentId={developmentId}
-                      buildingId={buildingId}
-                      selectedIds={parkingSlotIds}
-                      heldIds={draft.parkingSlotIds ?? []}
-                      onChange={(ids) => setParking({ buildingId, ids })}
-                      disabled={pending}
-                    />
-                  </section>
                 )}
                 <div
                   className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 rounded-lg bg-primary/5 px-4 py-3 text-sm"
@@ -232,6 +232,43 @@ function ChangeUnitsDialog({ dealId, onClose }: { dealId: string; onClose: () =>
                     </span>
                   )}
                 </div>
+                {current?.success && (
+                  <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 px-4 text-xs text-muted-foreground">
+                    <dt>
+                      {current.parkingReservationFee ? "Unit reservation fee" : "Reservation fee"}
+                    </dt>
+                    <dd className="tabular-nums">
+                      {current.reservationFee
+                        ? peso(
+                            (
+                              Number(current.reservationFee) -
+                              Number(current.parkingReservationFee ?? 0)
+                            ).toFixed(2),
+                            current.currency,
+                          )
+                        : "—"}
+                    </dd>
+                    {current.parkingReservationFee && (
+                      <>
+                        <dt>Parking reservation fee</dt>
+                        <dd className="tabular-nums">
+                          {peso(current.parkingReservationFee, current.currency)}
+                        </dd>
+                      </>
+                    )}
+                    <dt>Monthly amortization</dt>
+                    <dd className="tabular-nums">
+                      {current.monthlyAmortization
+                        ? peso(current.monthlyAmortization, current.currency)
+                        : "—"}
+                    </dd>
+                  </dl>
+                )}
+                {current?.success && current.missingFee && (
+                  <p role="note" className="text-xs text-amber-700 dark:text-amber-400">
+                    {current.missingFee}
+                  </p>
+                )}
                 <p className="text-xs text-muted-foreground">
                   Old units go back to Available. Payments stay on the bill.
                 </p>

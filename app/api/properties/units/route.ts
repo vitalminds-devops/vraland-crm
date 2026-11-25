@@ -33,6 +33,6 @@ export async function GET(request: NextRequest) {
       operation: "api_property_units",
       floorId,
     });
-    return NextResponse.json({ error: "Failed to fetch units" }, { status: 500 });
+    return NextResponse.json({ error: "Couldn't load units." }, { status: 500 });
   }
 }

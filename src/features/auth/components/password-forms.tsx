@@ -95,7 +95,7 @@ export function ResetPasswordForm({ token, invalid }: { token?: string; invalid:
     const password = String(formData.get("password"));
     const confirmation = String(formData.get("confirmation"));
     if (password !== confirmation) {
-      notify("Passwords do not match.", "error");
+      notify("Passwords don't match.", "error");
       return;
     }
     setPending(true);

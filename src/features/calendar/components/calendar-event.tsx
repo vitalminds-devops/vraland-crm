@@ -21,7 +21,7 @@ export function CalendarEventChip({
   const colors = EVENT_COLORS[kind];
   const owner = ownerName(event);
   const response = responseLabel(event);
-  const label = `${timeLabel(event, "h:mm a")} ${event.title}${owner ? ` \u00b7 ${owner}` : ""}${response ? ` \u00b7 ${response}` : ""}`;
+  const label = `${timeLabel(event)} ${event.title}${owner ? ` \u00b7 ${owner}` : ""}${response ? ` \u00b7 ${response}` : ""}`;
 
   return (
     <button

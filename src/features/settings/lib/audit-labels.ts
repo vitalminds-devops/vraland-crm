@@ -23,7 +23,7 @@ const entityCopy: Record<string, string> = {
   campaign: "Campaign",
   contact: "Contact",
   contacts: "Contacts",
-  contact_document_requirement: "Client document",
+  contact_document_requirement: "Contact document",
   contact_note: "Contact note",
   deal: "Opportunity",
   deal_stage_change_request: "Stage change request",

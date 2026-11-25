@@ -17,7 +17,7 @@ function toneFor(probability: number | null): DotBadgeTone {
 
 export function PipelineStageBadge({ stage, probability }: PipelineStageBadgeProps) {
   if (!stage) {
-    return <span className="text-sm text-muted-foreground">No deal</span>;
+    return <span className="text-sm text-muted-foreground">No opportunity</span>;
   }
 
   return <DotBadge tone={toneFor(probability)}>{stage}</DotBadge>;

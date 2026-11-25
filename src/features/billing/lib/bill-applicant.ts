@@ -9,20 +9,20 @@ type ApplicantField = {
   grouped?: boolean;
 };
 export const applicantFields: ApplicantField[] = [
-  { key: "lastName", label: "Last Name" },
-  { key: "firstName", label: "First Name" },
-  { key: "middleName", label: "Middle Name" },
-  { key: "completeAddress", label: "Complete Address", wide: true },
-  { key: "prcLicenseNumber", label: "PRC License Number (If Applicable)" },
-  { key: "prcExpirationDate", label: "PRC Expiration Date", type: "date" },
+  { key: "lastName", label: "Last name" },
+  { key: "firstName", label: "First name" },
+  { key: "middleName", label: "Middle name" },
+  { key: "completeAddress", label: "Complete address", wide: true },
+  { key: "prcLicenseNumber", label: "PRC license number (if applicable)" },
+  { key: "prcExpirationDate", label: "PRC expiration date", type: "date" },
   { key: "gender", label: "Gender" },
-  { key: "landline", label: "Landline Number", type: "tel" },
+  { key: "landline", label: "Landline number", type: "tel" },
   { key: "citizenship", label: "Citizenship" },
-  { key: "birthDate", label: "Date of Birth", type: "date" },
-  { key: "civilStatus", label: "Civil Status" },
-  { key: "mobileNumber", label: "Mobile Number", type: "tel" },
-  { key: "emailAddress", label: "Email Address", type: "email" },
-  { key: "tinNumber", label: "TIN Number", grouped: true },
+  { key: "birthDate", label: "Date of birth", type: "date" },
+  { key: "civilStatus", label: "Civil status" },
+  { key: "mobileNumber", label: "Mobile number", type: "tel" },
+  { key: "emailAddress", label: "Email address", type: "email" },
+  { key: "tinNumber", label: "TIN", grouped: true },
 ];
 
 export function applicantAge(birthDate: string, asOf: string) {

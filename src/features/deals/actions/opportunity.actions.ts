@@ -1,7 +1,7 @@
 "use server";
 
 import { createHash, randomUUID } from "node:crypto";
-import { and, asc, eq, inArray, isNull, or } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
@@ -18,6 +18,7 @@ import {
   documents,
   floors,
   pipelineStages,
+  unitTypes,
   units,
 } from "@/db/schema";
 import {
@@ -47,7 +48,13 @@ import { InactiveAssigneeError } from "@/lib/permissions/active-assignees";
 import type { AuthorizationContext } from "@/lib/permissions/policy";
 import { getPropertiesForDevelopment } from "@/features/properties/queries/property-floor-unit.queries";
 import { listParkingSlots } from "@/features/properties/queries/parking.queries";
-import { opportunityPrice, opportunitySelectionSchema } from "../lib/opportunity-pricing";
+import {
+  isSlotFreeFor,
+  missingFeeWarning,
+  opportunityFees,
+  opportunityPrice,
+  opportunitySelectionSchema,
+} from "../lib/opportunity-pricing";
 import { dealTitleFor } from "../lib/deal-label";
 import { isContactsFirstDeal } from "../lib/first-deal";
 import { rebuildBill } from "../lib/rebill";
@@ -161,7 +168,7 @@ const detailsSchema = z
     tinNumber: z
       .string()
       .trim()
-      .min(1, "Enter the client's TIN number.")
+      .min(1, "Enter the contact's TIN.")
       .max(50, "TIN number must be 50 characters or fewer."),
     prcLicenseNumber: z
       .string()
@@ -212,8 +219,15 @@ async function estimateSelection(
       message: "Select an accessible building in this development.",
     };
   const selected = await db
-    .select({ id: units.id })
+    .select({
+      id: units.id,
+      code: units.code,
+      price: sql<string | null>`coalesce(${units.price}, ${unitTypes.price})`,
+      reservationFee: unitTypes.reservationFee,
+      monthlyAmortization: unitTypes.monthlyAmortization,
+    })
     .from(units)
+    .leftJoin(unitTypes, eq(units.unitTypeId, unitTypes.id))
     .where(
       and(
         inArray(units.id, input.unitIds),
@@ -239,38 +253,78 @@ async function estimateSelection(
       success: false as const,
       message: `This building has ${building.parkingSpaces} parking spaces. Select fewer slots.`,
     };
+  // Each slot's own price, set on it or by its parking type.
+  let slotPrices: (string | null)[] = [];
+  let slotFees: (string | null)[] = [];
+  let selectedSlots: { code: string; price: string | null }[] = [];
   if (input.parkingSlotIds.length) {
     const parking = await listParkingSlots(context, building.id);
-    const available = new Set([
-      ...parking.filter((slot) => slot.status === "available").map((slot) => slot.id),
-      ...(held?.parkingSlotIds ?? []).filter((id) => parking.some((slot) => slot.id === id)),
-    ]);
+    // Free slots, plus those this opportunity itself holds; a slot another one has since taken
+    // stays unavailable even if this opportunity once chose it.
+    const available = new Set(
+      parking.filter((slot) => isSlotFreeFor(slot, held?.dealId)).map((slot) => slot.id),
+    );
     if (input.parkingSlotIds.some((id) => !available.has(id)))
       return {
         success: false as const,
         message:
           "One or more selected parking slots are unavailable or not shared with you. Choose available parking slots or remove parking to continue.",
       };
+    const priceOf = new Map(parking.map((slot) => [slot.id, slot.price]));
+    slotPrices = input.parkingSlotIds.map((id) => priceOf.get(id) ?? null);
+    const feeOf = new Map(parking.map((slot) => [slot.id, slot.reservationFee]));
+    slotFees = input.parkingSlotIds.map((id) => feeOf.get(id) ?? null);
+    const codeOf = new Map(parking.map((slot) => [slot.id, slot.code]));
+    selectedSlots = input.parkingSlotIds
+      .map((id) => ({ code: codeOf.get(id) ?? "", price: priceOf.get(id) ?? null }))
+      .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
   }
+  const unpriced = selected.filter((unit) => !(Number(unit.price) > 0)).map((unit) => unit.code);
+  if (unpriced.length)
+    return {
+      success: false as const,
+      message: `Unit ${unpriced.sort().join(", ")} has no price yet. Set it on the property's Design page, then try again.`,
+    };
+  const unpricedSlots = selectedSlots
+    .filter((slot) => !(Number(slot.price) > 0))
+    .map((slot) => slot.code);
+  if (unpricedSlots.length)
+    return {
+      success: false as const,
+      message: `Parking ${unpricedSlots.join(", ")} has no price yet. Set it on the property's Design page, then try again.`,
+    };
   const prices = opportunityPrice(
-    building.askingPrice,
-    selected.length,
-    building.parkingPrice,
-    input.parkingSlotIds.length,
+    selected.map((unit) => unit.price),
+    slotPrices,
   );
   if (!prices)
     return {
       success: false as const,
-      message:
-        "The building's gross list price or parking price is missing or invalid. Ask an administrator to check these prices in Properties, then try again.",
+      message: "The total is too large. Remove some units or parking and try again.",
     };
+  const unitPrices = [...new Set(selected.map((unit) => Number(unit.price)))];
+  const parkingPrices = [...new Set(slotPrices.map(Number))];
   return {
     success: true as const,
     ...prices,
+    // Saved on the opportunity, so later unit type or slot edits don't change this sale.
+    ...opportunityFees(selected, slotFees),
+    /** Units whose type sets no reservation fee: the fee due is lower than it looks. */
+    missingFee: missingFeeWarning(
+      selected.filter((unit) => unit.reservationFee === null).map((unit) => unit.code),
+    ),
     currency: building.currency,
     buildingTitle: building.title,
-    unitPrice: building.askingPrice!,
-    parkingPrice: building.parkingPrice,
+    /** Codes and prices of the selected units, in code order. */
+    selectedUnits: selected
+      .map((unit) => ({ code: unit.code, price: unit.price! }))
+      .sort((a, b) => a.code.localeCompare(b.code)),
+    /** Identifiers and prices of the selected parking slots, in order. */
+    selectedSlots,
+    /** The shared price when every selected unit costs the same; null when they differ. */
+    unitPrice: unitPrices.length === 1 ? selected[0]!.price : null,
+    /** The shared slot price when every selected slot costs the same; null when they differ. */
+    parkingPrice: parkingPrices.length === 1 ? slotPrices[0]! : null,
     parkingSpaces: building.parkingSpaces,
   };
 }
@@ -291,7 +345,7 @@ export async function getOpportunityEstimate(input: unknown, dealId?: string) {
   );
 }
 
-export async function getOpportunityParking(input: unknown) {
+export async function getOpportunityParking(input: unknown, dealId?: string) {
   const context = await requirePermission("deals.change_stage");
   const parsed = opportunitySelectionSchema
     .pick({ developmentId: true, buildingId: true })
@@ -300,7 +354,11 @@ export async function getOpportunityParking(input: unknown) {
   const { developmentId, buildingId } = parsed.data;
   const buildings = await getPropertiesForDevelopment(context, developmentId);
   if (!buildings.some((building) => building.id === buildingId)) return null;
-  const slots = await listParkingSlots(context, buildingId);
+  // Slots this opportunity holds show as available to it, and only to it.
+  const holder = dealId ? (await loadDeal(dealId))?.row.dealId : undefined;
+  const slots = (await listParkingSlots(context, buildingId)).map((slot) =>
+    isSlotFreeFor(slot, holder) ? { ...slot, status: "available" } : slot,
+  );
   const floorIds = [...new Set(slots.flatMap((slot) => (slot.floorId ? [slot.floorId] : [])))];
   const parkingFloors = floorIds.length
     ? await db
@@ -509,6 +567,9 @@ export async function openOpportunity(formData: FormData): Promise<DealActionRes
           parkingSlots: v.parkingSlotIds.length,
           parkingSlotIds: v.parkingSlotIds,
           parkingAmount: estimate.parking,
+          reservationFee: estimate.reservationFee,
+          parkingReservationFee: estimate.parkingReservationFee,
+          monthlyAmortization: estimate.monthlyAmortization,
           developmentId: v.developmentId,
           unitId: v.unitIds[0] ?? null,
           unitIds: v.unitIds,
@@ -681,19 +742,15 @@ export async function changeOpportunityUnits(input: unknown): Promise<DealAction
         ) ||
         !sameIds(deal.parkingSlotIds, v.parkingSlotIds);
       if (bill && selectionChanged) {
-        const unitCodes = await tx
-          .select({ code: units.code })
-          .from(units)
-          .where(inArray(units.id, v.unitIds))
-          .orderBy(asc(units.code));
         const { paid } = await readDealPayments(tx, v.dealId);
         const rebuilt = rebuildBill({
-          unitCodes: unitCodes.map((unit) => unit.code),
+          units: estimate.selectedUnits,
           place: [estimate.buildingTitle, development.name].filter(Boolean).join(" · "),
           buildingTitle: estimate.buildingTitle,
-          unitPrice: estimate.unitPrice,
-          parkingSlots: v.parkingSlotIds.length,
-          parkingPrice: estimate.parking,
+          slots: estimate.selectedSlots.map((slot) => ({
+            code: slot.code,
+            price: slot.price ?? "0",
+          })),
           previous: bill,
           paid,
         });
@@ -724,6 +781,9 @@ export async function changeOpportunityUnits(input: unknown): Promise<DealAction
           parkingSlots: v.parkingSlotIds.length,
           parkingSlotIds: v.parkingSlotIds,
           parkingAmount: estimate.parking,
+          reservationFee: estimate.reservationFee,
+          parkingReservationFee: estimate.parkingReservationFee,
+          monthlyAmortization: estimate.monthlyAmortization,
           amount: estimate.total,
           currency: estimate.currency,
           title: dealTitleFor(

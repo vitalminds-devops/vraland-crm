@@ -4,6 +4,7 @@ import { updateViewingStatus } from "../actions/calendar.actions";
 import { Button } from "@/components/ui/button";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
+import { VIEWING_STATUS_LABELS } from "../lib/viewing-status";
 export function ViewingStatus({
   id,
   status,
@@ -42,13 +43,11 @@ export function ViewingStatus({
           }}
         >
           <NativeSelect name="status" defaultValue={status} className={input + " pr-9"}>
-            {["scheduled", "confirmed", "completed", "cancelled", "no_show", "rescheduled"].map(
-              (v) => (
-                <NativeSelectOption key={v} value={v}>
-                  {v.replaceAll("_", " ")}
-                </NativeSelectOption>
-              ),
-            )}
+            {Object.entries(VIEWING_STATUS_LABELS).map(([value, label]) => (
+              <NativeSelectOption key={value} value={value}>
+                {label}
+              </NativeSelectOption>
+            ))}
           </NativeSelect>
           <NativeSelect
             name="interestLevel"

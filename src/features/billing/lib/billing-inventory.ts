@@ -4,6 +4,7 @@ import { and, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
 import type { db } from "@/db";
 import { bills, deals, pipelineStages, propertyParkingSlots, units } from "@/db/schema";
 import { syncDealInventory } from "@/features/deals/lib/deal-inventory";
+import { dealReservationPaid } from "./deal-payment";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -80,6 +81,15 @@ export async function readDealPayments(tx: Transaction, dealId: string) {
   };
 }
 
+/** Whether the opportunity's reservation fee is paid (or it has a full payment). */
+export async function readReservationPaid(tx: Transaction, dealId: string): Promise<boolean> {
+  const [row] = await tx
+    .select({ paid: dealReservationPaid })
+    .from(deals)
+    .where(eq(deals.id, dealId));
+  return row?.paid === true;
+}
+
 export function isFullyPaid(payment: { total: number; paid: number }): boolean {
   return payment.paid > 0 && payment.total > 0 && payment.paid >= payment.total - 0.004;
 }
@@ -92,10 +102,12 @@ export function inventoryStatusForDeal(
     isCancelledStage: boolean;
   },
   payment: { total: number; paid: number },
+  /** A paid reservation holds the units even before the stage moves (say, awaiting approval). */
+  reservationPaid = false,
 ): "available" | "deposit_paid" | "sold" {
   if (stage.isLostStage || stage.isCancelledStage) return "available";
   if (stage.isWonStage) return "sold";
-  if (stage.slug !== "reservation") return "available";
+  if (stage.slug !== "reservation") return reservationPaid ? "deposit_paid" : "available";
   return isFullyPaid(payment) ? "sold" : "deposit_paid";
 }
 
@@ -111,6 +123,10 @@ export async function syncBillingInventory(
     buildingId: deal.propertyId,
     unitIds: deal.unitIds.length ? deal.unitIds : deal.unitId ? [deal.unitId] : [],
     parkingSlotIds: deal.parkingSlotIds,
-    status: inventoryStatusForDeal(deal, await readDealPayments(tx, deal.id)),
+    status: inventoryStatusForDeal(
+      deal,
+      await readDealPayments(tx, deal.id),
+      await readReservationPaid(tx, deal.id),
+    ),
   });
 }

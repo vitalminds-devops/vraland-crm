@@ -22,26 +22,30 @@ it("needs reservation payments to add up to the reservation fee", () => {
     ) >= greatest(coalesce(coalesce("deals"."reservation_fee"`);
 });
 
-it("takes a deal's own reservation fee as the total, else sums every unit's building fee", () => {
+it("adds each parking slot's reservation fee", () => {
   const { sql } = render(dealReservationFee);
-  expect(sql.indexOf(`"deals"."reservation_fee"`)).toBeLessThan(sql.indexOf("sum("));
-  expect(sql).toContain(`select sum(pr."reservation_fee") from "units" u`);
-  expect(sql).toContain(`join "properties" pr on pr."id" = u."building_id"`);
-  expect(sql).toContain(`u."id" = any("deals"."unit_ids")`);
-  // A deal with no unit list falls back to its single unit, then to its property.
-  expect(sql).toContain(`cardinality("deals"."unit_ids") = 0 and u."id" = "deals"."unit_id"`);
-  expect(sql).toContain(
-    `select pr."reservation_fee" from "properties" pr where pr."id" = "deals"."property_id"`,
-  );
+  expect(sql).toContain(`select sum(s."reservation_fee") from "parking_slots" s`);
+  expect(sql).toContain(`s."id" = any("deals"."parking_slot_ids")`);
+  // Neither set stays "no fee", so any reservation payment opens the gate as before.
+  expect(sql.replace(/\s+/g, " ")).toMatch(/case when .* is null and .* is null then null/);
 });
 
-it("sums the monthly amortization over the deal's units the same way", () => {
+it("takes a deal's own reservation fee as the total, else sums each unit's type fee", () => {
+  const { sql } = render(dealReservationFee);
+  expect(sql.indexOf(`"deals"."reservation_fee"`)).toBeLessThan(sql.indexOf("sum("));
+  expect(sql).toContain(`select sum(ut."reservation_fee") from "units" u`);
+  expect(sql).toContain(`join "unit_types" ut on ut."id" = u."unit_type_id"`);
+  expect(sql).toContain(`u."id" = any("deals"."unit_ids")`);
+  // A deal with no unit list falls back to its single unit; property-wide fees are not used.
+  expect(sql).toContain(`cardinality("deals"."unit_ids") = 0 and u."id" = "deals"."unit_id"`);
+  expect(sql).not.toContain(`pr."reservation_fee"`);
+});
+
+it("sums each unit's type monthly amortization the same way", () => {
   const { sql } = render(dealMonthlyAmortization);
-  expect(sql).toContain(`select sum(pr."monthly_rent") from "units" u`);
-  expect(sql).toContain(
-    `select pr."monthly_rent" from "properties" pr where pr."id" = "deals"."property_id"`,
-  );
-  expect(render(dealFirstMonthPaid).sql).toContain(`select sum(pr."monthly_rent")`);
+  expect(sql).toContain(`select sum(ut."monthly_amortization") from "units" u`);
+  expect(sql).not.toContain("monthly_rent");
+  expect(render(dealFirstMonthPaid).sql).toContain(`sum(ut."monthly_amortization")`);
 });
 
 it("ignores removed payments and treats a fully paid bill as passing", () => {

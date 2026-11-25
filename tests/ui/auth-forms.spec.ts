@@ -34,7 +34,7 @@ test("reset form blocks mismatched passwords without sending the reset token", a
   await page.getByLabel("New password", { exact: true }).fill("Synthetic-password-one");
   await page.getByLabel("Confirm password", { exact: true }).fill("Synthetic-password-two");
   await page.getByRole("button", { name: "Set new password" }).click();
-  await expect(page.getByText("Passwords do not match.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Passwords don't match.", { exact: true })).toBeVisible();
   expect(submissions).toBe(0);
 });
 

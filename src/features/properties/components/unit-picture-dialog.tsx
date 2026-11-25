@@ -52,11 +52,11 @@ export function UnitPictureDialog({
     formData.set("image", file);
 
     startTransition(async () => {
-      const toastId = notifyLoading("Uploading unit picture…", `upload-unit-picture-${unitId}`);
+      const toastId = notifyLoading("Uploading unit photo…", `upload-unit-picture-${unitId}`);
       try {
         const checked = await checkImageUpload(file);
         if (!checked.ok) {
-          notify("Unit picture not accepted", "error", {
+          notify("Unit photo not accepted", "error", {
             id: toastId,
             description: checked.message,
           });
@@ -78,10 +78,10 @@ export function UnitPictureDialog({
       } catch {
         setPreviewUrl(null);
         if (inputRef.current) inputRef.current.value = "";
-        notify("Could not confirm picture upload", "error", {
+        notify("Couldn't confirm photo upload", "error", {
           id: toastId,
           description:
-            "Refresh this unit to check whether the picture was saved before uploading again.",
+            "Refresh this unit to check whether the photo was saved before uploading again.",
         });
       }
     });
@@ -115,7 +115,7 @@ export function UnitPictureDialog({
             <div className="flex items-start justify-between gap-3 border-b border-border/60 px-5 py-4">
               <div>
                 <DialogTitle className="text-[15px] font-semibold tracking-[-0.01em]">
-                  Unit {code} picture
+                  Unit {code} photo
                 </DialogTitle>
                 <DialogDescription className="mt-0.5 text-[13px] text-muted-foreground">
                   JPEG, PNG or WebP, up to 5 MB.
@@ -138,7 +138,7 @@ export function UnitPictureDialog({
                 // eslint-disable-next-line @next/next/no-img-element -- served from our own authenticated route, which next/image's optimiser cannot fetch.
                 <img
                   src={shownUrl}
-                  alt={`${code} picture`}
+                  alt={`${code} photo`}
                   className="mx-auto max-h-[60vh] w-auto rounded-lg border border-border/60 object-contain"
                 />
               ) : (
@@ -147,7 +147,7 @@ export function UnitPictureDialog({
                     aria-hidden="true"
                     className="mx-auto size-8 text-muted-foreground/50"
                   />
-                  <span className="text-[13px]">No picture yet</span>
+                  <span className="text-[13px]">No photo yet</span>
                 </div>
               )}
             </div>
@@ -171,7 +171,7 @@ export function UnitPictureDialog({
                   className="gap-2"
                 >
                   <ImagePlus aria-hidden="true" className="size-4" />
-                  {shownUrl ? "Replace picture" : "Add picture"}
+                  {shownUrl ? "Replace photo" : "Add photo"}
                 </Button>
                 {shownUrl && (
                   <Button
@@ -183,7 +183,7 @@ export function UnitPictureDialog({
                     className="inline-flex h-auto items-center gap-1.5 rounded-md px-2 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-60"
                   >
                     <Trash2 aria-hidden="true" className="size-4" />
-                    Remove picture
+                    Remove photo
                   </Button>
                 )}
                 {pending && <span className="text-[13px] text-muted-foreground">Uploading…</span>}

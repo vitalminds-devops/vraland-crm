@@ -2,7 +2,19 @@
 
 import { Car, Check } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { formatMoney, formatMoneyShort } from "@/lib/utils/money";
 import { unitStatusLabel, unitStatusToneFor } from "../lib/unit-codes";
+
+/** What a slot says on hover and to screen readers: its type, price and fee. */
+const slotDetails = (slot: {
+  price?: string | null;
+  reservationFee?: string | null;
+  parkingTypeName?: string | null;
+}) => [
+  slot.parkingTypeName,
+  formatMoney(slot.price),
+  slot.reservationFee && `Reservation fee ${formatMoney(slot.reservationFee)}`,
+];
 
 /** Parking bays to tick for a partial grant; lit bays are given. */
 export function ParkingPicker({
@@ -14,7 +26,15 @@ export function ParkingPicker({
   availableOnly = true,
   compact = false,
 }: {
-  slots: { id: string; code: string; status: string; accessible: boolean }[];
+  slots: {
+    id: string;
+    code: string;
+    status: string;
+    accessible: boolean;
+    price?: string | null;
+    reservationFee?: string | null;
+    parkingTypeName?: string | null;
+  }[];
   selectedIds: string[];
   onToggle: (slotId: string) => void;
   disabled?: boolean;
@@ -55,10 +75,18 @@ export function ParkingPicker({
               <button
                 type="button"
                 aria-pressed={on}
-                aria-label={`${slot.code}: ${unitStatusLabel(slot.status)}`}
+                aria-label={[
+                  `Parking ${slot.code}`,
+                  ...slotDetails(slot),
+                  unitStatusLabel(slot.status),
+                ]
+                  .filter(Boolean)
+                  .join(", ")}
                 disabled={locked}
                 onClick={() => onToggle(slot.id)}
-                title={`${slot.code} · ${unitStatusLabel(slot.status)}`}
+                title={[slot.code, ...slotDetails(slot), unitStatusLabel(slot.status)]
+                  .filter(Boolean)
+                  .join(" · ")}
                 className={cn(
                   compact
                     ? [
@@ -101,6 +129,21 @@ export function ParkingPicker({
                   </>
                 )}
                 <span className="max-w-full truncate">{slot.code}</span>
+                {slot.price && (
+                  <span
+                    className={cn(
+                      "text-xs font-normal tabular-nums",
+                      on && compact ? "opacity-80" : "text-muted-foreground",
+                    )}
+                  >
+                    {formatMoneyShort(slot.price)}
+                  </span>
+                )}
+                {!compact && slot.parkingTypeName && (
+                  <span className="max-w-full truncate text-xs font-normal text-muted-foreground">
+                    {slot.parkingTypeName}
+                  </span>
+                )}
                 {!compact && (
                   <span
                     className={cn(

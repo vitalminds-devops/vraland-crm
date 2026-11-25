@@ -33,7 +33,7 @@ export async function GET(request: Request) {
   return csvResponse(
     [
       [
-        "Deal",
+        "Opportunity",
         "Contact",
         "Stage",
         "Broker",

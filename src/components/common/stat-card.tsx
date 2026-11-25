@@ -25,7 +25,7 @@ export function StatCard({
   const body = (
     <>
       <div className="flex items-center justify-between gap-3">
-        <p className="truncate text-sm font-medium text-muted-foreground">{label}</p>
+        <p className="min-w-0 text-sm leading-5 font-medium text-muted-foreground">{label}</p>
         <Icon className="size-4 shrink-0 text-muted-foreground" />
       </div>
       <p className="mt-2 text-2xl leading-tight font-semibold tracking-tight tabular-nums text-foreground">

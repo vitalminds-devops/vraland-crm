@@ -49,6 +49,8 @@ export function AddCountDialog({
     <>
       <Button
         type="button"
+        aria-label={label}
+        title={label}
         variant={variant}
         size="sm"
         onClick={() => {
@@ -58,7 +60,7 @@ export function AddCountDialog({
         className={buttonClassName ?? "gap-1"}
       >
         <Plus aria-hidden="true" className="size-3.5" />
-        {label}
+        <span>{label}</span>
       </Button>
       <Dialog
         open={open}

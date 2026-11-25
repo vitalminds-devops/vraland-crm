@@ -1,7 +1,7 @@
 ﻿"use server";
 
-import { randomUUID } from "node:crypto";
 import { eligibleAgent } from "../lib/assignment";
+import { nextRecordCode } from "@/lib/record-codes";
 import {
   defaultAdminApprovalStatus,
   defaultRequirementStatus,
@@ -189,10 +189,6 @@ async function checkContactReferences(
     if (found.length !== new Set(unitIds).size) return "Select units from the chosen development.";
   }
   return null;
-}
-
-function generateContactCode(): string {
-  return `VRA-${randomUUID().toUpperCase()}`;
 }
 
 function approvalColumnsFor(context: AuthorizationContext, status?: ContactApprovalStatus) {
@@ -385,7 +381,7 @@ async function insertContactRow(
       .values({
         id: creationId,
         organizationId: context.organizationId,
-        contactCode: generateContactCode(),
+        contactCode: await nextRecordCode(tx, context.organizationId, "contact"),
         firstName: value.firstName,
         middleName: value.middleName,
         lastName: value.lastName,
@@ -1111,7 +1107,7 @@ export async function importContactsCsv(formData: FormData): Promise<ContactImpo
   } catch {
     return failure(
       permissionDenied(
-        "You do not have permission to import contacts. Ask an administrator for the contacts.import permission.",
+        "You don't have permission to import contacts. Ask an Administrator for the Import contacts permission.",
       ),
     );
   }

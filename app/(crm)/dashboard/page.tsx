@@ -1,15 +1,16 @@
-import type { ComponentType, ReactNode } from "react";
-import { Building2, CircleDollarSign, Handshake, LayoutDashboard, UsersRound } from "lucide-react";
+import type { ReactNode } from "react";
+import { LayoutDashboard } from "lucide-react";
 import { PageContainer } from "@/components/common/page-container";
 import { PageHeader } from "@/components/common/page-header";
 import { ActivityList } from "@/features/dashboard/components/activity-list";
 import { ClosingSoon } from "@/features/dashboard/components/closing-soon";
+import { AvailabilityMeter, FactLine } from "@/features/dashboard/components/availability";
+import { FigureStrip, type Figure } from "@/features/dashboard/components/figure-strip";
 import { InventoryStatus } from "@/features/dashboard/components/inventory-status";
 import { TaskLoad } from "@/features/dashboard/components/task-load";
 import { PipelineStageChart, RevenueChart } from "@/features/dashboard/components/dashboard-charts";
 import { PriorityList } from "@/features/dashboard/components/priority-list";
 import { ReadingList } from "@/features/dashboard/components/reading-list";
-import { StatCard } from "@/components/common/stat-card";
 import { getDashboardData } from "@/features/dashboard/queries/dashboard.queries";
 import { compactCurrency } from "@/features/dashboard/lib/format";
 import { requirePagePermission } from "@/lib/permissions/authorization";
@@ -17,13 +18,6 @@ import type { DataScope } from "@/lib/permissions/catalog";
 import { cn } from "@/lib/utils/cn";
 
 const cardClass = "min-w-0 rounded-xl border border-border bg-card p-4 sm:p-5";
-
-const kpiColumns: Record<number, string> = {
-  1: "",
-  2: "sm:grid-cols-2",
-  3: "sm:grid-cols-3",
-  4: "sm:grid-cols-2 lg:grid-cols-4",
-};
 
 /** A list panel, built as data so its position in the row can decide its span. */
 type ListPanel = {
@@ -33,15 +27,6 @@ type ListPanel = {
   /** Set on lists that can run long; leaves short panels unconstrained. */
   scrollLabel?: string;
   body: ReactNode;
-};
-
-type KpiCard = {
-  key: string;
-  label: string;
-  value: string;
-  detail: string;
-  icon: ComponentType<{ className?: string }>;
-  href?: string;
 };
 
 function scopePhrase(organizationWide: boolean, scope: DataScope) {
@@ -62,41 +47,49 @@ export default async function DashboardPage() {
   const { sections } = data;
   const where = scopePhrase(data.organizationWide, data.scope);
 
-  const kpiCandidates: (KpiCard | false)[] = [
-    sections.kpis.leads && {
-      key: "leads",
-      label: "Active contacts",
-      value: data.kpis.activeLeads.toLocaleString(),
-      detail: "Not yet converted",
-      icon: UsersRound,
-      href: "/contacts",
-    },
-    sections.kpis.properties && {
-      key: "properties",
-      label: "Active properties",
-      value: data.kpis.activeProperties.toLocaleString(),
-      detail: "Listed and active",
-      icon: Building2,
-      href: "/properties",
-    },
+  const count = (n: number, one: string, many: string) =>
+    `${n.toLocaleString()} ${n === 1 ? one : many}`;
+  const money = (amount: number) => compactCurrency(amount, data.currency);
+  // The headline money, in the order a sale runs: open, reserved, won, then what came in.
+  const figureCandidates: (Figure | false)[] = [
     sections.kpis.pipeline && {
       key: "pipeline",
       label: "Open opportunities",
-      value: data.kpis.pipelineDeals.toLocaleString(),
-      detail: `${compactCurrency(data.kpis.pipelineValue, data.currency)} total value`,
-      icon: Handshake,
+      value: money(data.kpis.pipelineValue),
+      detail: count(data.kpis.pipelineDeals, "opportunity", "opportunities"),
+      href: "/pipeline",
+    },
+    sections.kpis.pipeline && {
+      key: "reservations",
+      label: "Reservation value",
+      value: money(data.kpis.reservationValue),
+      detail: count(data.kpis.reservations, "reservation", "reservations"),
+      href: "/pipeline",
+    },
+    sections.kpis.pipeline && {
+      key: "won",
+      label: "Won sales value",
+      value: money(data.kpis.wonValue),
+      detail: `${data.kpis.wonCount.toLocaleString()} won · ${money(data.kpis.wonCollected)} collected`,
       href: "/pipeline",
     },
     sections.kpis.collected && {
       key: "collected",
-      label: "Collected this month",
-      value: compactCurrency(data.kpis.collected, data.currency),
-      detail: `${data.kpis.payments.toLocaleString()} ${data.kpis.payments === 1 ? "payment" : "payments"} received`,
-      icon: CircleDollarSign,
-      href: "/billing",
+      label: "Payments received this month",
+      value: money(data.kpis.collected),
+      detail: count(data.kpis.payments, "payment", "payments"),
+      href: "/payments",
+    },
+    sections.kpis.collected && {
+      key: "monthlyPaid",
+      label: "Monthly payments received",
+      value: money(data.kpis.monthlyPaid),
+      detail: `${count(data.kpis.monthlyPayments, "payment", "payments")} · All time`,
+      href: "/payments",
     },
   ];
-  const kpiCards = kpiCandidates.filter((card): card is KpiCard => Boolean(card));
+  const figures = figureCandidates.filter((figure): figure is Figure => Boolean(figure));
+  const showInventory = sections.kpis.properties || sections.inventory;
 
   const showPriorities = sections.tasks || sections.viewings;
   const priorityTitle =
@@ -117,9 +110,46 @@ export default async function DashboardPage() {
     },
     data.readings.length > 0 && {
       key: "readings",
-      title: "At a glance",
+      title: "Summary",
       description: "Results and upcoming work.",
       body: <ReadingList items={data.readings} />,
+    },
+    showInventory && {
+      key: "inventory",
+      title: "Inventory",
+      body: (
+        <div className="space-y-4">
+          {sections.kpis.properties && (
+            <>
+              <div className="grid gap-4 @min-[34rem]:grid-cols-2">
+                <AvailabilityMeter
+                  label="Available units"
+                  available={data.kpis.availableUnits}
+                  total={data.kpis.totalUnits}
+                  unit="unit"
+                />
+                <AvailabilityMeter
+                  label="Available parking"
+                  available={data.kpis.availableParking}
+                  total={data.kpis.totalParking}
+                  unit="slot"
+                />
+              </div>
+              <FactLine>
+                {count(data.kpis.activeProperties, "active property", "active properties")} ·{" "}
+                {count(data.kpis.floors, "floor", "floors")} across{" "}
+                {count(data.kpis.floorProperties, "property", "properties")}
+              </FactLine>
+            </>
+          )}
+          {sections.inventory && (
+            <div className="border-t border-border/60 pt-4">
+              <h3 className="mb-3 text-[13px] font-medium">Properties by status</h3>
+              <InventoryStatus items={data.inventoryStatus} />
+            </div>
+          )}
+        </div>
+      ),
     },
     sections.closings && {
       key: "closings",
@@ -132,11 +162,6 @@ export default async function DashboardPage() {
       title: "Open tasks by due date",
       body: <TaskLoad data={data.taskLoad} />,
     },
-    sections.inventory && {
-      key: "inventory",
-      title: "Properties by status",
-      body: <InventoryStatus items={data.inventoryStatus} />,
-    },
     sections.activity && {
       key: "activity",
       title: "Recent activity",
@@ -147,7 +172,7 @@ export default async function DashboardPage() {
   const listPanels = listCandidates.filter((panel): panel is ListPanel => Boolean(panel));
 
   const panelCount =
-    Number(sections.revenue) + Number(sections.pipeline) + kpiCards.length + listPanels.length;
+    Number(sections.revenue) + Number(sections.pipeline) + figures.length + listPanels.length;
 
   return (
     <PageContainer>
@@ -160,30 +185,12 @@ export default async function DashboardPage() {
           </div>
           <h2 className="mt-4 text-[15px] font-semibold">No dashboard panels for your role</h2>
           <p className="mx-auto mt-1.5 max-w-md text-[13px] leading-relaxed text-muted-foreground">
-            Ask an administrator for access.
+            Ask an Administrator for access.
           </p>
         </div>
       ) : (
         <div className="space-y-4 sm:space-y-5">
-          {kpiCards.length > 0 && (
-            <div
-              className={cn(
-                "grid gap-4",
-                kpiColumns[kpiCards.length] ?? "sm:grid-cols-2 lg:grid-cols-4",
-              )}
-            >
-              {kpiCards.map((card) => (
-                <StatCard
-                  key={card.key}
-                  label={card.label}
-                  value={card.value}
-                  detail={card.detail}
-                  icon={card.icon}
-                  href={card.href}
-                />
-              ))}
-            </div>
-          )}
+          <FigureStrip figures={figures} />
 
           {listPanels.length > 0 && (
             <div className={cn("grid gap-4 sm:gap-5", listPanels.length > 1 && "xl:grid-cols-2")}>
@@ -205,21 +212,31 @@ export default async function DashboardPage() {
               ))}
             </div>
           )}
-          {sections.revenue && (
-            <Section
-              title="Closed sales & forecast"
-              description="Won opportunity values and open opportunities weighted by their probability of closing. These are sales values, not payments received."
+
+          {(sections.revenue || sections.pipeline) && (
+            <div
+              className={cn(
+                "grid gap-4 sm:gap-5",
+                sections.revenue && sections.pipeline && "xl:grid-cols-[3fr_2fr]",
+              )}
             >
-              <RevenueChart data={data.revenueSeries} currency={data.currency} />
-            </Section>
-          )}
-          {sections.pipeline && (
-            <Section
-              title="Opportunities by stage"
-              description="Includes open, won and lost opportunities."
-            >
-              <PipelineStageChart data={data.pipelineStages} />
-            </Section>
+              {sections.revenue && (
+                <Section
+                  title="Won sales & forecast"
+                  description="Won opportunity values and open opportunities weighted by their probability of closing. These are sales values, not payments received."
+                >
+                  <RevenueChart data={data.revenueSeries} currency={data.currency} />
+                </Section>
+              )}
+              {sections.pipeline && (
+                <Section
+                  title="Opportunities by stage"
+                  description="Includes open, won and lost opportunities."
+                >
+                  <PipelineStageChart data={data.pipelineStages} />
+                </Section>
+              )}
+            </div>
           )}
         </div>
       )}

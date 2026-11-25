@@ -90,7 +90,7 @@ export function ContactRow({
       const { archiveContact } = await import("../actions/contact.actions");
       const result = await archiveContact(contact.id);
       if (result.success) {
-        notify("Contact archived", "success");
+        notify("Contact archived.", "success");
         setShowArchiveConfirm(false);
         router.refresh();
       } else {
@@ -167,7 +167,8 @@ export function ContactRow({
 
   return (
     <>
-      <TableCell className="sticky left-0 px-4 py-3 bg-card group-hover:bg-muted/40">
+      {/* max-w-0 with w-full lets the one-line agent/broker text truncate instead of widening the table. */}
+      <TableCell className="sticky left-0 px-4 py-3 bg-card group-hover:bg-muted/40 max-sm:w-full max-sm:max-w-0">
         <div className="flex items-center gap-3">
           <div className="relative shrink-0">
             <InitialsAvatar initials={initials} />
@@ -184,10 +185,11 @@ export function ContactRow({
             >
               {displayName}
             </Link>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground md:hidden">
+            {/* The agent and broker columns are hidden on narrow screens, so they show here. */}
+            <p className="mt-0.5 truncate text-xs text-muted-foreground md:hidden">
               Agent: {assignedAgent || "Unassigned"}
             </p>
-            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground lg:hidden">
+            <p className="truncate text-xs text-muted-foreground lg:hidden">
               {broker ? `Broker: ${broker}` : "No broker"}
             </p>
             <div className="mt-1.5 sm:hidden" aria-label="Pipeline stage">
@@ -278,7 +280,7 @@ export function ContactRow({
                     onClick={confirmArchive}
                     disabled={isArchiving}
                   >
-                    {isArchiving ? "Archiving..." : "Archive"}
+                    {isArchiving ? "Archiving…" : "Archive"}
                   </Button>
                 </div>
               </DialogPopup>

@@ -23,10 +23,10 @@ export type ImageUploadCheck =
 
 export async function checkImageUpload(file: FormDataEntryValue | null): Promise<ImageUploadCheck> {
   if (!(file instanceof File) || !file.size)
-    return { ok: false, message: "Choose a picture to upload." };
+    return { ok: false, message: "Choose a photo to upload." };
 
   if (file.size > storedImageLimit)
-    return { ok: false, message: "Pictures must be 5 MB or smaller." };
+    return { ok: false, message: "Photos must be 5 MB or smaller." };
 
   const extension = storedImageTypes[file.type];
   if (!extension) return { ok: false, message: "Choose a JPEG, PNG or WebP image." };
@@ -34,13 +34,12 @@ export async function checkImageUpload(file: FormDataEntryValue | null): Promise
     if (!(await matchesDeclaredType(file)))
       return {
         ok: false,
-        message:
-          "The picture contents do not match its file type. Export a new JPEG, PNG or WebP image.",
+        message: "The photo doesn't match its file type. Export a new JPEG, PNG or WebP image.",
       };
   } catch {
     return {
       ok: false,
-      message: "The picture could not be read. Choose it again or export a new copy.",
+      message: "Couldn't read the photo. Choose it again or export a new copy.",
     };
   }
 

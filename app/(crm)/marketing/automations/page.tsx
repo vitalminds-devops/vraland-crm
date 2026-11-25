@@ -75,7 +75,7 @@ export default async function AutomationsPage({
             {canManage ? (
               <ButtonLink href="/marketing/automations/new" variant="primary" className="gap-2">
                 <Plus aria-hidden="true" className="size-4" />
-                New follow-up
+                Add follow-up
               </ButtonLink>
             ) : null}
           </div>
@@ -188,7 +188,7 @@ export default async function AutomationsPage({
                 ) : canManage ? (
                   <ButtonLink href="/marketing/automations/new" variant="primary" className="gap-2">
                     <Plus aria-hidden="true" className="size-4" />
-                    New follow-up
+                    Add follow-up
                   </ButtonLink>
                 ) : undefined
               }

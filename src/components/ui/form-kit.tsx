@@ -28,7 +28,7 @@ export const formCardClass =
 
 /** Save/cancel row that stays pinned to the bottom of the viewport on long forms. */
 export const formActionsClass =
-  "sticky bottom-0 z-10 flex flex-col items-end gap-3 border-t border-border bg-card/95 py-4 backdrop-blur max-sm:[&>p]:hidden sm:flex-row sm:items-center sm:justify-between";
+  "sticky bottom-0 z-10 max-sm:bottom-[calc(3.5rem+env(safe-area-inset-bottom))] flex flex-col items-end gap-3 border-t border-border bg-card/95 py-4 backdrop-blur max-sm:[&>p]:hidden sm:flex-row sm:items-center sm:justify-between";
 
 export const formInputClass =
   "h-10 w-full rounded-md border border-input bg-[var(--surface-raised)] px-3 py-2 text-base sm:text-sm text-[var(--text)] placeholder-[var(--placeholder)] shadow-xs outline-none transition-[color,box-shadow,border-color] hover:border-[var(--border-strong)] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/20";
@@ -50,21 +50,24 @@ export function FormSection({
   children: ReactNode;
 }) {
   return (
-    <section id={id} className="scroll-mt-28 border-b border-[var(--border)] pb-10 last:border-0">
-      <div className="mb-6 flex items-center gap-3">
+    <section
+      id={id}
+      className="scroll-mt-28 border-b border-[var(--border)] pb-6 last:border-0 sm:pb-10"
+    >
+      <div className="mb-4 flex items-center gap-3 sm:mb-6">
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--form-accent)] text-sm font-medium text-primary-foreground">
           {number}
         </span>
         <h2 className="text-lg font-semibold tracking-wide text-[var(--text)]">{title}</h2>
       </div>
-      <div className="space-y-5">{children}</div>
+      <div className="space-y-4 sm:space-y-5">{children}</div>
     </section>
   );
 }
 
 /** Two fields side by side from `sm` up, stacked below it. */
 export function FormRow({ children }: { children: ReactNode }) {
-  return <div className="grid gap-5 sm:grid-cols-2">{children}</div>;
+  return <div className="grid gap-4 sm:grid-cols-2 sm:gap-5">{children}</div>;
 }
 
 export function FormSelect({ children, ...props }: React.ComponentProps<"select">) {
@@ -96,7 +99,8 @@ export function FormField({
         {hint && <span className="ml-2 min-w-0 text-[12px] text-[var(--text-muted)]">{hint}</span>}
       </div>
       {children}
-      <div className="min-h-[16px]">
+      {/* Desktop keeps room for an error so the layout doesn't jump; phones save the space. */}
+      <div className="sm:min-h-[16px]">
         {error && <span className="mt-1 block text-[12px] text-[var(--danger)]">{error}</span>}
       </div>
     </label>

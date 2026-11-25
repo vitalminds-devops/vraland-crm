@@ -63,7 +63,7 @@ test("administrator creates a custom-role user with usable credentials", async (
   await dialog.getByRole("textbox", { name: /Last name/ }).fill("Assistant");
   await dialog.getByRole("textbox", { name: /Email/ }).fill(email);
   await dialog.getByLabel(/^Password/).fill(password);
-  await dialog.getByRole("button", { name: "Create account", exact: true }).click();
+  await dialog.getByRole("button", { name: "Create user", exact: true }).click();
   await expect(dialog).toBeHidden();
   expect(
     await query("select email,first_name from users where organization_id=$1 and email=$2", [

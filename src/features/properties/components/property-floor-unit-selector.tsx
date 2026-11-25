@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { type ReactNode, useEffect, useState, useTransition } from "react";
 import { Check } from "lucide-react";
 
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { cn } from "@/lib/utils/cn";
 import { unitStatusLabel, unitStatusToneFor } from "../lib/unit-codes";
+import type { UnitGroup } from "../lib/floor-groups";
+import { formatMoney, formatMoneyShort } from "@/lib/utils/money";
 
 const selectClass =
   "h-[42px] w-full rounded-lg border border-border/60 bg-background px-3 text-base text-foreground sm:text-sm outline-none transition-all placeholder:text-muted-foreground/70 hover:border-border focus-visible:ring-2 focus-visible:ring-primary/25 disabled:opacity-60 cursor-pointer appearance-none pr-9";
@@ -27,7 +29,19 @@ type Unit = {
   code: string;
   status: string;
   imageStorageKey: string | null;
+  group?: UnitGroup | null;
+  typeName?: string | null;
+  price?: string | null;
+  reservationFee?: string | null;
 };
+
+/** What a unit chip says on hover and to screen readers: its section, type, price and fee. */
+const unitDetails = (unit: Unit) => [
+  unit.group?.name,
+  unit.typeName,
+  formatMoney(unit.price),
+  unit.reservationFee && `Reservation fee ${formatMoney(unit.reservationFee)}`,
+];
 
 type Props = {
   /** Development ID to load properties for */
@@ -42,6 +56,8 @@ type Props = {
   selectClassName?: string;
   /** Whether the selector is disabled */
   disabled?: boolean;
+  /** More to pick on the chosen floor, under its units: its parking slots. */
+  floorExtras?: (floorId: string) => ReactNode;
 };
 
 export function PropertyFloorUnitSelector({
@@ -53,6 +69,7 @@ export function PropertyFloorUnitSelector({
   onUnitsChange,
   selectClassName = selectClass,
   disabled = false,
+  floorExtras,
 }: Props) {
   const [pending, startTransition] = useTransition();
 
@@ -244,8 +261,16 @@ export function PropertyFloorUnitSelector({
                   type="button"
                   role="checkbox"
                   aria-checked={selected}
-                  aria-label={`Unit ${unit.code}, ${unitStatusLabel(unit.status)}`}
-                  title={unitStatusLabel(unit.status)}
+                  aria-label={[
+                    `Unit ${unit.code}`,
+                    ...unitDetails(unit),
+                    unitStatusLabel(unit.status),
+                  ]
+                    .filter(Boolean)
+                    .join(", ")}
+                  title={[...unitDetails(unit), unitStatusLabel(unit.status)]
+                    .filter(Boolean)
+                    .join(" · ")}
                   disabled={disabled || pending || (unit.status !== "available" && !selected)}
                   onClick={() => toggleUnit(unit.id)}
                   className={cn(
@@ -264,6 +289,24 @@ export function PropertyFloorUnitSelector({
                     />
                   )}
                   {unit.code}
+                  {unit.group && (
+                    <span
+                      className={selected ? "opacity-80" : undefined}
+                      style={selected ? undefined : { color: unit.group.hex }}
+                    >
+                      {unit.group.name}
+                    </span>
+                  )}
+                  {unit.price && (
+                    <span
+                      className={cn(
+                        "text-xs tabular-nums",
+                        selected ? "opacity-80" : "text-muted-foreground",
+                      )}
+                    >
+                      {formatMoneyShort(unit.price)}
+                    </span>
+                  )}
                 </button>
               );
             })}
@@ -271,6 +314,9 @@ export function PropertyFloorUnitSelector({
         ) : (
           <p className="text-[13px] text-muted-foreground">No units to display.</p>
         ))}
+
+      {/* Units and parking share floors, so the floor's slots are picked right here too. */}
+      {selectedFloorId && floorExtras?.(selectedFloorId)}
 
       {selectedUnitIds.length > 0 && (
         <p className="flex items-center gap-2 text-[12px] text-muted-foreground">

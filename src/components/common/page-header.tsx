@@ -31,7 +31,8 @@ export function PageHeader({
   );
 
   const actionsRow = actions ? (
-    <div className="flex flex-wrap items-center justify-start gap-2 pb-6 sm:justify-end">
+    // Phones collapse the row when everything in it moved to the top bar or floats (data-phone-hidden).
+    <div className="flex flex-wrap items-center justify-start gap-2 pb-6 sm:justify-end max-sm:[&:not(:has(>:not([data-phone-hidden])))]:pb-0">
       {actions}
     </div>
   ) : null;

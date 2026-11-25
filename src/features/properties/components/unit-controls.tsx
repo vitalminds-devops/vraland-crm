@@ -9,9 +9,7 @@ import { notify } from "@/components/ui/toast";
 import { cn } from "@/lib/utils/cn";
 import {
   addFloor,
-  addUnit,
   deleteFloor,
-  deleteUnit,
   renameFloor,
   renameUnit,
   setUnitStatus,
@@ -76,29 +74,21 @@ function useUnitAction() {
   return [pending, run] as const;
 }
 
-export function AddFloorButton({ propertyId }: { propertyId: string }) {
+export function AddFloorButton({
+  propertyId,
+  className = "h-7 gap-1 px-2 text-xs font-medium text-primary hover:bg-primary/10 hover:text-primary",
+}: {
+  propertyId: string;
+  className?: string;
+}) {
   return (
     <AddCountDialog
       label="Add floor"
       title="Add floors"
       variant="ghost"
-      buttonClassName="h-7 gap-1 px-2 text-xs font-medium text-primary hover:bg-primary/10 hover:text-primary"
-      fields={[
-        { name: "floors", label: "How many floors?", min: 1, initial: 1 },
-        { name: "units", label: "Units on each floor", min: 0, initial: 0 },
-      ]}
-      onAdd={({ floors, units }) => addFloor(propertyId, floors, units)}
-    />
-  );
-}
-
-export function AddUnitButton({ floorId }: { floorId: string }) {
-  return (
-    <AddCountDialog
-      label="Add unit"
-      title="Add units"
-      fields={[{ name: "units", label: "How many units?", min: 1, initial: 1 }]}
-      onAdd={({ units }) => addUnit(floorId, units)}
+      buttonClassName={className}
+      fields={[{ name: "floors", label: "How many floors?", min: 1, initial: 1 }]}
+      onAdd={({ floors }) => addFloor(propertyId, floors)}
     />
   );
 }
@@ -200,44 +190,5 @@ export function RenameUnitButton({
       <PenLine aria-hidden="true" className="size-4" />
       {showLabel && "Rename"}
     </Button>
-  );
-}
-
-export function RemoveUnitButton({
-  unitId,
-  code,
-  showLabel = false,
-}: {
-  unitId: string;
-  code: string;
-  showLabel?: boolean;
-}) {
-  const [pending, startTransition] = useTransition();
-
-  return (
-    <span className="flex items-center gap-1">
-      <Button
-        type="button"
-        variant="ghost"
-        size={showLabel ? "sm" : "icon"}
-        aria-label={`Remove unit ${code}`}
-        title="Remove unit"
-        disabled={pending}
-        onClick={() => {
-          if (!window.confirm(`Remove unit ${code}? This cannot be undone.`)) return;
-          startTransition(async () => {
-            const response = await deleteUnit(unitId);
-            notify(response.message, response.success ? "success" : "error");
-          });
-        }}
-        className={cn(
-          showLabel ? "gap-2" : "size-7",
-          "rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-60",
-        )}
-      >
-        <Trash2 aria-hidden="true" className="size-4" />
-        {showLabel && "Remove"}
-      </Button>
-    </span>
   );
 }

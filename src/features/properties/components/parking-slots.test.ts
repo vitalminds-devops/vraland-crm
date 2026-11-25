@@ -10,6 +10,11 @@ vi.mock("../actions/parking.actions", () => ({
   renameParkingSlot: vi.fn(),
   setParkingSlotStatus: vi.fn(),
 }));
+vi.mock("../actions/parking-layout.actions", () => ({ saveParkingLayout: vi.fn() }));
+vi.mock("../actions/bulk-remove.actions", () => ({
+  deleteUnits: vi.fn(),
+  deleteParkingSlots: vi.fn(),
+}));
 vi.mock("next/dynamic", () => ({
   default:
     () =>
@@ -41,17 +46,28 @@ it.each(["deposit_paid", "sold"])("prevents removing an occupied slot (%s)", (st
   expect(html).toMatch(/aria-label="Remove parking P3"[^>]*disabled/);
 });
 
-it("defaults to the list with every parking slot", () => {
+it("opens on the top-view plan with every slot in one lot", () => {
   const slots = Array.from({ length: 13 }, (_, index) => ({
     id: String(index),
     code: `P${index + 1}`,
     status: "available",
   }));
   const html = renderToStaticMarkup(createElement(ParkingSlots, { propertyId: "property", slots }));
-  expect(html).not.toContain("data-scene-slots");
-  for (const slot of slots) {
-    expect(html).toContain(`aria-label="Parking ${slot.code}: Available"`);
-  }
+  expect(html).toContain('data-scene-slots="13"');
+  expect(html).not.toContain("Area 1 of 2");
+  expect(html).not.toContain(">List<");
   expect(html).toContain("13 slots");
   expect(html).not.toContain("Add slot");
+});
+
+it("badges each slot with its own price, and none when it has none", () => {
+  const bay = (price: string | null) =>
+    renderToStaticMarkup(
+      createElement(ParkingBay, {
+        slot: { id: "slot", code: "P3", status: "available", price },
+        canManage: false,
+      }),
+    );
+  expect(bay("350000")).toContain("Available · ₱350K");
+  expect(bay(null)).not.toContain("·");
 });

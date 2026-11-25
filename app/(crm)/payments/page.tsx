@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CalendarCheck, CircleDollarSign, Download, Hash, Search } from "lucide-react";
+import {
+  CalendarCheck,
+  CalendarClock,
+  CircleDollarSign,
+  Download,
+  Search,
+  Ticket,
+} from "lucide-react";
 import { FilterForm } from "@/components/common/filter-form";
 import { PageContainer } from "@/components/common/page-container";
 import { PageHeader } from "@/components/common/page-header";
@@ -17,6 +24,7 @@ import {
 } from "@/components/ui/table";
 import { RecordPaymentButton } from "@/features/billing/components/payment-dialogs";
 import { calendarDate, peso } from "@/features/billing/lib/format";
+import { paymentSuggestions } from "@/features/billing/lib/payment-suggestions";
 import { listOpenBills, listPayments } from "@/features/billing/queries/billing.queries";
 import {
   paymentClassificationLabels,
@@ -63,7 +71,7 @@ export default async function PaymentsPage({
     <PageContainer>
       <PageHeader
         title="Payments"
-        description="Payments against broker bills"
+        description="Payments recorded on bills"
         actions={
           <div className="flex flex-wrap gap-2">
             <a
@@ -80,31 +88,36 @@ export default async function PaymentsPage({
                 // Multi-unit labels are joined with " + " (billing.actions.ts).
                 label: `${lead(bill)} · ${bill.unitLabel.split(/ · | \+ /)[0]}${bill.unitLabel.includes(" + ") ? "…" : ""} · ${peso(bill.balance)}`,
                 balance: bill.balance,
+                suggested: paymentSuggestions({
+                  reservationFee: bill.reservationFee,
+                  monthlyAmortization: bill.monthlyAmortization,
+                  balance: Number(bill.balance),
+                  payments: [{ amount: bill.reservationPaid, classification: "reservation" }],
+                }),
               }))}
             />
           </div>
         }
       />
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
-        <StatCard
-          label="Collected"
-          value={peso(data.summary.collected)}
-          detail="All recorded payments."
-          icon={CircleDollarSign}
-        />
-        <StatCard
-          label="This month"
-          value={peso(data.summary.thisMonth)}
-          detail="Paid since the 1st (Manila time)."
-          icon={CalendarCheck}
-        />
-        <StatCard
-          label="Payments"
-          value={data.summary.count.toLocaleString()}
-          detail="Number of payments recorded."
-          icon={Hash}
-        />
+      {/* The amount leads; how many payments sits underneath. */}
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {(
+          [
+            ["Collected", data.summary.collected, data.summary.count, CircleDollarSign],
+            ["This month", data.summary.thisMonth, data.summary.thisMonthCount, CalendarCheck],
+            ["Reservation", data.summary.reservation, data.summary.reservationCount, Ticket],
+            ["Monthly", data.summary.monthly, data.summary.monthlyCount, CalendarClock],
+          ] as const
+        ).map(([label, amount, payments, icon]) => (
+          <StatCard
+            key={label}
+            label={label}
+            value={peso(amount)}
+            detail={`${payments.toLocaleString()} ${payments === 1 ? "payment" : "payments"}`}
+            icon={icon}
+          />
+        ))}
       </div>
 
       <div className="mt-6 rounded-xl border bg-card">
@@ -131,7 +144,7 @@ export default async function PaymentsPage({
                 <TableHeader className="hidden bg-muted/60 text-xs text-muted-foreground md:table-header-group">
                   <TableRow>
                     <TableHead scope="col" className="px-4 py-3 whitespace-nowrap">
-                      Paid on
+                      Date paid
                     </TableHead>
                     <TableHead scope="col" className="w-[38%] px-4 py-3">
                       Contact & property
@@ -155,7 +168,7 @@ export default async function PaymentsPage({
                     >
                       <TableCell className="block p-0 align-top md:table-cell md:px-4 md:py-4">
                         <span className="mb-1 block text-xs text-muted-foreground md:hidden">
-                          Paid on
+                          Date paid
                         </span>
                         <span className="whitespace-nowrap">{calendarDate(row.paidOn)}</span>
                       </TableCell>
@@ -197,7 +210,7 @@ export default async function PaymentsPage({
                             row.method}
                         </p>
                         <p className="mt-2 text-xs break-all text-muted-foreground">
-                          {row.referenceNo ? `Invoice: ${row.referenceNo}` : "No invoice number"}
+                          {row.referenceNo ? `Invoice no. ${row.referenceNo}` : "No invoice no."}
                         </p>
                       </TableCell>
                       <TableCell className="block p-0 text-right align-top font-semibold whitespace-nowrap tabular-nums md:table-cell md:px-4 md:py-4">

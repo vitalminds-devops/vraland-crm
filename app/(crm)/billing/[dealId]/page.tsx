@@ -2,7 +2,6 @@ import {
   Building2,
   CalendarClock,
   Calculator,
-  Car,
   CircleCheck,
   ExternalLink,
   Home,
@@ -37,6 +36,8 @@ import { formatContactName } from "@/features/contacts/lib/helpers";
 import { getAuthorizationContext } from "@/lib/permissions/authorization";
 import { canViewBilling } from "@/lib/permissions/policy";
 import styles from "./print.module.css";
+import { paymentSuggestions } from "@/features/billing/lib/payment-suggestions";
+import { quotedTerms } from "@/features/billing/lib/quoted-terms";
 
 function Row({
   label,
@@ -109,6 +110,16 @@ export default async function DealBillingPage({ params }: { params: Promise<{ de
   const { dealId } = await params;
   const bill = await getDealBilling(dealId);
   if (!bill) notFound();
+
+  // What the opportunity was quoted when its units and parking were chosen, split by kind.
+  const quoted = quotedTerms({
+    amount: bill.amount,
+    parkingAmount: bill.parkingAmount,
+    reservationFee: bill.reservationFee,
+    parkingReservationFee: bill.parkingReservationFee,
+  });
+  const hasQuote =
+    quoted.rows.some((row) => row.price || row.reservationFee) || Boolean(bill.monthlyAmortization);
 
   const applicant = bill.applicantDetails;
   const leadName =
@@ -200,7 +211,7 @@ export default async function DealBillingPage({ params }: { params: Promise<{ de
             </div>
             <dl>
               <div>
-                <dt>Project</dt>
+                <dt>Development</dt>
                 <dd>{bill.developmentName || "—"}</dd>
               </div>
               <div>
@@ -236,18 +247,24 @@ export default async function DealBillingPage({ params }: { params: Promise<{ de
           </section>
           <div className={styles.settlement}>
             <div>
-              {(bill.reservationFee || bill.parkingAmount || bill.monthlyAmortization) && (
+              {hasQuote && (
                 <section className={styles.terms}>
-                  <h2>Opportunity payment terms</h2>
+                  <h2>Quoted prices and fees</h2>
                   <dl>
-                    <div>
-                      <dt>Reservation fee</dt>
-                      <dd>{peso(bill.reservationFee)}</dd>
-                    </div>
-                    <div>
-                      <dt>Parking fee</dt>
-                      <dd>{peso(bill.parkingAmount)}</dd>
-                    </div>
+                    {quoted.rows.flatMap((row) => [
+                      <div key={`${row.label}-price`}>
+                        <dt>{row.label === "Total" ? "Total price" : `${row.label} price`}</dt>
+                        <dd>{peso(row.price)}</dd>
+                      </div>,
+                      <div key={`${row.label}-fee`}>
+                        <dt>
+                          {row.label === "Total"
+                            ? "Total reservation fee"
+                            : `${row.label === "Units" ? "Unit" : row.label} reservation fee`}
+                        </dt>
+                        <dd>{peso(row.reservationFee)}</dd>
+                      </div>,
+                    ])}
                     <div>
                       <dt>Monthly amortization</dt>
                       <dd>{peso(bill.monthlyAmortization)}</dd>
@@ -401,10 +418,16 @@ export default async function DealBillingPage({ params }: { params: Promise<{ de
             )}
             <dl className="mt-5 grid gap-x-6 gap-y-4 text-sm @min-[30rem]:grid-cols-2">
               <Detail icon={User} label="Contact" value={leadName} />
-              <Detail icon={Building2} label="Project" value={bill.developmentName} />
+              <Detail icon={Building2} label="Development" value={bill.developmentName} />
               <Detail
                 icon={Home}
-                label={bill.lines.length > 1 ? "Units" : "Unit"}
+                label={
+                  Number(bill.parkingAmount) > 0
+                    ? "Units & parking"
+                    : bill.lines.length > 1
+                      ? "Units"
+                      : "Unit"
+                }
                 value={unitLabel}
               />
               <Detail
@@ -416,26 +439,46 @@ export default async function DealBillingPage({ params }: { params: Promise<{ de
                 <Detail icon={MapPin} label="Address" value={address} />
               </div>
             </dl>
-            {(bill.reservationFee || bill.parkingAmount || bill.monthlyAmortization) && (
+            {hasQuote && (
               <div className="mt-5 border-t pt-4">
-                <h3 className="text-sm font-medium">Opportunity payment terms</h3>
-                <dl className="mt-3 grid gap-4 text-sm @min-[32rem]:grid-cols-3">
-                  {(
-                    [
-                      ["Reservation fee", bill.reservationFee, Ticket],
-                      ["Parking fee", bill.parkingAmount, Car],
-                      ["Monthly amortization", bill.monthlyAmortization, CalendarClock],
-                    ] as const
-                  ).map(([label, value, Icon]) => (
-                    <div key={label} className="min-w-0">
-                      <dt className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Icon aria-hidden="true" className="size-3.5" />
-                        {label}
-                      </dt>
-                      <dd className="mt-0.5 tabular-nums">{value ? peso(value) : "—"}</dd>
-                    </div>
-                  ))}
-                </dl>
+                <h3 className="text-sm font-medium">Quoted prices and fees</h3>
+                <table className="mt-3 w-full text-sm tabular-nums">
+                  <thead>
+                    <tr className="text-xs text-muted-foreground">
+                      <th scope="col" className="pb-1.5 text-left font-normal">
+                        <span className="sr-only">Item</span>
+                      </th>
+                      <th scope="col" className="pb-1.5 text-right font-normal">
+                        Price
+                      </th>
+                      <th scope="col" className="pb-1.5 text-right font-normal">
+                        Reservation fee
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/40">
+                    {quoted.rows.map((row) => (
+                      <tr
+                        key={row.label}
+                        className={row.label === "Total" ? "font-semibold" : undefined}
+                      >
+                        <th scope="row" className="py-1.5 text-left font-[inherit]">
+                          {row.label}
+                        </th>
+                        <td className="py-1.5 text-right">{row.price ? peso(row.price) : "—"}</td>
+                        <td className="py-1.5 text-right">
+                          {row.reservationFee ? peso(row.reservationFee) : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="mt-3 flex items-baseline justify-between gap-3 border-t border-border/40 pt-2.5 text-sm">
+                  <span className="text-muted-foreground">Monthly amortization</span>
+                  <span className="tabular-nums">
+                    {bill.monthlyAmortization ? peso(bill.monthlyAmortization) : "—"}
+                  </span>
+                </p>
               </div>
             )}
             {bill.billId && (
@@ -509,7 +552,16 @@ export default async function DealBillingPage({ params }: { params: Promise<{ de
               balance > 0 &&
               bill.dealStatus !== "lost" &&
               bill.dealStatus !== "cancelled" && (
-                <RecordPaymentButton billId={bill.billId} balance={String(balance)} />
+                <RecordPaymentButton
+                  billId={bill.billId}
+                  balance={String(balance)}
+                  suggested={paymentSuggestions({
+                    reservationFee: bill.reservationFee,
+                    monthlyAmortization: bill.monthlyAmortization,
+                    balance,
+                    payments: bill.payments,
+                  })}
+                />
               )}
           </header>
           {bill.payments.length ? (
@@ -545,7 +597,7 @@ export default async function DealBillingPage({ params }: { params: Promise<{ de
                     </p>
                     {payment.referenceNo && (
                       <p className="mt-1 text-xs break-all text-muted-foreground">
-                        Invoice: {payment.referenceNo}
+                        Invoice no. {payment.referenceNo}
                       </p>
                     )}
                     {payment.notes && (

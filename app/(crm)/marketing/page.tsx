@@ -54,11 +54,11 @@ export default async function MarketingPage() {
             <div className="flex flex-wrap items-center gap-2">
               <ButtonLink href="/marketing/automations/new" variant="secondary" className="gap-2">
                 <Workflow aria-hidden="true" className="size-4" />
-                New follow-up
+                Add follow-up
               </ButtonLink>
               <ButtonLink href="/marketing/campaigns/new" variant="primary" className="gap-2">
                 <Plus aria-hidden="true" className="size-4" />
-                New campaign
+                Add campaign
               </ButtonLink>
             </div>
           ) : undefined

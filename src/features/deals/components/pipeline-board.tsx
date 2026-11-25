@@ -78,6 +78,7 @@ type Deal = {
   floorLabel: string | null;
   unitCode: string | null;
   unitCodes: string | null;
+  parkingCodes?: string | null;
   stageId: string;
   amount: string | null;
   currency: string;
@@ -237,7 +238,7 @@ export function PipelineBoard({
       const result = await changeDealStage({ dealId, stageId, note }, options);
       if (!result.success) {
         if (!options.expectPending) rollback();
-        notify(`Could not move to ${toStage.name}`, "error", {
+        notify(`Couldn't move to ${toStage.name}`, "error", {
           id: `stage-move-${dealId}`,
           description: result.error.message || "Refresh the pipeline and try the move again.",
         });
@@ -596,7 +597,7 @@ function DealCard({
           )}
           {deal.expectedCloseDate && (
             <span
-              title="Expected close date"
+              title="Expected close"
               className={cn(
                 "flex shrink-0 items-center gap-1 text-[11px] tabular-nums text-muted-foreground",
                 overdue && "text-red-600 dark:text-red-400",
@@ -830,8 +831,9 @@ function agentName(deal: Deal) {
 /** Only property details: the client already titles the card. */
 function placeOf(deal: Deal) {
   const units = deal.unitCodes ? `Units ${deal.unitCodes}` : null;
+  const parking = deal.parkingCodes ? `Parking ${deal.parkingCodes}` : null;
   const building = deal.propertyTitle !== deal.developmentName ? deal.propertyTitle : null;
-  return [deal.developmentName, building, units].filter(Boolean).join(" · ");
+  return [deal.developmentName, building, units, parking].filter(Boolean).join(" · ");
 }
 
 function owner(deal: Deal) {

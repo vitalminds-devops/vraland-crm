@@ -2,19 +2,21 @@
 
 import { randomUUID } from "node:crypto";
 
-import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { and, eq, isNull, sql } from "drizzle-orm";
+import { revalidateProperty } from "../lib/revalidate-property";
 import { z } from "zod";
 import { db } from "@/db";
-import { activities, auditLogs, deals, floors, properties, units } from "@/db/schema";
+import { activities, auditLogs, floors, properties, units } from "@/db/schema";
 import { requirePermission } from "@/lib/permissions/authorization";
 import { logError } from "@/lib/logger";
 import { getDocumentStorage } from "@/lib/storage/document-storage";
 import { matchesDeclaredType } from "@/lib/storage/file-signature";
-import { nextFloorLevel } from "../lib/floor-levels";
 import { activeHold, heldMessage, InventoryHeldError } from "../lib/inventory-hold";
 import { canWriteProperty } from "../lib/property-scope";
-import { floorLabel, unitCode, unitStatuses } from "../lib/unit-codes";
+import { removalBlocker } from "../lib/unit-removal";
+import { dropFromFloorPlans } from "../lib/floor-plan-cleanup";
+import { floorLabel, unitStatuses } from "../lib/unit-codes";
+import { floorCodes, legacyNumbering, nextFreeCode, nextLevel } from "../lib/unit-numbering";
 import { ActionResult, failure, databaseFailure } from "@/lib/types/action-result";
 import { outOfScope } from "@/lib/errors";
 
@@ -112,51 +114,12 @@ export async function setUnitStatus(unitId: string, status: string): Promise<Uni
         newValues: { status: parsed.data.status },
       });
     });
-    revalidatePath(`/properties/${target.buildingId}`);
+    revalidateProperty(target.buildingId);
     return { success: true, message: `Unit ${target.code} updated.` };
   } catch (error) {
     if (error instanceof InventoryHeldError) return { success: false, message: error.message };
     return toLegacyResult(handleDatabaseError(error, "Unit"));
   }
-}
-
-/**
- * Why these units must stay, or null: a reserved or sold unit, or one an open deal is for,
- * is part of a sale, so removing it would lose that record.
- */
-async function removalBlocker(
-  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
-  unitIds: string[],
-): Promise<string | null> {
-  if (!unitIds.length) return null;
-  const rows = await tx
-    .select({
-      code: units.code,
-      status: units.status,
-      reservedDealId: units.reservedDealId,
-      dealCode: deals.dealCode,
-    })
-    .from(units)
-    .leftJoin(
-      deals,
-      and(
-        or(eq(deals.unitId, units.id), sql`${units.id} = any(${deals.unitIds})`),
-        eq(deals.status, "open"),
-        isNull(deals.deletedAt),
-      ),
-    )
-    .where(inArray(units.id, unitIds))
-    .orderBy(asc(units.id))
-    .for("update", { of: units });
-  const sold = rows.find(
-    (row) => row.status === "deposit_paid" || row.status === "sold" || row.reservedDealId,
-  );
-  if (sold)
-    return `Unit ${sold.code} is ${sold.status === "sold" ? "sold" : "reserved"}, so it cannot be removed. Mark it Available or Inactive first.`;
-  const inDeal = rows.find((row) => row.dealCode);
-  if (inDeal)
-    return `Unit ${inDeal.code} is on open opportunity ${inDeal.dealCode}, so it cannot be removed.`;
-  return null;
 }
 
 /** Keeps the property's saved floor count in step with its inventory. */
@@ -183,6 +146,7 @@ async function loadFloor(organizationId: string, floorId: string) {
       buildingId: floors.buildingId,
       developmentId: properties.developmentId,
       propertyTitle: properties.title,
+      unitNumbering: properties.unitNumbering,
     })
     .from(floors)
     .innerJoin(properties, eq(floors.buildingId, properties.id))
@@ -198,6 +162,9 @@ async function loadFloor(organizationId: string, floorId: string) {
 }
 
 const addCountSchema = z.number().int().min(1).max(100);
+
+/** A custom-numbered floor already has a unit for every number. */
+class FloorFullError extends Error {}
 const unitsEachSchema = z.number().int().min(0).max(100);
 
 /**
@@ -208,8 +175,16 @@ export async function addFloor(
   propertyId: string,
   count = 1,
   unitsEach = 0,
+  /** Names for the new floors, one floor each; without them floors are named by level. */
+  labels?: string[],
 ): Promise<UnitActionResult> {
   const context = await requirePermission("properties.manage_units");
+  if (labels) {
+    labels = labels.map((label) => label.trim()).filter(Boolean);
+    if (!labels.length || labels.some((label) => label.length > 50))
+      return { success: false, message: "Enter floor names of up to 50 characters." };
+    count = labels.length;
+  }
   if (!z.uuid().safeParse(propertyId).success)
     return { success: false, message: "Invalid property." };
   if (!addCountSchema.safeParse(count).success || !unitsEachSchema.safeParse(unitsEach).success)
@@ -220,6 +195,7 @@ export async function addFloor(
       id: properties.id,
       title: properties.title,
       developmentId: properties.developmentId,
+      unitNumbering: properties.unitNumbering,
     })
     .from(properties)
     .where(
@@ -240,22 +216,24 @@ export async function addFloor(
           .from(floors)
           .where(eq(floors.buildingId, propertyId))
       ).map((floor) => floor.level);
+      // New floors follow the property's numbering; older properties keep letters, skipping 4.
+      const numbering = property.unitNumbering ?? legacyNumbering;
       let label = "";
       for (let added = 0; added < count; added += 1) {
-        const level = nextFloorLevel(levels);
+        const level = nextLevel(levels, numbering.skipFloors);
         levels.push(level);
         const [floor] = await tx
           .insert(floors)
-          .values({ buildingId: propertyId, level, label: floorLabel(level) })
+          .values({ buildingId: propertyId, level, label: labels?.[added] ?? floorLabel(level) })
           .returning({ id: floors.id, label: floors.label });
         label = floor.label;
         if (unitsEach)
           await tx.insert(units).values(
-            Array.from({ length: unitsEach }, (_, index) => ({
+            floorCodes(numbering, level, unitsEach).map((code) => ({
               developmentId: property.developmentId,
               buildingId: propertyId,
               floorId: floor.id,
-              code: unitCode(level, index + 1),
+              code,
             })),
           );
         await tx.insert(auditLogs).values({
@@ -270,7 +248,7 @@ export async function addFloor(
       await syncFloorCount(tx, propertyId);
       return label;
     });
-    revalidatePath(`/properties/${propertyId}`);
+    revalidateProperty(propertyId);
     return { success: true, message: count === 1 ? `${label} added.` : `${count} floors added.` };
   } catch (error) {
     return toLegacyResult(handleDatabaseError(error, "Floor"));
@@ -315,7 +293,7 @@ export async function renameFloor(floorId: string, label: string): Promise<UnitA
         newValues: { label: next },
       });
     });
-    revalidatePath(`/properties/${floor.buildingId}`);
+    revalidateProperty(floor.buildingId);
     return { success: true, message: `${floor.label} renamed to ${next}.` };
   } catch (error) {
     return toLegacyResult(handleDatabaseError(error, "Floor"));
@@ -362,7 +340,7 @@ export async function deleteFloor(floorId: string): Promise<UnitActionResult> {
       return null;
     });
     if (blocker) return { success: false, message: blocker };
-    revalidatePath(`/properties/${floor.buildingId}`);
+    revalidateProperty(floor.buildingId);
     return { success: true, message: `${floor.label} removed.` };
   } catch (error) {
     return toLegacyResult(handleDatabaseError(error, "Floor"));
@@ -387,11 +365,13 @@ export async function addUnit(floorId: string, count = 1): Promise<UnitActionRes
           (unit) => unit.code,
         ),
       );
-      let index = taken.size + 1;
+      // The first number the floor doesn't use yet, so a removed unit's number comes back first.
+      const numbering = floor.unitNumbering ?? legacyNumbering;
       let next = "";
       for (let added = 0; added < count; added += 1) {
-        while (taken.has(unitCode(floor.level, index))) index += 1;
-        next = unitCode(floor.level, index);
+        const code = nextFreeCode(numbering, floor.level, taken);
+        if (code === null) throw new FloorFullError();
+        next = code;
         taken.add(next);
         const [unit] = await tx
           .insert(units)
@@ -413,7 +393,7 @@ export async function addUnit(floorId: string, count = 1): Promise<UnitActionRes
       }
       return next;
     });
-    revalidatePath(`/properties/${floor.buildingId}`);
+    revalidateProperty(floor.buildingId);
     return {
       success: true,
       message:
@@ -422,6 +402,8 @@ export async function addUnit(floorId: string, count = 1): Promise<UnitActionRes
           : `${count} units added to ${floor.label}.`,
     };
   } catch (error) {
+    if (error instanceof FloorFullError)
+      return { success: false, message: `Every unit identifier on ${floor.label} is used.` };
     return toLegacyResult(handleDatabaseError(error, "Unit"));
   }
 }
@@ -439,6 +421,7 @@ export async function deleteUnit(unitId: string): Promise<UnitActionResult> {
     const blocker = await db.transaction(async (tx) => {
       const blocker = await removalBlocker(tx, [target.id]);
       if (blocker) return blocker;
+      await dropFromFloorPlans(tx, [target.floorId], { unitIds: [target.id] });
       await tx.delete(units).where(eq(units.id, target.id));
       await tx.insert(activities).values({
         organizationId: context.organizationId,
@@ -459,7 +442,7 @@ export async function deleteUnit(unitId: string): Promise<UnitActionResult> {
       return null;
     });
     if (blocker) return { success: false, message: blocker };
-    revalidatePath(`/properties/${target.buildingId}`);
+    revalidateProperty(target.buildingId);
     return { success: true, message: `Unit ${target.code} removed.` };
   } catch (error) {
     return toLegacyResult(handleDatabaseError(error, "Unit"));
@@ -520,7 +503,7 @@ export async function renameUnit(unitId: string, code: string): Promise<UnitActi
         newValues: { code: next },
       });
     });
-    revalidatePath(`/properties/${target.buildingId}`);
+    revalidateProperty(target.buildingId);
     return { success: true, message: `Unit renamed to ${next}.` };
   } catch (error) {
     return toLegacyResult(handleDatabaseError(error, "Unit"));
@@ -600,7 +583,7 @@ function writeUnitFailure(error: unknown): UnitActionResult {
   });
   return {
     success: false,
-    message: "The unit picture could not be saved.",
+    message: "Couldn't save the unit photo.",
   };
 }
 
@@ -612,14 +595,14 @@ export async function saveUnitImage(formData: FormData): Promise<UnitActionResul
 
   const file = formData.get("image");
   if (!(file instanceof File) || !file.size)
-    return { success: false, message: "Choose a picture to upload." };
+    return { success: false, message: "Choose a photo to upload." };
   if (!unitImageTypes[file.type] || !(await matchesDeclaredType(file)))
     return {
       success: false,
       message: "Choose a JPEG, PNG or WebP image.",
     };
   if (file.size > unitImageLimit)
-    return { success: false, message: "Pictures must be 5 MB or smaller." };
+    return { success: false, message: "Photos must be 5 MB or smaller." };
 
   const unit = await loadUnitWithProperty(context.organizationId, parsed.data);
   if (!unit) return { success: false, message: "That unit could not be found." };
@@ -657,7 +640,7 @@ export async function saveUnitImage(formData: FormData): Promise<UnitActionResul
           ? "property.unit_image_replaced"
           : "property.unit_image_added",
         summary: `Unit ${unit.code} of ${unit.propertyTitle} ${
-          unit.imageStorageKey ? "was re-pictured" : "was given a picture"
+          unit.imageStorageKey ? "got a new photo" : "was given a photo"
         }.`,
         propertyId: unit.buildingId,
         metadata: { unitId: unit.id, mimeType: file.type, size: file.size },
@@ -690,8 +673,8 @@ export async function saveUnitImage(formData: FormData): Promise<UnitActionResul
       }),
     );
 
-  revalidatePath(`/properties/${unit.buildingId}`);
-  return { success: true, message: `Unit ${unit.code} picture saved.` };
+  revalidateProperty(unit.buildingId);
+  return { success: true, message: `Unit ${unit.code} photo saved.` };
 }
 
 export async function removeUnitImage(unitId: string): Promise<UnitActionResult> {
@@ -703,7 +686,7 @@ export async function removeUnitImage(unitId: string): Promise<UnitActionResult>
   const unit = await loadUnitWithProperty(context.organizationId, parsed.data);
   if (!unit) return { success: false, message: "That unit could not be found." };
   if (!unit.imageStorageKey)
-    return { success: false, message: "That unit has no picture to remove." };
+    return { success: false, message: "That unit has no photo to remove." };
   if (!(await canWriteProperty(context, unit.buildingId)))
     return {
       success: false,
@@ -744,6 +727,6 @@ export async function removeUnitImage(unitId: string): Promise<UnitActionResult>
       }),
     );
 
-  revalidatePath(`/properties/${unit.buildingId}`);
-  return { success: true, message: `Unit ${unit.code} picture removed.` };
+  revalidateProperty(unit.buildingId);
+  return { success: true, message: `Unit ${unit.code} photo removed.` };
 }

@@ -23,13 +23,21 @@ const statusLabels: Record<string, string> = {
   flagged: "Flagged (possible duplicate)",
 };
 
-export function ImportForm() {
+/** The file picker opens from its own button, or from elsewhere through `open`. */
+export function ImportForm({
+  open: pickerOpen,
+  onOpenChange: setPickerOpen,
+  triggerClassName,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  triggerClassName?: string;
+}) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
   const [summary, setSummary] = useState<ContactImportSummary | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [pickerOpen, setPickerOpen] = useState(false);
 
   const onFile = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -59,7 +67,7 @@ export function ImportForm() {
           notify(result.error.message, "error", toastId);
         }
       } catch {
-        notify("Could not confirm import", "error", {
+        notify("Couldn't confirm import", "error", {
           id: toastId,
           description:
             "Check the contact list before importing again. Some rows may already have been saved.",
@@ -73,6 +81,7 @@ export function ImportForm() {
       <Button
         type="button"
         variant="secondary"
+        className={triggerClassName}
         disabled={pending}
         onClick={() => setPickerOpen(true)}
       >

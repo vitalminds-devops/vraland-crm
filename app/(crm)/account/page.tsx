@@ -17,7 +17,7 @@ export default async function AccountPage() {
   const initials = `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase();
   const brokerName = [user.brokerFirstName, user.brokerLastName].filter(Boolean).join(" ");
   const facts = [
-    { icon: Mail, label: "Email", value: user.email, note: "Ask an admin to change it." },
+    { icon: Mail, label: "Email", value: user.email, note: "Ask an Administrator to change it." },
     { icon: Phone, label: "Phone", value: user.phone },
     { icon: UserRound, label: "Broker", value: brokerName },
     { icon: CalendarDays, label: "Member since", value: day(user.createdAt) },

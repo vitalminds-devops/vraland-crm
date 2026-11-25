@@ -79,7 +79,7 @@ export default async function SmsTemplatesPage({
             {canManage ? (
               <ButtonLink href="/marketing/sms-templates/new" variant="primary" className="gap-2">
                 <Plus aria-hidden="true" className="size-4" />
-                New SMS template
+                Add SMS template
               </ButtonLink>
             ) : null}
           </div>
@@ -210,7 +210,7 @@ export default async function SmsTemplatesPage({
                     className="gap-2"
                   >
                     <Plus aria-hidden="true" className="size-4" />
-                    New SMS template
+                    Add SMS template
                   </ButtonLink>
                 ) : undefined
               }

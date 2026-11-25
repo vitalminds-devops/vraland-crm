@@ -14,15 +14,18 @@ export function OpportunityParkingSelector({
   selectedIds,
   onChange,
   disabled,
-  heldIds = [],
+  dealId,
+  floorId: chosenFloor,
 }: {
   developmentId: string;
   buildingId: string;
   selectedIds: string[];
   onChange: (ids: string[]) => void;
   disabled: boolean;
-  /** Slots this opportunity already reserved; they stay selectable when changing units. */
-  heldIds?: string[];
+  /** The floor chosen above: only its slots show, with no floor list of their own. */
+  floorId?: string;
+  /** The opportunity being changed: the slots it holds stay selectable, only for it. */
+  dealId?: string;
 }) {
   const [data, setData] = useState<Awaited<ReturnType<typeof getOpportunityParking>>>(null);
   const [failed, setFailed] = useState(false);
@@ -30,7 +33,7 @@ export function OpportunityParkingSelector({
   const [floorId, setFloorId] = useState("");
   useEffect(() => {
     let live = true;
-    getOpportunityParking({ developmentId, buildingId })
+    getOpportunityParking({ developmentId, buildingId }, dealId)
       .then((result) => {
         if (!live) return;
         setData(result);
@@ -47,7 +50,7 @@ export function OpportunityParkingSelector({
     return () => {
       live = false;
     };
-  }, [developmentId, buildingId, retry]);
+  }, [developmentId, buildingId, dealId, retry]);
 
   if (failed)
     return (
@@ -72,13 +75,46 @@ export function OpportunityParkingSelector({
         Loading parking slots…
       </p>
     );
-  const slots = data.slots.map((slot) =>
-    heldIds.includes(slot.id) ? { ...slot, status: "available" } : slot,
-  );
-  const visible = slots.filter((slot) => (slot.floorId ?? UNASSIGNED) === floorId);
+  const slots = data.slots;
+  const onFloor = chosenFloor ?? floorId;
+  const visible = slots.filter((slot) => (slot.floorId ?? UNASSIGNED) === onFloor);
   const unavailable = selectedIds.some(
     (id) => !slots.some((slot) => slot.id === id && slot.status === "available"),
   );
+  // Picked with its floor's units: no list of its own, and nothing when the floor has no parking.
+  if (chosenFloor) {
+    if (!visible.length) return null;
+    return (
+      <div className="space-y-2">
+        <p className="text-[13px] font-medium">Parking on this floor</p>
+        <ParkingPicker
+          compact
+          slots={visible}
+          selectedIds={selectedIds}
+          selectionLabel="selected"
+          availableOnly
+          disabled={disabled}
+          onToggle={(id) =>
+            onChange(
+              selectedIds.includes(id)
+                ? selectedIds.filter((value) => value !== id)
+                : [...selectedIds, id],
+            )
+          }
+        />
+        {unavailable && (
+          <p role="alert" className="text-sm text-destructive">
+            Some selected slots are no longer available. Choose available slots.
+          </p>
+        )}
+        {selectedIds.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {selectedIds.length} parking {selectedIds.length === 1 ? "slot" : "slots"} selected
+          </p>
+        )}
+      </div>
+    );
+  }
   return (
     <div className="space-y-3">
       {data.slots.length ? (

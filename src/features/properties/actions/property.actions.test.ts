@@ -9,10 +9,15 @@ const mock = vi.hoisted(() => ({
   transaction: vi.fn(),
 }));
 vi.mock("@/db", () => ({ db: { transaction: mock.transaction } }));
+vi.mock("@/lib/record-codes", () => ({ nextRecordCode: async () => "PROP-0001" }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/logger", () => ({ logError: vi.fn() }));
 vi.mock("@/lib/permissions/authorization", () => ({
-  requirePermission: vi.fn(async () => ({ organizationId: "organization", userId: "creator" })),
+  requirePermission: vi.fn(async () => ({
+    organizationId: "organization",
+    userId: "creator",
+    permissions: new Set(["properties.create"]),
+  })),
 }));
 vi.mock("@/lib/permissions/policy", () => ({ hasUnrestrictedInventoryAccess: () => true }));
 vi.mock("../lib/property-scope", () => ({ canWriteProperty: vi.fn(async () => true) }));

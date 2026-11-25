@@ -3,7 +3,7 @@ import { PageContainer } from "@/components/common/page-container";
 import { PageHeader } from "@/components/common/page-header";
 import { FormNavigation } from "@/components/common/form-navigation";
 import { formCardClass } from "@/components/ui/form-kit";
-import { PropertyForm, newPropertyFormSections } from "@/features/properties";
+import { PropertyForm, propertyFormSections } from "@/features/properties";
 import { getPropertyOptions } from "@/features/properties/queries/property.queries";
 import { requirePagePermission } from "@/lib/permissions/authorization";
 export default async function NewPropertyPage({
@@ -22,8 +22,8 @@ export default async function NewPropertyPage({
         description="Only the name is required."
         actions={<BackButton fallbackHref="/properties" label="Back to properties" />}
       />
-      <div className="mt-6 flex gap-8">
-        <FormNavigation sections={newPropertyFormSections} />
+      <div className="mt-4 flex gap-6 [&>aside]:w-48">
+        <FormNavigation sections={propertyFormSections} />
         <div className={formCardClass}>
           <PropertyForm options={options} initial={developmentId ? { developmentId } : undefined} />
         </div>

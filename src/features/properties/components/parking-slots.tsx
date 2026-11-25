@@ -1,6 +1,6 @@
 "use client";
 
-import { Car, ChevronLeft, ChevronRight, PenLine, Trash2 } from "lucide-react";
+import { Car, PenLine, Trash2 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useEffect, useState, useTransition } from "react";
 import { create } from "zustand";
@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { notify } from "@/components/ui/toast";
+import { formatMoneyShort } from "@/lib/utils/money";
 import { cn } from "@/lib/utils/cn";
 import {
   addParkingSlot,
@@ -28,23 +29,47 @@ import {
 import { unitStatusLabel, unitStatusLabels, unitStatuses } from "../lib/unit-codes";
 import { UnitStatusLegend } from "./unit-grid";
 import { AddCountDialog } from "./add-count-dialog";
+import { BulkRemoveDialog } from "./bulk-remove-dialog";
+import { deleteParkingSlots } from "../actions/bulk-remove.actions";
+import type { FloorLayout } from "../lib/floor-layout";
+import { parkingPlan, type ParkingLayout } from "../lib/parking-layout";
 import styles from "./parking-slots.module.css";
+import { NO_FLOOR } from "../lib/parking-codes";
 
-export type ParkingSlot = { id: string; code: string; status: string; floorId?: string | null };
-type ParkingFloor = { id: string; label: string; level?: number };
-type View = "3d" | "top" | "list";
+export type ParkingSlot = {
+  id: string;
+  code: string;
+  status: string;
+  floorId?: string | null;
+  price?: string | null;
+  reservationFee?: string | null;
+  ownPrice?: string | null;
+  ownReservationFee?: string | null;
+};
+type ParkingFloor = {
+  id: string;
+  label: string;
+  level?: number;
+  layout?: FloorLayout | null;
+  /** The old separate parking design, shown until the floor's design takes over. */
+  parkingLayout?: ParkingLayout | null;
+};
+// Parking shows on the top-view plan; the list is only for devices that can't draw it.
+type View = "top" | "list";
 const useParkingView = create<{ view: View; setView: (view: View) => void }>((set) => ({
-  view: "list",
+  view: "top",
   setView: (view) => set({ view }),
 }));
 // Keep floor choices available to both the scene and list controls.
-const useParkingFloors = create<{ floors: ParkingFloor[] }>(() => ({ floors: [] }));
-const NO_FLOOR = "none";
+const useParkingFloors = create<{ floors: ParkingFloor[]; currency: string }>(() => ({
+  floors: [],
+  currency: "PHP",
+}));
 const ParkingScene = dynamic(() => import("./parking-scene"), {
   ssr: false,
   loading: () => (
     <div className="grid h-[560px] place-items-center text-sm text-muted-foreground">
-      Loading 3D parking…
+      Loading parking plan…
     </div>
   ),
 });
@@ -61,7 +86,7 @@ function useParkingAction() {
         notify(response.message, response.success ? "success" : "error");
         if (response.success) onSuccess?.();
       } catch {
-        notify("Parking could not be updated. Try again.", "error");
+        notify("Couldn't update parking. Try again.", "error");
       }
     });
   return [pending, run] as const;
@@ -72,14 +97,23 @@ export function ParkingSlots({
   slots: allSlots,
   floors = [],
   canManage = false,
+  currency = "PHP",
+  onlyFloor,
 }: {
   propertyId: string;
   slots: ParkingSlot[];
   /** The property's floors a slot can be assigned to, lowest first. */
   floors?: ParkingFloor[];
   canManage?: boolean;
+  /** The property's currency, for each slot's own price on its badge. */
+  currency?: string;
+  /**
+   * Show just this floor's slots (or `NO_FLOOR`'s) as a compact list, with no floor picker:
+   * how each floor in Floors & units lists its parking.
+   */
+  onlyFloor?: string;
 }) {
-  useEffect(() => useParkingFloors.setState({ floors }), [floors]);
+  useEffect(() => useParkingFloors.setState({ floors, currency }), [floors, currency]);
   const countOn = (filter: string) =>
     allSlots.filter((slot) => (slot.floorId ?? NO_FLOOR) === filter).length;
   const choices = [
@@ -91,13 +125,15 @@ export function ParkingSlots({
     { id: NO_FLOOR, label: "No floor", badge: "–" },
   ];
   // Open on the first floor that has parking.
-  const [floorFilter, setFloorFilter] = useState(
+  const [pickedFloor, setFloorFilter] = useState(
     () => (choices.find((choice) => countOn(choice.id) > 0) ?? choices[0]).id,
   );
+  const floorFilter = onlyFloor ?? pickedFloor;
   // Without floors there is no panel, so every slot shows.
   // The floor new slots go on; follows the floor being viewed.
   const [addTo, setAddTo] = useState(floorFilter);
   const [viewedFloor, setViewedFloor] = useState(floorFilter);
+  const activeFloor = floors.find((floor) => floor.id === floorFilter) ?? null;
   if (viewedFloor !== floorFilter) {
     setViewedFloor(floorFilter);
     setAddTo(floorFilter);
@@ -106,12 +142,9 @@ export function ParkingSlots({
     ? allSlots.filter((slot) => (slot.floorId ?? NO_FLOOR) === floorFilter)
     : allSlots;
   const available = slots.filter((slot) => slot.status === "available").length;
-  const view = useParkingView((state) => state.view);
+  // One floor's parking sits under its floor plan, so a compact list is enough there.
+  const view = useParkingView((state) => (onlyFloor ? "list" : state.view));
   const setView = useParkingView((state) => state.setView);
-  const [page, setPage] = useState(0);
-  const decks: ParkingSlot[][] = [];
-  for (let index = 0; index < slots.length; index += 12) decks.push(slots.slice(index, index + 12));
-  const activePage = Math.min(page, Math.max(0, decks.length - 1));
 
   const lot = (
     <div className="min-w-0 space-y-4">
@@ -122,66 +155,50 @@ export function ParkingSlots({
           </p>
         </div>
         {canManage && (
-          <AddCountDialog
-            label="Add parking"
-            title="Add parking slots"
-            fields={[{ name: "slots", label: "How many slots?", min: 1, initial: 1 }]}
-            extra={
-              floors.length > 0 && (
-                <label className="grid gap-1.5 text-sm font-medium">
-                  Floor
-                  <NativeSelect value={addTo} onChange={(event) => setAddTo(event.target.value)}>
-                    {choices.map((choice) => (
-                      <NativeSelectOption key={choice.id} value={choice.id}>
-                        {choice.label}
-                      </NativeSelectOption>
-                    ))}
-                  </NativeSelect>
-                </label>
-              )
-            }
-            onAdd={async ({ slots: count }) => {
-              const target = floors.length && addTo !== NO_FLOOR ? addTo : null;
-              const result = await addParkingSlot(propertyId, target, count);
-              // Show the floor the slots went to.
-              if (result.success && floors.length) setFloorFilter(addTo);
-              return result;
-            }}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <BulkRemoveDialog
+              noun={["parking slot", "parking slots"]}
+              items={slots}
+              onRemove={(ids) => deleteParkingSlots({ propertyId, ids })}
+            />
+            <AddCountDialog
+              label="Add parking"
+              title="Add parking slots"
+              fields={[{ name: "slots", label: "How many slots?", min: 1, initial: 1 }]}
+              extra={
+                !onlyFloor &&
+                floors.length > 0 && (
+                  <label className="grid gap-1.5 text-sm font-medium">
+                    Floor
+                    <NativeSelect value={addTo} onChange={(event) => setAddTo(event.target.value)}>
+                      {choices.map((choice) => (
+                        <NativeSelectOption key={choice.id} value={choice.id}>
+                          {choice.label}
+                        </NativeSelectOption>
+                      ))}
+                    </NativeSelect>
+                  </label>
+                )
+              }
+              onAdd={async ({ slots: count }) => {
+                const chosen = onlyFloor ?? addTo;
+                const target = floors.length && chosen !== NO_FLOOR ? chosen : null;
+                const result = await addParkingSlot(propertyId, target, count);
+                // Show the floor the slots went to.
+                if (result.success && floors.length) setFloorFilter(addTo);
+                return result;
+              }}
+            />
+          </div>
         )}
       </div>
       {allSlots.length && !slots.length ? (
-        <p className="rounded-lg border border-dashed border-border/60 bg-muted/30 px-4 py-5 text-[13px] text-muted-foreground">
+        <p className="py-6 text-center text-[13px] text-muted-foreground">
           No parking on this floor.
         </p>
       ) : slots.length ? (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <UnitStatusLegend />
-            <div
-              className="flex items-center gap-1 rounded-lg border border-border p-1"
-              aria-label="Parking view"
-            >
-              {(
-                [
-                  ["list", "List"],
-                  ["3d", "3D View"],
-                  ["top", "Top View"],
-                ] as const
-              ).map(([value, label]) => (
-                <Button
-                  key={value}
-                  type="button"
-                  variant={view === value ? "primary" : "ghost"}
-                  size="sm"
-                  aria-pressed={view === value}
-                  onClick={() => setView(value)}
-                >
-                  {label}
-                </Button>
-              ))}
-            </div>
-          </div>
+          <UnitStatusLegend />
           <div
             role="region"
             aria-label="Parking floor plan"
@@ -196,43 +213,17 @@ export function ParkingSlots({
               </ul>
             ) : (
               <ParkingScene
-                slots={decks[activePage]}
+                slots={slots}
                 canManage={canManage}
-                topView={view === "top"}
+                layout={activeFloor ? parkingPlan(activeFloor) : null}
+                topView
                 onFallback={() => setView("list")}
               />
             )}
           </div>
           {view !== "list" && (
             <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-              <p>Drag to rotate · Scroll to zoom · Use List for keyboard navigation</p>
-              {decks.length > 1 && (
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    aria-label="Previous parking area"
-                    disabled={activePage === 0}
-                    onClick={() => setPage(activePage - 1)}
-                  >
-                    <ChevronLeft className="size-4" />
-                  </Button>
-                  <span>
-                    Area {activePage + 1} of {decks.length}
-                  </span>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    aria-label="Next parking area"
-                    disabled={activePage === decks.length - 1}
-                    onClick={() => setPage(activePage + 1)}
-                  >
-                    <ChevronRight className="size-4" />
-                  </Button>
-                </div>
-              )}
+              <p>Tap a slot to use its controls · Scroll or pinch to zoom</p>
             </div>
           )}
         </>
@@ -244,18 +235,14 @@ export function ParkingSlots({
     </div>
   );
 
-  if (!floors.length || !allSlots.length) return lot;
+  if (onlyFloor) return lot;
+  if (!floors.length || !allSlots.length) return <div className="p-4">{lot}</div>;
 
   // Same floor panel as Floors & units: pick a floor on the left, see its parking on the right.
   return (
-    <div className="grid gap-4 lg:grid-cols-[15rem_minmax(0,1fr)]">
-      {/* lg:h-0 + min-h-full: the lot sets the row height and this panel fills it, scrolling its floors. */}
-      <div className="flex min-w-0 flex-col self-start overflow-hidden rounded-xl border border-border/60 bg-muted/20 lg:h-0 lg:min-h-full lg:self-stretch">
-        <div className="border-b border-border/40 py-2.5 pr-2 pl-4">
-          <h3 className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-            Floors
-          </h3>
-        </div>
+    <div className="grid lg:grid-cols-[13rem_minmax(0,1fr)]">
+      {/* lg:h-0 + min-h-full: the lot sets the row height and this pane fills it, scrolling its floors. */}
+      <div className="flex min-w-0 flex-col border-b border-border/60 bg-muted/20 lg:h-0 lg:min-h-full lg:border-r lg:border-b-0">
         <ul className="flex gap-1 overflow-x-auto p-2 lg:min-h-0 lg:flex-1 lg:flex-col lg:overflow-y-auto">
           {choices.map((choice) => {
             const isActive = floorFilter === choice.id;
@@ -265,7 +252,6 @@ export function ParkingSlots({
                   type="button"
                   onClick={() => {
                     setFloorFilter(choice.id);
-                    setPage(0);
                   }}
                   aria-current={isActive ? "true" : undefined}
                   className={cn(
@@ -303,9 +289,7 @@ export function ParkingSlots({
           })}
         </ul>
       </div>
-      <div className="min-w-0 self-start rounded-xl border border-border/60 bg-muted/15 p-4 sm:p-5">
-        {lot}
-      </div>
+      <div className="min-w-0 p-4">{lot}</div>
     </div>
   );
 }
@@ -316,7 +300,9 @@ export function ParkingBay({ slot, canManage }: { slot: ParkingSlot; canManage: 
   const [name, setName] = useState(slot.code);
   const floors = useParkingFloors((state) => state.floors);
   const [floorId, setFloorId] = useState(slot.floorId ?? NO_FLOOR);
-  const floorLabel = floors.find((floor) => floor.id === slot.floorId)?.label;
+  const currency = useParkingFloors((state) => state.currency);
+  // The slot's own price, set on it or by its parking type: what an opportunity charges.
+  const price = formatMoneyShort(slot.price, currency);
   const taken = slot.status === "deposit_paid" || slot.status === "sold";
   return (
     <li
@@ -347,8 +333,9 @@ export function ParkingBay({ slot, canManage }: { slot: ParkingSlot; canManage: 
         {slot.code}
       </span>
       <span className={styles.bayStatus}>
+        {/* The floor is already picked on the left, so the badge carries the price instead. */}
         {unitStatusLabel(slot.status)}
-        {floorLabel ? ` · ${floorLabel}` : ""}
+        {price ? ` · ${price}` : ""}
       </span>
       {canManage && (
         <div className={styles.bayActions}>

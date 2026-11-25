@@ -13,18 +13,18 @@ const inventory = vi.hoisted(() => ({
     {
       id: "12345678-1234-4234-8234-123456789abc",
       title: "Tower 1",
-      askingPrice: "120000.25",
       parkingPrice: "25000.50",
       parkingSpaces: 2,
       currency: "PHP",
     },
   ],
-  units: [{ id: "12345678-1234-4234-8234-123456789abc" }],
+  units: [] as { id: string; code?: string; price?: string }[],
   parking: [
     {
       id: "12345678-1234-4234-8234-123456789abc",
       code: "P1",
       status: "available",
+      price: "25000.50",
       floorId: null,
       accessible: true,
     },
@@ -100,8 +100,10 @@ const id = "12345678-1234-4234-8234-123456789abc";
 const selection = { developmentId: id, buildingId: id, unitIds: [id], parkingSlotIds: [id] };
 beforeEach(() => {
   inventory.permissions = new Set(["properties.view", "contacts.update"]);
-  inventory.units = [{ id }];
-  inventory.parking = [{ id, code: "P1", status: "available", floorId: null, accessible: true }];
+  inventory.units = [{ id, code: "101", price: "120000.25" }];
+  inventory.parking = [
+    { id, code: "P1", status: "available", price: "25000.50", floorId: null, accessible: true },
+  ];
   inventory.queryRows = [];
   inventory.updates = [];
   inventory.lockStage = "leads";
@@ -113,7 +115,7 @@ beforeEach(() => {
 function leadForm() {
   inventory.queryRows = [
     [{ dealId: id, stageSlug: "leads", contactId: id, firstName: "Buyer", lastName: "Test" }],
-    [{ id }],
+    [{ id, code: "101", price: "120000.25" }],
     [{ name: "Development" }],
   ];
   const form = new FormData();
@@ -150,8 +152,7 @@ it("saves the building, parking quantity, and authoritative total before moving"
   expect(await openOpportunity(leadForm())).toMatchObject({
     success: true,
     data: {
-      message:
-        "Selected units and parking spaces remain available to others until Reservation.",
+      message: "Selected units and parking spaces remain available to others until Reservation.",
     },
   });
   expect(inventory.updates).toContainEqual(

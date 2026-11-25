@@ -13,7 +13,7 @@ export default async function NewSequencePage() {
   return (
     <PageContainer className="max-w-7xl">
       <PageHeader
-        title="New follow-up"
+        title="Add follow-up"
         description="Name it and choose what starts it."
         actions={<BackButton fallbackHref="/marketing/automations" label="Back to follow-ups" />}
       />

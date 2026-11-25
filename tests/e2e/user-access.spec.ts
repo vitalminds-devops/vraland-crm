@@ -163,7 +163,7 @@ test("administrator creates a Master Broker with multiple selected brokers and p
     picker.getByRole("list", { name: "Selected brokers", exact: true }).getByRole("listitem"),
   ).toHaveCount(2);
   await picker.getByText("Add or change brokers (2 selected)", { exact: true }).click();
-  await dialog.getByRole("button", { name: "Create account", exact: true }).click();
+  await dialog.getByRole("button", { name: "Create user", exact: true }).click();
   await expect(dialog).toBeHidden();
   const [master] = await query("select id from users where organization_id=$1 and email=$2", [
     identity.organizationId,
@@ -230,7 +230,7 @@ test("administrator onboards broker-linked and independent agents without a lice
     .getByLabel(/^Agent documents/)
     .filter({ visible: true })
     .setInputFiles({ name: "agent-license.txt", mimeType: "text/plain", buffer: bytes });
-  await page.getByRole("button", { name: "Create account", exact: true }).click();
+  await page.getByRole("button", { name: "Create user", exact: true }).click();
   await expect(page).toHaveURL(/\/settings\/users$/);
   const users = await query(
     "select id,first_name,last_name,phone,broker_id,status from users where organization_id=$1 and email=$2",
@@ -295,7 +295,7 @@ test("administrator onboards broker-linked and independent agents without a lice
     .getByLabel(/^Agent documents/)
     .filter({ visible: true })
     .setInputFiles({ name: "independent.txt", mimeType: "text/plain", buffer: bytes });
-  await page.getByRole("button", { name: "Create account", exact: true }).click();
+  await page.getByRole("button", { name: "Create user", exact: true }).click();
   await expect(page).toHaveURL(/\/settings\/users$/);
   expect(
     await query(

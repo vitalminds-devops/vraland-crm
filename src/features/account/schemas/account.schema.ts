@@ -13,7 +13,7 @@ export const changePasswordSchema = z
     confirmation: z.string().min(1, "Confirm your new password."),
   })
   .refine((value) => value.newPassword === value.confirmation, {
-    message: "The new passwords do not match.",
+    message: "The new passwords don't match.",
     path: ["confirmation"],
   })
   .refine((value) => value.currentPassword !== value.newPassword, {

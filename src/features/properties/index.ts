@@ -1,9 +1,6 @@
 // Components
-export {
-  PropertyForm,
-  newPropertyFormSections,
-  propertyFormSections,
-} from "./components/property-form";
+export { PropertyForm } from "./components/property-form";
+export { propertyFormSections } from "./lib/property-form-sections";
 export { PropertyFloorUnitSelector } from "./components/property-floor-unit-selector";
 export { FloorsAndUnits } from "./components/floors-and-units";
 export { ParkingSlots } from "./components/parking-slots";

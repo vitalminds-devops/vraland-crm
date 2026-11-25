@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils/cn";
 import { manilaDateTimeLocal } from "@/lib/utils/manila-time";
 
 import { createTask, deleteTask, updateTask } from "../actions/task.actions";
-import { TASK_PRIORITIES, TASK_TYPES, titleCase } from "../lib/task-options";
+import { TASK_PRIORITIES, TASK_TYPES, taskTypeLabel, titleCase } from "../lib/task-options";
 import { taskSchema, type TaskInput } from "../schemas/task.schema";
 import type { TaskRow } from "./tasks-table";
 
@@ -179,7 +179,7 @@ export function TaskForm({
                     <NativeSelect {...register("taskType")}>
                       {TASK_TYPES.map((type) => (
                         <NativeSelectOption key={type} value={type}>
-                          {titleCase(type)}
+                          {taskTypeLabel(type)}
                         </NativeSelectOption>
                       ))}
                     </NativeSelect>

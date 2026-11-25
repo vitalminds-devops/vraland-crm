@@ -58,14 +58,14 @@ export const crmNavigation: readonly NavigationItem[] = [
     href: "/developments",
     icon: "developments",
     permission: "developments.view",
-    section: "Real Estate",
+    section: "Real estate",
   },
   {
     label: "Properties",
     href: "/properties",
     icon: "properties",
     permission: "properties.view",
-    section: "Real Estate",
+    section: "Real estate",
   },
   {
     label: "Tasks",

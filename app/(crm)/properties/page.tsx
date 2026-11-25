@@ -66,13 +66,16 @@ export default async function PropertiesPage({
         title="Properties"
         description="Properties, floors and units."
         actions={
-          <div className="flex w-full flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center divide-x divide-border/60">
+          <div className="flex w-full flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card px-3 py-3 sm:px-5 sm:py-4">
+            <dl
+              aria-label="Property summary"
+              className="grid w-full min-w-0 grid-cols-3 lg:w-auto lg:flex-1 items-start divide-x divide-border/70 sm:max-w-xl"
+            >
               <HeaderStat label="properties" value={data.summary.properties} />
               <HeaderStat label="units available" value={data.summary.unitsAvailable} />
               <HeaderStat label="without units yet" value={data.summary.needUnits} />
-            </div>
-            <div className="flex items-center gap-2">
+            </dl>
+            <div className="flex max-w-full flex-wrap items-center gap-2 [&>a]:shrink-0 [&>a]:whitespace-nowrap">
               <a
                 href={`/api/properties/export${query(1).replace(/[?&]page=1$/, "")}`}
                 className={cn(buttonVariants({ variant: "secondary" }), "gap-2")}
@@ -97,7 +100,7 @@ export default async function PropertiesPage({
         }
       />
 
-      <Card className="mt-6">
+      <Card className="mt-2">
         <FilterForm className="flex flex-col gap-2 border-b border-border/40 p-4 lg:flex-row lg:items-center">
           <label className="relative min-w-0 lg:flex-1">
             <Search
@@ -169,40 +172,37 @@ export default async function PropertiesPage({
                     <Link
                       href={`/properties/${row.id}`}
                       aria-label={`Open ${row.title}`}
-                      className="absolute inset-0 z-0"
+                      className="absolute inset-0 z-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                     />
                     <div className="min-w-0 flex-1 basis-56">
                       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                        <h2 className="truncate text-[15px] font-semibold tracking-tight underline-offset-2 group-hover:text-primary group-hover:underline">
+                        <h2 className="min-w-0 text-[15px] leading-6 break-words font-semibold tracking-tight underline-offset-2 group-hover:text-primary group-hover:underline">
                           {row.title}
                         </h2>
-                        <DotBadge tone={statusBadgeTone(row.status)}>{label(row.status)}</DotBadge>
+                        <DotBadge
+                          tone={statusBadgeTone(row.status)}
+                          className="px-2 py-0.5 text-[11px] leading-4"
+                        >
+                          {label(row.status)}
+                        </DotBadge>
+                        <span className="ml-auto inline-flex items-baseline gap-1.5 text-[11px] whitespace-nowrap text-muted-foreground max-sm:ml-0">
+                          Code <span className="font-mono text-[12px]">{row.code}</span>
+                        </span>
                       </div>
-                      <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">
+                      <p className="mt-1.5 flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-1 text-[12px] leading-5 text-muted-foreground">
                         {row.developmentName && (
-                          <>
-                            <span className="whitespace-nowrap">
-                              Development{" "}
-                              <span className="text-foreground/80">{row.developmentName}</span>
-                            </span>
-                            <span aria-hidden="true">·</span>
-                          </>
+                          <span className="min-w-0 break-words">
+                            Development{" "}
+                            <span className="text-foreground/80">{row.developmentName}</span>
+                          </span>
                         )}
-                        <span className="whitespace-nowrap">
+                        <span className="min-w-0 break-words">
                           Type <span className="text-foreground/80">{label(row.type)}</span>
                         </span>
-                        <span aria-hidden="true">·</span>
-                        <span className="whitespace-nowrap">
-                          Code{" "}
-                          <span className="font-mono text-[11px] text-foreground/80">
-                            {row.code}
-                          </span>
-                        </span>
-                        <span aria-hidden="true">·</span>
                         {location ? (
-                          <span className="inline-flex min-w-0 items-center gap-1">
-                            <MapPin aria-hidden="true" className="size-3 shrink-0" />
-                            <span className="truncate">{location}</span>
+                          <span className="inline-flex min-w-0 items-start gap-1.5">
+                            <MapPin aria-hidden="true" className="mt-1 size-3 shrink-0" />
+                            <span className="min-w-0 break-words">{location}</span>
                           </span>
                         ) : rowActions.canEdit ? (
                           <Link
@@ -236,7 +236,7 @@ export default async function PropertiesPage({
                     </div>
                     <span
                       className={cn(
-                        "relative z-10 ml-auto flex items-center justify-end gap-2 sm:ml-0",
+                        "relative z-10 ml-auto flex max-w-full flex-wrap items-center justify-end gap-2 sm:ml-0",
                         actionsWidth,
                       )}
                     >
@@ -303,9 +303,13 @@ function RowAction({ href, children }: { href: string; children: ReactNode }) {
 /** One figure in the header: the number, and what it counts. */
 function HeaderStat({ value, label }: { value: number; label: string }) {
   return (
-    <div className="px-4 text-left first:pl-0 last:pr-0">
-      <p className="text-xl leading-none font-semibold tabular-nums text-foreground">{value}</p>
-      <p className="mt-1 text-[11px] whitespace-nowrap text-muted-foreground">{label}</p>
+    <div className="flex min-w-0 flex-col gap-0.5 px-2 text-left first:pl-0 sm:px-5">
+      <dt className="order-2 text-[11px] leading-4 text-muted-foreground sm:text-xs sm:leading-5">
+        {label}
+      </dt>
+      <dd className="order-1 text-2xl leading-7 font-semibold tracking-tight text-foreground tabular-nums">
+        {value}
+      </dd>
     </div>
   );
 }

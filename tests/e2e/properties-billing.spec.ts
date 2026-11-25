@@ -332,21 +332,21 @@ test("upload and remove unit photos, then remove the unit", async ({ page, ident
   };
   await signIn(page, identity);
   await page.goto(`/properties/${property.id}`);
-  await page.getByRole("button", { name: "Edit 1A picture", exact: true }).click();
+  await page.getByRole("button", { name: "Edit 1A photo", exact: true }).click();
   const dialog = page.getByRole("dialog");
   const chooser = page.waitForEvent("filechooser");
-  await dialog.getByRole("button", { name: "Add picture", exact: true }).click();
+  await dialog.getByRole("button", { name: "Add photo", exact: true }).click();
   await (await chooser).setFiles(png);
   await expect
     .poll(async () => query("select image_mime_type from units where id=$1", [unit.id]))
     .toEqual([{ image_mime_type: "image/png" }]);
-  await expect(dialog.getByRole("button", { name: "Remove picture", exact: true })).toBeEnabled();
+  await expect(dialog.getByRole("button", { name: "Remove photo", exact: true })).toBeEnabled();
   expect((await page.request.get(`/api/properties/units/${unit.id}/image`)).status()).toBe(200);
-  await dialog.getByRole("button", { name: "Remove picture", exact: true }).click();
+  await dialog.getByRole("button", { name: "Remove photo", exact: true }).click();
   await expect
     .poll(async () => query("select image_storage_key from units where id=$1", [unit.id]))
     .toEqual([{ image_storage_key: null }]);
-  await expect(dialog.getByRole("button", { name: "Add picture", exact: true })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Add photo", exact: true })).toBeVisible();
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Remove unit 1A", exact: true }).click();

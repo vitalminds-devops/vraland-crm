@@ -73,7 +73,10 @@ vi.mock("@/lib/permissions/authorization", () => ({
 }));
 vi.mock("@/lib/storage/document-storage", () => ({ getDocumentStorage: vi.fn() }));
 vi.mock("../lib/property-scope", () => ({ canWriteProperty: vi.fn(async () => true) }));
-vi.mock("../lib/parking-sync", () => ({ syncParkingCount: vi.fn() }));
+vi.mock("../lib/parking-sync", () => ({
+  syncParkingCount: vi.fn(),
+  placeOnDesignedFloor: vi.fn(),
+}));
 
 const rowsIn = (table: unknown) =>
   mock.inserted.filter((write) => write.table === table).flatMap((write) => write.rows);
@@ -116,10 +119,10 @@ it.each([
   expect(mock.inserted).toEqual([]);
 });
 
-it("adds several units after the floor's existing codes, filling none twice", async () => {
+it("fills the floor's free unit numbers first, using none twice", async () => {
   mock.unitCodes = ["3A", "3C"];
   expect(await addUnit(id, 3)).toEqual({ success: true, message: "3 units added to 3rd Floor." });
-  expect(rowsIn(units).map((row) => row.code)).toEqual(["3D", "3E", "3F"]);
+  expect(rowsIn(units).map((row) => row.code)).toEqual(["3B", "3D", "3E"]);
 });
 
 it("adds one unit with the original message", async () => {

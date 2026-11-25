@@ -1,4 +1,5 @@
 import { CheckCircle2, Circle, Edit3, FileText, KanbanSquare, UserRound } from "lucide-react";
+import { cn } from "@/lib/utils/cn";
 import type { ReactNode } from "react";
 import { BackButton } from "@/components/common/back-button";
 import { notFound } from "next/navigation";
@@ -54,7 +55,8 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
           </>
         }
       />
-      <div className="mt-6 grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      {/* Below lg the columns stack: Overview first, then details and notes, Documents last. */}
+      <div className="grid grid-cols-1 items-start gap-6 sm:mt-6 lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-6">
           <InfoCard
             title="Contact details"
@@ -91,8 +93,8 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
             </div>
           </section>
         </div>
-        <aside className="space-y-6 lg:sticky lg:top-6">
-          <section className={cardClass}>
+        <aside className="max-lg:contents lg:sticky lg:top-6 lg:space-y-6">
+          <section className={cn(cardClass, "max-lg:order-first")}>
             <div className="flex items-center justify-between gap-3 border-b border-border/60 pb-3">
               <h2 className="text-[16px] font-semibold leading-none">Overview</h2>
             </div>
@@ -101,10 +103,10 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
                 {[c.assignedFirstName, c.assignedLastName].filter(Boolean).join(" ") || null}
               </Fact>
               <Fact icon={<KanbanSquare />} label="Pipeline stage">
-                {data.deal?.stageName ?? "No deal"}
+                {data.deal?.stageName ?? "No opportunity"}
               </Fact>
               <Fact icon={<FileText />} label="Transaction type">
-                {data.deal ? label(data.deal.dealType) : "No deal"}
+                {data.deal ? label(data.deal.dealType) : "No opportunity"}
               </Fact>
               <Fact icon={<CheckCircle2 />} label="Marketing consent">
                 {c.marketingConsent ? "Agreed" : "Not agreed"}
@@ -115,7 +117,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
             </p>
           </section>
           {canViewRequirements && (
-            <section id="requirements" className={cardClass}>
+            <section id="requirements" className={cn(cardClass, "max-lg:order-last")}>
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
                 <h2 className="text-[16px] font-semibold leading-none">
                   Documents
@@ -171,7 +173,7 @@ function Fact({ icon, label, children }: { icon: ReactNode; label: string; child
       <span className="mt-0.5 text-muted-foreground [&_svg]:size-4" aria-hidden="true">
         {icon}
       </span>
-      <dt className="w-24 shrink-0 text-muted-foreground">{label}</dt>
+      <dt className="w-32 shrink-0 text-muted-foreground">{label}</dt>
       <dd className="min-w-0 flex-1 break-words">
         {children || <span className="text-muted-foreground">—</span>}
       </dd>

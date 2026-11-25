@@ -30,14 +30,6 @@ export default async function EditPropertyPage({ params }: { params: Promise<{ i
     listingType: r.listingType as PropertyInput["listingType"],
     status: r.status as PropertyInput["status"],
     currency: r.currency,
-    askingPrice: r.askingPrice ? Number(r.askingPrice) : null,
-    monthlyRent: r.monthlyRent ? Number(r.monthlyRent) : null,
-    parkingPrice: r.parkingPrice === null ? null : Number(r.parkingPrice),
-    reservationFee: r.reservationFee ? Number(r.reservationFee) : null,
-    lotAreaSqm: r.lotAreaSqm ? Number(r.lotAreaSqm) : null,
-    floorAreaSqm: r.floorAreaSqm ? Number(r.floorAreaSqm) : null,
-    bedrooms: r.bedrooms,
-    bathrooms: r.bathrooms ? Number(r.bathrooms) : null,
     parkingSpaces: r.parkingSpaces,
     addressLine1: r.addressLine1,
     addressLine2: r.addressLine2,
@@ -63,10 +55,15 @@ export default async function EditPropertyPage({ params }: { params: Promise<{ i
         description="Update this property."
         actions={<BackButton fallbackHref={`/properties/${id}`} label="Back to property" />}
       />
-      <div className="mt-6 flex gap-8">
+      <div className="mt-4 flex gap-6 [&>aside]:w-48">
         <FormNavigation sections={propertyFormSections} />
         <div className={formCardClass}>
-          <PropertyForm propertyId={id} options={options} initial={initial} />
+          <PropertyForm
+            propertyId={id}
+            options={options}
+            initial={initial}
+            // A property without floors gets them here; afterwards floors are added one by one.
+          />
         </div>
       </div>
     </PageContainer>

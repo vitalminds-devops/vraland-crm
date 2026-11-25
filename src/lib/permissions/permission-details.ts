@@ -39,13 +39,13 @@ export const permissionDetails = {
   },
   "dashboard.view_metrics": {
     allows:
-      "Show headline cards: active contacts, active properties, open pipeline, collected this month.",
+      "Show dashboard figures for sales values, payments received, properties, units, floors and contacts.",
     conditions: [
       'Needs "View dashboard" to open the dashboard',
-      'Active contacts card needs "View contacts & leads"; shows month-over-month new-contact trend',
+      'Active contacts card needs "View contacts & leads"; counts contacts not yet converted',
       'Active properties card needs "View properties"; only granted properties unless admin role',
-      'Open pipeline card needs "View sales pipeline"; count and total value of open opportunities',
-      'Collected this month card needs "View sales pipeline" and "View billing"',
+      'Open opportunities card needs "View sales pipeline"; count and total value of open opportunities',
+      'Payments received this month and Monthly payments received cards need "View sales pipeline" and "View billing"',
       "All cards count only records in their data access: own, team or all",
     ],
   },
@@ -60,7 +60,7 @@ export const permissionDetails = {
     ],
   },
   "dashboard.view_summary": {
-    allows: "Show the At a glance panel of quick readings for this month and next 7 days.",
+    allows: "Show the Summary panel of quick readings for this month and next 7 days.",
     conditions: [
       'Needs "View dashboard" to open the dashboard',
       "Each reading needs its own access: tasks, calendar, contacts, deals or properties view",
@@ -97,7 +97,7 @@ export const permissionDetails = {
       'Needs "View tasks"',
       'Without "See all records", counts only tasks assigned to them',
       "Team data access does not widen these counts",
-      "Hides the At a glance panel's overdue tasks reading while shown",
+      "Hides the Summary panel's overdue tasks reading while shown",
     ],
   },
   "dashboard.view_inventory": {
@@ -107,7 +107,7 @@ export const permissionDetails = {
       'Needs "View properties"',
       "Counts only properties granted to them, unless Administrator or Super Administrator role",
       "Team or own data access does not narrow properties further than grants",
-      "Hides the At a glance panel's reserved properties reading while shown",
+      "Hides the Summary panel's reserved properties reading while shown",
     ],
   },
   "dashboard.view_activity": {
@@ -126,7 +126,7 @@ export const permissionDetails = {
       "Shows only contacts within the user's data access, never archived ones",
       "See own records: only contacts assigned to the user, not ones they created",
       "See team records: contacts assigned to them or their agents, or brokered by them",
-      "Also needed to open Add contact, Edit contact and client documents pages",
+      "Also needed to open Add contact, Edit contact and contact documents pages",
       "Duplicate check shows matches outside data access without their details",
       "Shows the Contacts menu item and the dashboard leads count",
       'Without "Edit contacts", the Edit button, note box and Add details links are hidden',
@@ -146,8 +146,7 @@ export const permissionDetails = {
     ],
   },
   "contacts.update": {
-    allows:
-      "Edit contact details, add notes and update client details when opening an opportunity.",
+    allows: "Edit contact details, add notes and update their details when opening an opportunity.",
     conditions: [
       "Only contacts within the user's data access",
       'Needs "View contacts & leads" too to open the edit page',
@@ -203,37 +202,37 @@ export const permissionDetails = {
     ],
   },
   "requirements.view": {
-    allows: "See a contact's client document checklist and which items were submitted.",
+    allows: "See a contact's document checklist and which items were submitted.",
     conditions: [
       'Needs "View contacts & leads" too',
       "Only contacts within the user's data access",
       'Opening an uploaded file also needs "View documents"',
-      "Sensitive client files (IDs, income, bank) also need sensitive-document access",
+      "Sensitive contact files (IDs, income, bank) also need sensitive-document access",
     ],
   },
   "requirements.manage": {
-    allows: "Add, upload files for, and remove items on a contact's client document checklist.",
+    allows: "Add, upload files for, and remove items on a contact's document checklist.",
     conditions: [
-      'Needs "View client documents" and "View contacts & leads" to reach the page',
+      'Needs "View contact documents" and "View contacts & leads" to reach the page',
       "Only contacts within the user's data access",
       "Uploads: PDF, JPEG or PNG only, up to 15 MB",
-      "Uploaded client files are marked sensitive, except the appointment form",
+      "Uploaded contact files are marked sensitive, except the appointment form",
       "Removing a checklist item keeps any uploaded file",
       "Can re-add missing standard checklist items",
     ],
   },
   "properties.view": {
     allows:
-      "Open the Properties list, property pages, unit layouts, floor/unit pictures and the inventory CSV export.",
+      "Open the Properties list, property pages, unit layouts, floor and unit photos and the properties CSV export.",
     conditions: [
       "Covers properties in the user's organization only; archived properties are hidden",
       "Non-administrators see only properties someone granted them",
       "Partial grants show only the granted floors, units and parking; held-back units are hidden",
-      "Ungranted floors and units have no placeholders or hidden-inventory counts",
-      "Administrator and Super Administrator skip grants and see all inventory",
+      "Ungranted floors and units have no placeholders or hidden-unit counts",
+      "Administrator and Super Administrator skip grants and see all properties and units",
       "Data access (own/team/all) does not narrow viewing properties",
       "Also needed to pick units and parking on an opportunity",
-      "Also lights up the dashboard property KPI and inventory panels, when those panels are allowed",
+      "Also lights up the dashboard property KPI and properties-by-status panels, when those panels are allowed",
       "Shows the Properties menu item",
       "Required alongside property-access granting; the access page needs it",
     ],
@@ -280,7 +279,7 @@ export const permissionDetails = {
     ],
   },
   "properties.manage_unit_pictures": {
-    allows: "Upload, replace and remove unit pictures.",
+    allows: "Upload, replace and remove unit photos.",
     conditions: [
       "JPEG, PNG or WebP only, 5 MB maximum",
       "Only properties within the user's data access, based on who created them",
@@ -326,7 +325,7 @@ export const permissionDetails = {
     conditions: ["Created in the user's own organization", "Shows the New development button"],
   },
   "developments.update": {
-    allows: "Edit a development's details and upload or remove its cover picture.",
+    allows: "Edit a development's details and upload or remove its cover photo.",
     conditions: ["Any development in the organization; no data access or grant limit"],
   },
   "developments.delete": {
@@ -336,7 +335,7 @@ export const permissionDetails = {
       "Refused while any property uses it, archived ones included",
       "Refused while any unit or opportunity uses it",
       "Contacts that only prefer it don't block it; the preference is cleared",
-      "Its cover picture is removed too; the deletion can't be undone",
+      "Its cover photo is removed too; the deletion can't be undone",
     ],
   },
   "deals.view": {
@@ -616,7 +615,7 @@ export const permissionDetails = {
     conditions: [
       "Shared files are available across the user's organization, regardless of own or team record access",
       "PDFs open in the browser PDF viewer; images can be printed or saved as PDF through the print dialog",
-      "Documents and its archive list shared files separately from personal client documents",
+      "Documents and its archive list shared files separately from contact documents",
       "Documents on contacts and opportunities follow the user's data access",
       "Property documents follow property access grants",
       "Unlinked documents: those the user (or team) uploaded, per data access",
@@ -646,7 +645,7 @@ export const permissionDetails = {
       'Does not need "Manage documents" or an administrator role',
       "Shared files stay within the user's organization; other documents still follow data access and sensitivity rules",
       "Without it, Archive and Restore are hidden and archived files cannot be opened or downloaded",
-      "Archiving clears the matching client document checklist item; files are kept",
+      "Archiving clears the matching contact document checklist item; files are kept",
       "Documents of expired leads cannot be restored",
     ],
   },
@@ -817,7 +816,7 @@ export const permissionDetails = {
       "Overriding the lock on won sales still needs Super Administrator",
       "With Archive contacts: restore any archived contact",
       "Opens My team only for Broker-type or Master Broker roles",
-      "Property inventory still follows access grants; only Administrator roles skip them",
+      "Properties and units still follow access grants; only Administrator roles skip them",
     ],
   },
 } satisfies Record<PermissionKey, PermissionDetail>;

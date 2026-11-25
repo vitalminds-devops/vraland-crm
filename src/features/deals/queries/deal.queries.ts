@@ -130,6 +130,11 @@ export async function getPipelineBoard() {
           where u.id = ${deals.unitId} or u.id = any(${deals.unitIds})
             or (cardinality(${deals.unitIds}) = 0 and ${isContactsFirstDeal}
               and u.id = any(${contacts.preferredUnitIds})))`,
+        /** The deal's parking slot identifiers, such as "P1, P12". */
+        parkingCodes: sql<
+          string | null
+        >`(select string_agg(s.code, ', ' order by s.code) from ${propertyParkingSlots} s
+          where s.id = any(${deals.parkingSlotIds}))`,
         agentFirstName: users.firstName,
         agentLastName: users.lastName,
         brokerFirstName: brokerUser.firstName,

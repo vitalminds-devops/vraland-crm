@@ -15,7 +15,7 @@ export default async function NewSmsTemplatePage() {
   return (
     <PageContainer className="max-w-7xl">
       <PageHeader
-        title="New SMS template"
+        title="Add SMS template"
         actions={<BackButton fallbackHref="/marketing/sms-templates" label="Back to templates" />}
       />
       <div className="mt-6 flex gap-8">

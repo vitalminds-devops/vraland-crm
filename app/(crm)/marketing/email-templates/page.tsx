@@ -79,7 +79,7 @@ export default async function EmailTemplatesPage({
             {canManage ? (
               <ButtonLink href="/marketing/email-templates/new" variant="primary" className="gap-2">
                 <Plus aria-hidden="true" className="size-4" />
-                New email template
+                Add email template
               </ButtonLink>
             ) : null}
           </div>
@@ -204,7 +204,7 @@ export default async function EmailTemplatesPage({
                     className="gap-2"
                   >
                     <Plus aria-hidden="true" className="size-4" />
-                    New email template
+                    Add email template
                   </ButtonLink>
                 ) : undefined
               }

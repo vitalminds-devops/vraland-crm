@@ -17,6 +17,19 @@ const fixture = vi.hoisted(() => ({
       pipelineValue: 85000000,
       collected: 1250000,
       payments: 14,
+      reservations: 5,
+      reservationValue: 15000000,
+      availableUnits: 37,
+      totalUnits: 60,
+      availableParking: 8,
+      totalParking: 20,
+      floors: 24,
+      floorProperties: 2,
+      wonCount: 3,
+      wonValue: 9000000,
+      wonCollected: 4500000,
+      monthlyPayments: 7,
+      monthlyPaid: 175000,
     },
     readings: [{ key: "won", label: "Won this month", value: "₱4.2M", hint: "3 won · 1 lost" }],
     priorities: [
@@ -105,7 +118,7 @@ async function render() {
 it("puts upcoming work before charts and distinguishes sales values from payments", async () => {
   const html = await render();
   expect(html.indexOf("Upcoming tasks &amp; viewings")).toBeLessThan(
-    html.indexOf("Closed sales &amp; forecast"),
+    html.indexOf("Won sales &amp; forecast"),
   );
   expect(html).toContain("Open opportunities");
   expect(html).toContain("These are sales values, not payments received.");
@@ -128,5 +141,38 @@ it("keeps panels hidden when dashboard permissions are absent", async () => {
   const html = await render();
   expect(html).toContain("No dashboard panels for your role");
   expect(html).not.toContain("Upcoming tasks");
-  expect(html).not.toContain("Closed sales &amp; forecast");
+  expect(html).not.toContain("Won sales &amp; forecast");
+});
+
+it("names reservation value separately from its count and available units", async () => {
+  const html = (await render()).replace(/<[^>]+>/g, " ");
+  // Won sales are in the chart, not a card.
+  expect(html).not.toContain("Total sales");
+  expect(html).toContain("Reservation value");
+  expect(html).toContain("5 reservations");
+  expect(html).toContain("Available units");
+  expect(html).toContain("of 60 units");
+  expect(html).toContain("Available parking");
+  expect(html).toContain("of 20 slots");
+});
+
+it("distinguishes won sales value, all-time monthly payments and this month's collections", async () => {
+  const html = (await render()).replace(/<[^>]+>/g, " ");
+  expect(html).toContain("₱9.0M");
+  expect(html).toContain("Won sales value");
+  expect(html).toContain("3 won · ₱4.5M collected");
+  expect(html).toContain("Monthly payments received");
+  expect(html).toContain("7 payments · All time");
+  expect(html).toContain("Payments received this month");
+  expect(html).toContain("across 2 properties");
+});
+
+it("shows money as one strip, availability as meters, and contacts in the summary", async () => {
+  const html = await render();
+  expect(html).toContain('aria-label="Key figures"');
+  expect(html.match(/role="meter"/g)).toHaveLength(2);
+  expect(html).toContain('aria-valuenow="37"');
+  expect(html).toContain("Inventory");
+  // Money comes first, then work, then the charts.
+  expect(html.indexOf("Key figures")).toBeLessThan(html.indexOf("Inventory"));
 });

@@ -23,7 +23,17 @@ export async function GET(request: Request) {
 
   return csvResponse(
     [
-      ["Paid on", "Deal", "Contact", "Broker", "Unit", "Type", "Method", "Invoice no.", "Amount"],
+      [
+        "Date paid",
+        "Opportunity",
+        "Contact",
+        "Broker",
+        "Unit",
+        "Type",
+        "Method",
+        "Invoice no.",
+        "Amount",
+      ],
       ...data.rows.map((row) => [
         row.paidOn,
         row.dealCode,

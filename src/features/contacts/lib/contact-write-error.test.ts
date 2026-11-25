@@ -10,7 +10,7 @@ it.each([
   [{ code: "22001" }, "One of the fields is too long. Shorten it and try again."],
   [
     { code: "42703" },
-    "The database is out of date. Ask an admin to run the database migrations.",
+    "The database is out of date. Ask an Administrator to run the database migrations.",
   ],
   [{ code: "40001" }, null],
   [{}, null],

@@ -166,7 +166,7 @@ export default async function SalesReportPage({
             </Table>
           </div>
         ) : (
-          <EmptyState icon={Handshake} title="No closed sales in this period" />
+          <EmptyState icon={Handshake} title="No won sales in this period" />
         )}
       </section>
     </ReportShell>

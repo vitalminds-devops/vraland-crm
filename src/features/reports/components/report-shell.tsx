@@ -55,7 +55,7 @@ export function ReportShell({
             className={buttonVariants({ variant: "secondary" })}
           >
             <Download aria-hidden="true" className="mr-2 h-4 w-4" />
-            Export CSV
+            Export
           </a>
         }
       />

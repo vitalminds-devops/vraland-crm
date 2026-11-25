@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Panel } from "@/components/ui/panel";
 import { Input } from "@/components/ui/input";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Paginator } from "@/components/ui/paginator";
@@ -16,9 +17,10 @@ import {
   setPropertyGrant,
 } from "../actions/property-access.actions";
 import { unitImageUrl } from "../lib/floor-image";
-import { AccessTower } from "./access-tower";
+import { fitPlacements, type FloorLayout, type UnitDesign } from "../lib/floor-layout";
 import { ParkingPicker } from "./parking-picker";
 import { InventoryBrowser } from "./inventory-browser";
+import type { UnitGroup } from "../lib/floor-groups";
 
 const PEOPLE_PER_PAGE = 8;
 
@@ -61,6 +63,7 @@ export function PropertyAccessEditor({
   selectedUserId,
   floors,
   units,
+  unitDesigns,
   parkingSlots,
   grant,
   canGrantEveryProperty,
@@ -93,6 +96,8 @@ export function PropertyAccessEditor({
     unitCount: number;
     availableUnits: number;
     hasAccess: boolean;
+    /** The designed floor, picked from by clicking its units. */
+    layout?: FloorLayout | null;
   }[];
   units: {
     id: string;
@@ -101,9 +106,18 @@ export function PropertyAccessEditor({
     floorId: string;
     imageStorageKey: string | null;
     accessible: boolean;
+    group?: UnitGroup | null;
   }[];
+  /** Unit type designs by type id, drawn on designed floors. */
+  unitDesigns: Record<string, UnitDesign>;
   /** Every parking slot; `accessible` marks the ones the caller may give. */
-  parkingSlots: { id: string; code: string; status: string; accessible: boolean }[];
+  parkingSlots: {
+    id: string;
+    code: string;
+    status: string;
+    accessible: boolean;
+    floorId: string | null;
+  }[];
   /** The selected user's grant: `null` means they have **no access**. */
   grant: GrantTargets | null;
   /** Administrators only: a bulk grant is the one write no bounded granter can express. */
@@ -591,10 +605,11 @@ export function PropertyAccessEditor({
       </section>
 
       {selectedUser && (
-        <section className="space-y-3 rounded-xl border border-border/60 bg-card p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-[14px] font-semibold">What {selectedUser.firstName} may see</h2>
-            {scope === "everything" ? (
+        <Panel
+          title={`What ${selectedUser.firstName} may see`}
+          flush
+          actions={
+            scope === "everything" ? (
               <span className="text-[12px] text-muted-foreground">Whole property</span>
             ) : floorIds.length ||
               unitIds.length ||
@@ -633,19 +648,11 @@ export function PropertyAccessEditor({
               </div>
             ) : (
               <span className="text-[12px] text-muted-foreground">Nothing given yet</span>
-            )}
-          </div>
-
+            )
+          }
+        >
           {floors.length ? (
-            <div className="grid gap-4 xl:grid-cols-[20rem_minmax(0,1fr)]">
-              <AccessTower
-                title={propertyTitle}
-                floors={floors}
-                units={units}
-                isGranted={isGranted}
-                activeFloorId={shownFloorId}
-                onPickFloor={setActiveFloorId}
-              />
+            <div className={scope === "selected" ? undefined : "p-4"}>
               {scope === "selected" ? (
                 <InventoryBrowser
                   buildings={[building]}
@@ -657,7 +664,14 @@ export function PropertyAccessEditor({
                     imageUrl: unitImageUrl(unit),
                     photoCount: unit.imageStorageKey ? 1 : 0,
                     accessible: unit.accessible,
+                    group: unit.group,
                   }))}
+                  floorLayouts={Object.fromEntries(
+                    floors.flatMap((floor) =>
+                      floor.layout ? [[floor.id, fitPlacements(floor.layout, unitDesigns)]] : [],
+                    ),
+                  )}
+                  designs={unitDesigns}
                   activeFloorId={shownFloorId}
                   onActiveFloorChange={setActiveFloorId}
                   selectedFloorIds={floorIds}
@@ -671,26 +685,39 @@ export function PropertyAccessEditor({
                   emptyLabel="No units yet."
                 />
               ) : (
-                <p className="self-center rounded-lg border border-dashed border-border/60 bg-muted/20 px-3 py-6 text-center text-[12.5px] text-muted-foreground">
+                <p className="py-6 text-center text-[13px] text-muted-foreground">
                   Every floor and unit, including new ones.
                 </p>
               )}
             </div>
           ) : (
-            <p className="rounded-lg border border-dashed border-border/60 bg-muted/20 px-3 py-2 text-[12.5px] text-muted-foreground">
-              No floors yet.
-            </p>
+            <p className="p-4 text-center text-[13px] text-muted-foreground">No floors yet.</p>
           )}
 
-          {scope === "selected" && parkingSlots.length > 0 && (
-            <ParkingPicker
-              slots={parkingSlots}
-              selectedIds={parkingSlotIds}
-              onToggle={toggleParking}
-              disabled={pending}
-            />
-          )}
-        </section>
+          {/* Parking is picked with its floor, like the units on it; slots on no floor last. */}
+          {scope === "selected" &&
+            [
+              parkingSlots.filter((slot) => shownFloorId && slot.floorId === shownFloorId),
+              parkingSlots.filter((slot) => !slot.floorId),
+            ].map(
+              (slots, index) =>
+                slots.length > 0 && (
+                  <div key={index} className="border-t border-border/60 p-4">
+                    {index === 1 && (
+                      <p className="mb-2 text-[12.5px] text-muted-foreground">
+                        Parking without a floor
+                      </p>
+                    )}
+                    <ParkingPicker
+                      slots={slots}
+                      selectedIds={parkingSlotIds}
+                      onToggle={toggleParking}
+                      disabled={pending}
+                    />
+                  </div>
+                ),
+            )}
+        </Panel>
       )}
       {selectedUser && (
         <div className="sticky bottom-0 z-20 rounded-xl border border-border bg-card/95 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-4px_16px_#0000000a] backdrop-blur">

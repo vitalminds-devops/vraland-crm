@@ -1,5 +1,6 @@
 import { formatContactName } from "@/features/contacts/lib/helpers";
 import { isTaskSortKey, listTasks } from "@/features/tasks/queries/task.queries";
+import { taskTypeLabel } from "@/features/tasks/lib/task-options";
 import { csvResponse, limitNote } from "@/lib/http/csv";
 import { getAuthorizationContext } from "@/lib/permissions/authorization";
 import { hasPermission } from "@/lib/permissions/policy";
@@ -39,7 +40,7 @@ export async function GET(request: Request) {
         "Priority",
         "Status",
         "Due",
-        "Assigned to",
+        "Assignee",
         "Contact",
         "Opportunity",
         "Property",
@@ -47,7 +48,7 @@ export async function GET(request: Request) {
       ],
       ...data.rows.map((task) => [
         task.title,
-        task.taskType,
+        taskTypeLabel(task.taskType),
         task.priority,
         task.status,
         when(task.dueAt),

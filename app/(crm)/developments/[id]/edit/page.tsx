@@ -36,7 +36,7 @@ export default async function EditDevelopmentPage({ params }: { params: Promise<
     <PageContainer className="max-w-7xl">
       <PageHeader
         title={`Edit ${r.name}`}
-        description="Update this project."
+        description="Update this development."
         actions={<BackButton fallbackHref={`/developments/${id}`} label="Back to development" />}
       />
       {/* The same shell as the create page, and the same as the contact form. */}

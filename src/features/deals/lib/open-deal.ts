@@ -1,5 +1,5 @@
-import { randomUUID } from "node:crypto";
 import { and, asc, eq, isNull } from "drizzle-orm";
+import { nextRecordCode } from "@/lib/record-codes";
 import { db } from "@/db";
 import {
   activities,
@@ -112,7 +112,7 @@ export async function openDealForApprovedContact(
     .insert(deals)
     .values({
       organizationId: context.organizationId,
-      dealCode: `DEAL-${randomUUID().toUpperCase()}`,
+      dealCode: await nextRecordCode(tx, context.organizationId, "opportunity"),
       title,
       dealType,
       stageId: stage.id,

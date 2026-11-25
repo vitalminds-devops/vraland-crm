@@ -72,16 +72,18 @@ export function EnrollmentForm({
   return (
     <MarketingSection
       title="Add a person"
-      description="Start this follow-up for one contact, or for the client of a deal."
+      description="Start this follow-up for one contact or one opportunity."
     >
       <form
         className="crm-form space-y-4"
-        onSubmit={handleSubmit(submit, () => notify("Select a contact or a deal.", "error"))}
+        onSubmit={handleSubmit(submit, () =>
+          notify("Select a contact or an opportunity.", "error"),
+        )}
       >
         <FormStyle />
         <FormField
           label="Contact"
-          hint="Pick a contact, or a deal below."
+          hint="Pick a contact, or an opportunity below."
           error={errors.contactId?.message}
         >
           <FormSelect {...register("contactId")} aria-invalid={Boolean(errors.contactId)}>
@@ -93,9 +95,9 @@ export function EnrollmentForm({
             ))}
           </FormSelect>
         </FormField>
-        <FormField label="Deal" error={errors.dealId?.message}>
+        <FormField label="Opportunity" error={errors.dealId?.message}>
           <FormSelect {...register("dealId")} aria-invalid={Boolean(errors.dealId)}>
-            <option value="">Select a deal</option>
+            <option value="">Select an opportunity</option>
             {options.deals.map((deal) => (
               <option key={deal.id} value={deal.id}>
                 {deal.title}

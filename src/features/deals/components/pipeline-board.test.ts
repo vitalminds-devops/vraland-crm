@@ -151,6 +151,17 @@ it("keeps the complete unit list available in the property tooltip", () => {
   expect(html).toContain(`title="Fairfield Heights · Units ${unitCodes}"`);
 });
 
+it("lists an opportunity's parking after its units on the card", () => {
+  const html = renderToStaticMarkup(
+    createElement(PipelineBoard, {
+      stages: [stage],
+      deals: [{ ...deal, unitCodes: "2A", parkingCodes: "P1, P12" }],
+      canChangeStage: false,
+    }),
+  );
+  expect(html).toContain("Fairfield Heights · Units 2A · Parking P1, P12");
+});
+
 it("reopens an authorized lead's saved opportunity form after refresh", () => {
   const leads = { ...stage, id: "leads", slug: "leads", position: 0 };
   const html = renderToStaticMarkup(

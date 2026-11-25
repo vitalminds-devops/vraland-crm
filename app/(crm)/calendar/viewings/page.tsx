@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/common/page-header";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { ViewingForm } from "@/features/calendar/components/viewing-form";
 import { ViewingStatus } from "@/features/calendar/components/viewing-status";
+import { VIEWING_STATUS_LABELS } from "@/features/calendar/lib/viewing-status";
 import { getCalendarOptions, listViewings } from "@/features/calendar/queries/calendar.queries";
 import { requirePagePermission } from "@/lib/permissions/authorization";
 import { canEditViewing, type ViewingReference } from "@/lib/permissions/viewings";
@@ -65,13 +66,11 @@ export default async function ViewingsPage({
             wrapperClassName="w-full sm:w-52"
           >
             <NativeSelectOption value="">All statuses</NativeSelectOption>
-            {["scheduled", "confirmed", "completed", "cancelled", "no_show", "rescheduled"].map(
-              (v) => (
-                <NativeSelectOption key={v} value={v}>
-                  {v.replaceAll("_", " ")}
-                </NativeSelectOption>
-              ),
-            )}
+            {Object.entries(VIEWING_STATUS_LABELS).map(([value, label]) => (
+              <NativeSelectOption key={value} value={value}>
+                {label}
+              </NativeSelectOption>
+            ))}
           </NativeSelect>
           <NativeSelect
             name="when"
@@ -97,8 +96,8 @@ export default async function ViewingsPage({
                   </Link>
                   <p className="text-xs text-muted-foreground">{v.propertyCode}</p>
                 </div>
-                <span className="rounded-full bg-muted px-2 py-1 text-xs capitalize">
-                  {v.status.replaceAll("_", " ")}
+                <span className="rounded-full bg-muted px-2 py-1 text-xs">
+                  {VIEWING_STATUS_LABELS[v.status] ?? v.status}
                 </span>
               </div>
               <dl className="mt-4 space-y-2 text-sm">

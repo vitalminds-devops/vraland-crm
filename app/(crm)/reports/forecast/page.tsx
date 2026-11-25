@@ -85,7 +85,7 @@ export default async function ForecastReportPage({
               </Table>
             </div>
           ) : (
-            <ReportEmpty>No open deals are expected in this period.</ReportEmpty>
+            <ReportEmpty>No open opportunities expected in this period.</ReportEmpty>
           )}
         </section>
       </div>

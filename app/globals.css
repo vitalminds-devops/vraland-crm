@@ -204,10 +204,26 @@ body {
 
 /* Sidebar nav: invisible scrollbar until hovered */
 .sidebar-nav {
+  scrollbar-gutter: stable both-edges;
   scrollbar-color: transparent transparent;
 }
-.sidebar-nav:hover {
+.sidebar-nav:hover,
+.sidebar-nav:focus-within {
   scrollbar-color: color-mix(in oklab, var(--foreground) 12%, transparent) transparent;
+}
+.sidebar-nav::-webkit-scrollbar {
+  width: 4px;
+}
+.sidebar-nav::-webkit-scrollbar-button {
+  display: none;
+}
+.sidebar-nav::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: transparent;
+}
+.sidebar-nav:hover::-webkit-scrollbar-thumb,
+.sidebar-nav:focus-within::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--foreground) 12%, transparent);
 }
 
 button,

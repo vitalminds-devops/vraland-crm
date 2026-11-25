@@ -415,7 +415,7 @@ export function CreateUserForm({
         className="h-11 w-full font-semibold"
         disabled={action.pending}
       >
-        {action.pending ? "Saving…" : "Create account"}
+        {action.pending ? "Creating…" : "Create user"}
       </Button>
     </form>
   );
@@ -479,7 +479,7 @@ export function AgentCreateForm({
         className="h-11 w-full font-semibold"
         disabled={action.pending}
       >
-        {action.pending ? "Saving…" : "Create account"}
+        {action.pending ? "Creating…" : "Create user"}
       </Button>
     </form>
   );

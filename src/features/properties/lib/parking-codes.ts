@@ -10,3 +10,6 @@ export function nextParkingCode(taken: string[]): string {
 export function compareParkingCodes(a: string, b: string): number {
   return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
 }
+
+/** The floor choice for parking slots on no floor. */
+export const NO_FLOOR = "none";

@@ -2,39 +2,39 @@ const money = (value: number) => value.toFixed(2);
 const cents = (value: number) => Math.round(value * 100) / 100;
 
 export type RebillInput = {
-  unitCodes: string[];
+  units: { code: string; price: string }[];
   /** "Tower 2 · Fairfield Heights", appended to each unit line. */
   place: string;
   buildingTitle: string;
-  unitPrice: string;
-  parkingSlots: number;
-  /** Total for all slots. */
-  parkingPrice: string;
+  /** Each parking slot's identifier and price; one bill line each. */
+  slots: { code: string; price: string }[];
   previous: { unitPrice: string; miscellaneousFee: string; reservationDiscount: string };
   paid: number;
 };
 
 /**
- * The bill lines for an opportunity's new units. The miscellaneous fee keeps the old bill's rate,
- * the reservation discount stays, and the new total may not fall below what is already paid.
+ * The bill lines for an opportunity's new units and parking, one line each. Units keep the old
+ * bill's miscellaneous fee rate; parking carries none, as on a new bill. The reservation discount
+ * stays, and the new total may not fall below what is already paid.
  */
 export function rebuildBill(input: RebillInput) {
   const oldPrice = Number(input.previous.unitPrice);
   const miscRate = oldPrice > 0 ? Number(input.previous.miscellaneousFee) / oldPrice : 0;
   const priced = [
-    ...input.unitCodes.map((code) => ({
-      unitLabel: `Unit ${code} · ${input.place}`,
-      price: Number(input.unitPrice),
+    ...input.units.map((unit) => {
+      const price = Number(unit.price);
+      return {
+        unitLabel: `Unit ${unit.code} · ${input.place}`,
+        price,
+        fee: cents(price * miscRate),
+      };
+    }),
+    ...input.slots.map((slot) => ({
+      unitLabel: `Parking ${slot.code} · ${input.buildingTitle}`,
+      price: Number(slot.price),
+      fee: 0,
     })),
-    ...(input.parkingSlots
-      ? [
-          {
-            unitLabel: `Parking (${input.parkingSlots} ${input.parkingSlots === 1 ? "slot" : "slots"}) · ${input.buildingTitle}`,
-            price: Number(input.parkingPrice),
-          },
-        ]
-      : []),
-  ].map((line) => ({ ...line, fee: cents(line.price * miscRate) }));
+  ];
 
   const unitPrice = priced.reduce((sum, line) => sum + line.price, 0);
   const miscellaneousFee = priced.reduce((sum, line) => sum + line.fee, 0);

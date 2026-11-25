@@ -301,7 +301,6 @@ export function OpportunityDialog({
     () => (parkingSelection.buildingId === buildingId ? parkingSelection.ids : []),
     [parkingSelection, buildingId],
   );
-  const parkingSlots = parkingSlotIds.length;
   const changeBuilding = useCallback((id: string | null) => {
     setBuildingId(id);
     setParkingSelection((current) =>
@@ -571,7 +570,7 @@ export function OpportunityDialog({
         result = await openOpportunity(form);
       } catch {
         showMoveError(
-          "Could not confirm the move",
+          "Couldn't confirm the move",
           "We did not receive a confirmation. Refresh the pipeline to check whether the lead is in Opportunity before trying again.",
           toastId,
         );
@@ -696,7 +695,7 @@ export function OpportunityDialog({
                       onChange={(event) => setTinNumber(groupDigits(event.target.value))}
                       required={step === 1}
                       maxLength={50}
-                      placeholder="Enter the client's TIN number"
+                      placeholder="Enter the contact's TIN"
                       className={fieldClass}
                     />
                   </Field>
@@ -743,7 +742,7 @@ export function OpportunityDialog({
                                     : scanStatus.state === "not-found"
                                       ? "No address found. Retake it closer, in even light, or enter it in the Address step."
                                       : scanStatus.state === "error"
-                                        ? "Could not read this ID. Retake it closer and steady, or enter the address."
+                                        ? "Couldn't read this ID. Retake it closer and steady, or enter the address."
                                         : "The ID address will be scanned automatically."}
                               </span>
                             </p>
@@ -952,31 +951,24 @@ export function OpportunityDialog({
                         onUnitsChange={setUnitIds}
                         selectClassName={cn(fieldClass, "pr-9")}
                         disabled={pending}
+                        floorExtras={(floorId) =>
+                          buildingId && (
+                            <OpportunityParkingSelector
+                              key={buildingId}
+                              developmentId={developmentId}
+                              buildingId={buildingId}
+                              floorId={floorId}
+                              selectedIds={parkingSlotIds}
+                              dealId={dealId}
+                              onChange={(ids) => setParkingSelection({ buildingId, ids })}
+                              disabled={pending}
+                            />
+                          )
+                        }
                       />
                     )}
                   </div>
 
-                  <section
-                    className="space-y-2 rounded-xl border border-border/60 bg-card p-3"
-                    aria-label="Parking slots (optional)"
-                  >
-                    <h3 className="text-[13px] font-medium">Parking slots (optional)</h3>
-                    {buildingId ? (
-                      <OpportunityParkingSelector
-                        key={buildingId}
-                        developmentId={developmentId}
-                        buildingId={buildingId}
-                        selectedIds={parkingSlotIds}
-                        heldIds={draft.parkingSlotIds ?? []}
-                        onChange={(ids) => setParkingSelection({ buildingId, ids })}
-                        disabled={pending}
-                      />
-                    ) : (
-                      <p className="text-sm text-muted-foreground">
-                        Select a property to choose parking slots.
-                      </p>
-                    )}
-                  </section>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Field label="Financing" required>
                       <PaymentMethodSelect
@@ -1025,32 +1017,66 @@ export function OpportunityDialog({
                     <h3 className="text-sm font-semibold">Expected amount</h3>
                     {currentEstimate?.success ? (
                       <dl className="mt-3 grid gap-2 text-sm">
-                        <div className="flex justify-between gap-3">
-                          <dt>
-                            {unitIds.length} {unitIds.length === 1 ? "unit" : "units"} ×{" "}
-                            {formatPrice(currentEstimate.unitPrice, currentEstimate.currency)}
-                          </dt>
-                          <dd className="tabular-nums">
-                            {formatPrice(currentEstimate.units, currentEstimate.currency)}
-                          </dd>
-                        </div>
-                        <div className="flex justify-between gap-3">
-                          <dt>
-                            {parkingSlots} parking {parkingSlots === 1 ? "slot" : "slots"}
-                            {parkingSlots > 0 && currentEstimate.parkingPrice
-                              ? ` × ${formatPrice(currentEstimate.parkingPrice, currentEstimate.currency)}`
-                              : ""}
-                          </dt>
-                          <dd className="tabular-nums">
-                            {formatPrice(currentEstimate.parking, currentEstimate.currency)}
-                          </dd>
-                        </div>
+                        {/* A line per unit and slot, so differing prices are all visible. */}
+                        {[
+                          ...currentEstimate.selectedUnits.map((unit) => ({
+                            label: `Unit ${unit.code}`,
+                            price: unit.price,
+                          })),
+                          ...currentEstimate.selectedSlots.map((slot) => ({
+                            label: `Parking ${slot.code}`,
+                            price: slot.price,
+                          })),
+                        ].map((line) => (
+                          <div key={line.label} className="flex justify-between gap-3">
+                            <dt>{line.label}</dt>
+                            <dd className="tabular-nums">
+                              {formatPrice(line.price ?? "0", currentEstimate.currency)}
+                            </dd>
+                          </div>
+                        ))}
                         <div className="mt-1 flex justify-between gap-3 border-t border-primary/20 pt-3 text-base font-semibold">
                           <dt>Total</dt>
                           <dd className="text-primary tabular-nums">
                             {formatPrice(currentEstimate.total, currentEstimate.currency)}
                           </dd>
                         </div>
+                        {/* What the opportunity will be quoted, saved with it. */}
+                        {(
+                          [
+                            ...(currentEstimate.parkingReservationFee
+                              ? ([
+                                  [
+                                    "Unit reservation fee",
+                                    (
+                                      Number(currentEstimate.reservationFee ?? 0) -
+                                      Number(currentEstimate.parkingReservationFee)
+                                    ).toFixed(2),
+                                  ],
+                                  [
+                                    "Parking reservation fee",
+                                    currentEstimate.parkingReservationFee,
+                                  ],
+                                ] as const)
+                              : ([["Reservation fee", currentEstimate.reservationFee]] as const)),
+                            ["Monthly amortization", currentEstimate.monthlyAmortization],
+                          ] as const
+                        ).map(([label, amount]) => (
+                          <div
+                            key={label}
+                            className="flex justify-between gap-3 text-muted-foreground"
+                          >
+                            <dt>{label}</dt>
+                            <dd className="tabular-nums">
+                              {amount ? formatPrice(amount, currentEstimate.currency) : "—"}
+                            </dd>
+                          </div>
+                        ))}
+                        {currentEstimate.missingFee && (
+                          <p role="note" className="text-xs text-amber-700 dark:text-amber-400">
+                            {currentEstimate.missingFee}
+                          </p>
+                        )}
                       </dl>
                     ) : (
                       <p
@@ -1067,8 +1093,8 @@ export function OpportunityDialog({
                       </p>
                     )}
                     <p className="mt-3 text-xs text-muted-foreground">
-                      Based on unit and parking prices. Units and parking stay available until this
-                      opportunity moves to Reservation.
+                      Based on unit and parking prices. Units and parking stay available until the
+                      reservation fee is paid.
                     </p>
                   </div>
                 </div>

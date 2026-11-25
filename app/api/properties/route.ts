@@ -32,6 +32,6 @@ export async function GET(request: NextRequest) {
       operation: "api_development_properties",
       developmentId,
     });
-    return NextResponse.json({ error: "Failed to fetch properties" }, { status: 500 });
+    return NextResponse.json({ error: "Couldn't load properties." }, { status: 500 });
   }
 }

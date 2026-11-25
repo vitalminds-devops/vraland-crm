@@ -42,6 +42,6 @@ export async function GET(request: NextRequest) {
       operation: "api_property_floors",
       propertyId: buildingId,
     });
-    return NextResponse.json({ error: "Failed to fetch floors" }, { status: 500 });
+    return NextResponse.json({ error: "Couldn't load floors." }, { status: 500 });
   }
 }

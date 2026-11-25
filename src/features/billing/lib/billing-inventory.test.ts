@@ -157,3 +157,20 @@ it.each([1, 2, 3])(
     );
   },
 );
+
+it("holds units once the reservation fee is paid, even before the stage moves", () => {
+  const opportunity = {
+    slug: "opportunity",
+    isWonStage: false,
+    isLostStage: false,
+    isCancelledStage: false,
+  };
+  const payment = { total: 3000000, paid: 15000 };
+  // A move to Reservation waiting for approval must not leave the units free for others.
+  expect(inventoryStatusForDeal(opportunity, payment, true)).toBe("deposit_paid");
+  expect(inventoryStatusForDeal(opportunity, payment, false)).toBe("available");
+  // Lost and cancelled still free them.
+  expect(inventoryStatusForDeal({ ...opportunity, isLostStage: true }, payment, true)).toBe(
+    "available",
+  );
+});

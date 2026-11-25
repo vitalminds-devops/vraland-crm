@@ -4,6 +4,7 @@ import {
   boolean,
   char,
   index,
+  integer,
   numeric,
   pgTable,
   primaryKey,
@@ -167,6 +168,19 @@ export const userPermissions = pgTable(
     createdAt,
   },
   (table) => [primaryKey({ columns: [table.userId, table.permissionKey] })],
+);
+
+/** The last running number given out per kind of record code (OPP-000123, CON-000045, ...). */
+export const codeCounters = pgTable(
+  "code_counters",
+  {
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    kind: varchar({ length: 20 }).notNull(),
+    lastValue: integer("last_value").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.organizationId, t.kind] })],
 );
 
 export const organizationsRelations = relations(organizations, ({ many }) => ({

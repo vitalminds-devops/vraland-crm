@@ -5,6 +5,116 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+- Dashboard card for Available parking (free slots, of all the slots you can see).
+- Dashboard cards for Won (value, with the count and amount collected underneath), Monthly paid (amount, with the number of payments) and Floors (with how many properties have them). Total reservations now leads with its amount, the count underneath.
+- Design floor's Identifier can apply to every floor at once, renaming each floor's units in their current order so the whole property reads the same.
+- Dashboard cards for Total reservations (opportunities in Reservation, with their total value) and Available units (of all units you can see).
+- Parking types: on the Design page, unit and parking types share one list, and Design parking (beside Design unit) sets a slot's name, size, price and reservation fee. In Design floor they sit under Parking, ready to drag; new slots take the type's price and fee, and changing the type updates its slots that are still available.
+- Design floor opens full screen with editor controls: Ctrl/⌘ + scroll zooms at the cursor, dragging the empty canvas (or the middle mouse button) pans, Undo and Redo (Ctrl+Z, Ctrl+Shift+Z), Ctrl+D duplicates, and a Fit button. Clicking a unit shows its plan, size, rooms and price; double-clicking zooms to it.
+- Remove several: tick units on a floor, or parking slots, and remove them in one go; the list is named after the floor ("Remove units and slots from 2nd Floor") and grouped into Units and Parking. Reserved and sold ones can't be ticked, and nothing is removed if any is on an open opportunity.
+- Each property has a Design page, opened from Design in the property's Actions menu, with tabs for Unit types and Floors. Designing units, floors and parking happens there; the property page just shows the property.
+- The Design page is for designing only: its floor view has no prices, status counts, Remove several or unit and slot controls. Parking slots can be resized in Design floor and look like the parking lot (asphalt, lines, wheel stop, light) in the floor view.
+- Parking slots are only made by dragging them onto a floor in Design floor; the property page has no separate parking list or Add parking. Click a slot in the floor view to see its price, change its status or remove it, like a unit; a floor's header counts its parking, and Remove several covers its units and slots. Slots on no floor keep a small "Parking without a floor" list. The Design page no longer has a Parking tab.
+- Parking is designed in Design floor, next to the units: a floor can be all units, all parking, or a mix. Its Parking section adds slots, drive paths, ramps and pillars; new slots take the next number (P21, P22…), slots taken off the plan are removed unless reserved, sold or on an open opportunity, and the floor's 3D view shows the slots with their numbers and cars. A parking layout made before this is brought onto the floor's plan, below its units, the next time the floor is designed.
+- Sections: on the Design page, name a set of floors (such as Tower A for floors 1–10), or only their odd or even units (Sunset for 201, 203…; Sunrise for 202, 204…), or units picked by their letter or number (Garden for A to F), and give it a colour. Odd and even side names saved before become sections on every floor. Each unit on those floors shows the section's name in that colour on its floor tag, its details, the Access plan and the opportunity unit picker.
+- Parking has its own reservation fee. The Design page's Prices sets the unit reservation fee and each slot's starting price and reservation fee; any slot can set its own price and fee from its panel on the floor view. Opportunities add up each slot's own price, and the reservation fee includes each slot's fee.
+
+### Changed
+- The unit and parking reservation fees are shown apart: a bill's Quoted prices and fees is a small table of Units, Parking and Total with their price and reservation fee, and Move to Opportunity and Change unit list the unit and parking reservation fees separately.
+- Parking is picked with its floor: in Move to Opportunity and Change unit, choosing a floor shows its units and then Parking on this floor, with no separate parking section or floor list. On the Access page, the parking shown is the chosen floor's, with slots on no floor listed last.
+- The dashboard is calmer: its money (Open opportunities, Reservation value, Won sales value, Payments received this month, Monthly payments received) is one divided strip with the amount first; units and parking show as availability meters in an Inventory panel with properties, floors and properties by status; Active contacts moved to the Summary; the two charts sit side by side at the end.
+- Payments shows Collected, This month, Reservation and Monthly with the amount first and the number of payments underneath; the column reads Date paid. Record payment on Payments fills in the reservation fee still due, one month, or the balance for the picked bill, like on a bill page.
+- A bill page (and its printout) shows Quoted prices and fees: Units, Parking, Total, Reservation fee (covering units and parking) and Monthly amortization, instead of the old Parking fee. The unit row reads Units & parking when there is parking.
+- The property's Actions menu has one Design property item instead of Design units and Design floors.
+- Each unit's tag on the floor view shows its section name, in the section's colour, next to its identifier.
+- A bill for an opportunity with no units no longer suggests the property's old asking price; its price starts empty unless the opportunity has an amount.
+- The properties CSV has a Unit price column (each unit's own price, else its unit type's) in place of the old Asking price and Monthly rent columns.
+- Opportunity cards in Sales pipeline list their parking after their units ("Units 2A · Parking P1, P12").
+- An opportunity with an unpriced parking slot names it: "Parking P12 has no price yet."
+- On a bill's page, Record payment fills in the amount when you pick what it pays: the reservation fee still due, one month of amortization, or the remaining balance. You can still change it.
+- Bills list each parking slot on its own line ("Parking P12 · Tower 2") at its own price, instead of one "Parking (3 slots)" line. Parking carries no miscellaneous fee when a bill is rebuilt, the same as on a new bill.
+- Choosing units and parking for an opportunity shows each one's price on its chip; hovering shows its unit type or parking type, full price and reservation fee.
+- The expected amount in Move to Opportunity lists each unit and parking slot with its price, then the reservation fee and monthly amortization the opportunity will be quoted; Change unit shows both fees under the new total.
+- The expected amount warns when a chosen unit's type has no reservation fee ("Unit 2A has no reservation fee."), in Move to Opportunity and Change unit.
+- In the unit window, View photos sits beside Hide labels on the 3D view, and the bottom bar has Price & type, Rename and Add photo (or Change photo). Remove is no longer there; remove units with Remove several or in Design floor.
+- The floor menu shows each floor's sections under its name, in their colours.
+- In Design floor, a picked parking slot has a Type picker: any slot, old or new, can join a parking type (taking its size, and its price and fee while available) or leave it.
+- Changing a parking type's size resizes its slots on every floor, in the floor view and Design floor, like unit types do.
+- A unit's reservation fee and monthly amortization come only from its unit type; the old property-wide amounts are no longer used. A unit without a type has none, so any reservation or monthly payment opens its stage.
+- Wording is the same across the app: "opportunity" instead of "deal", "contact" instead of "client", "Won sales" instead of "Closed sales", "Development" instead of "Project", "Photo" instead of "Picture", "Add …" instead of "New …", "Couldn't" in error messages, the "…" ellipsis, sentence-case labels, "Nov 20" dates, 12-hour times and readable viewing statuses ("No-show"). CSV exports use "Opportunity", "Date paid", "Assignee" and "Follow-up". Permissions read "Contact documents", "Add tasks" and "Manage unit photos".
+- Unit identifiers (letters, numbers or custom) are set with an Identifier button in Design floor's header. Its examples use the floor being designed, and saving applies it to that floor's units on the plan (save the floor to keep them); sections have their own tab on the Design page, beside Unit types and Floors.
+- Design floor no longer shows a details card when a unit is picked; double-click still zooms to it.
+- The Design page no longer has a Prices panel: unit types, parking types and each parking slot carry their own price and fees. Amounts set on the property before are copied down to whatever had none.
+- The property form no longer asks for a currency; new properties are in Philippine pesos.
+- Designing a unit has Undo and Redo (Ctrl+Z, Ctrl+Shift+Z), like Design floor.
+- The property form has three sections, Basics, Location and More details, with section numbers styled like the contact form.
+- Designing a unit opens full screen, and each unit type can set its own reservation fee and monthly amortization. Billing, the reservation gate and the unit window use the type's amounts, else the property's.
+- Clicking a unit on the floor view opens it in a window: its design in 3D, which you can turn and zoom, beside its type, size, rooms, price, reservation fee and status, with photos, Price & type, Rename and Remove. Parking slots open the same way: the bay in 3D (with its car when reserved or sold), its size, price, reservation fee, status, its own prices and Remove.
+- Unit identifiers, reservation fee and parking price are no longer on the property form; they are set in Design. In Design floor, select a unit or parking slot to rename it; the name is saved with the floor.
+- The floor switcher over the floor view lists each floor with its unit count and scrolls for long lists; each floor has a quick Rename that opens a small form, and Add floors takes names separated by commas ("Ground, Mezzanine, Roof deck"). A property with no floors shows "No floors yet" with Set up floors, and the empty "Parking without a floor" panel is gone.
+- On phones, Contacts has a round Add button with a smaller round More button above it (Archived, Import CSV, Export), and filters that open in a bottom sheet.
+- On phones, the contact form keeps Cancel and Save at the bottom of the screen and spaces fields more tightly.
+- On phones, list pages show "Page 2 of 5" with previous and next buttons on one line, and no page controls when there is only one page.
+- On phones, a bottom tab bar opens Dashboard, Contacts, Pipeline and Tasks; More opens your profile, every other section, Dark mode and Sign out. Detail pages show a back arrow in the top bar.
+- On phones, the contact page shows Overview first, and Archived contacts drops the table header and page-size box.
+- A property's form no longer has floors. After saving, Design property on the property's page opens its Design page, where you pick the starting and top floor and the floors to skip, with a preview, then design each floor.
+- A unit designed in one property can be reused in another: Use a saved design copies its rooms, and you set its name and price there.
+- On designed floors, each unit has a small code and status tag just outside its back wall, and hovering or selecting a unit shows its width and depth on its walls. Hide labels hides them all, and the view frames the placed units instead of the whole floor.
+- The 3D floor view can be dragged and zoomed like a map, opened in full screen, and has warmer walls, bed throws, rugs and plants.
+- Designed floors look like a life-sim game plan: wood, carpet, tile and deck floors per room, navy walls and each room's name painted on it. The area around the building follows the property type: streets and sidewalks for condominiums, offices and commercial; a lawn and a street for houses and townhouses; a yard for warehouses; fields for farms and lots.
+- The parking view shows every slot on a floor in one lot, instead of 12 at a time. It stays a straight top view, and a reserved or sold slot's car drives in and parks, painted in its status colour (amber reserved, red sold out).
+- The property form no longer has a Features field; features already saved stay on the property. Its More details section is a plain list of fields, and contract dates show only for rent or lease.
+- The floors list drops the building picture and is narrower, and the floor view takes the floor's own shape, so units get more of the screen.
+- The property page matches the Access page: the name and actions sit in the page header, and each section is one card with a slim header and its counts, split into panes instead of boxes inside boxes.
+- On the Access page, "What … may see" drops the building picture and shows floors and units the same way as the property page. Designed floors show their plan: click a unit to give it or hold it back.
+- The Floors fields start empty (no ready-made first floor or skipped floor 4), and "First floor" is now "Starting floor".
+- Adding or editing a property no longer asks for lot area, floor area, bedrooms or bathrooms; each unit's design sets its size and rooms. The property page stops showing those property-wide figures.
+- A balcony can sit outside a unit's walls (up to 2.5 m) in the unit designer; the unit's size and area stay the walled part.
+- When a unit type is redesigned to a new size, its units on every floor take the new size in the floor designer, plans and 3D view, instead of being drawn over their old spot.
+- Saving a unit type's price applies it to the type's units that are still for sale; reserved and sold units keep their price.
+- The floor lists in Floors & units and Parking drop their "Floors" heading, so the list lines up with the floor's title; Add floor sits at the end of the list.
+- The property's address and View on map sit on the same row as its actions.
+- The property's Actions menu has Edit, Design units, Design floors, Access, Remove several (for the floor shown), History and Archive; Present to client is no longer offered.
+- A floor's header shows its name and unit count on one line, with how many units are available, reserved, sold out or inactive in the tags' colours, instead of a colour legend.
+- Opening a property shows just its floor view, filling the page like full screen but with the app menu: the floor's name, counts, status, Remove several and the property's address float over its top-left corner, Actions and Back to properties over its top-right, and the floor dropdown sits with Hide labels and Full screen at the bottom right. The Design page keeps its floor list.
+- Unit identifier chips and the hover tag keep a fixed size on screen, so they stay readable with the whole floor in view. Hide labels sits beside the full-screen button, and in full screen a floor switcher joins them.
+- The floor view is cleaner: each unit has a small number chip in its corner whose dot and border show its status, and the picked unit is outlined; the full tag (side, price, status) appears when you point at or pick a unit, and room names show once you zoom in.
+- Unit tags in the floor view show the code, side, price and status at full size instead of squeezed, and room names are quieter so they don't cover the furniture.
+- The parking price shows on each parking slot ("Available · ₱10K") and the reservation fee in each unit's details, instead of in the property overview.
+- Each unit's price shows on its tag in the floor view ("₱30M") instead of a price range in the property overview.
+- "Use a saved design" is gone from Unit types; instead, Copy on a unit type starts a new type from its rooms, size and price. Room names in the unit designer stay upright when a room is turned around.
+- The Floors section of the property form shows the side names first and links to the property page instead of a box of buttons.
+- Units can have doors: place a Door on any wall in the unit designer and turn it to face the way it opens. Plans draw the door and its swing, and the 3D view opens the wall there.
+- The unit designer has new pieces: Study, Laundry, Powder room, Storage and Maid's room.
+- Unit types show as cards with their size and price, across the full page width.
+- The unit and floor designers fill the screen: the plan fits the space at 100%, the unit shows its outer walls, and room names stay inside small rooms.
+- Add floor only asks how many floors; units are added by designing the floor.
+- Design a unit by dragging rooms (bedroom, bathroom, kitchen, living, dining, balcony, closet, foyer) onto a grid in metres; its size and bedrooms come from the design, and it gets a price.
+- Prices are set per unit (its own price, or its unit type's) instead of one gross list price per property. Opportunities and Billing add up each unit's price, and a unit without a price can't be picked until it has one. Existing units keep their property's old price.
+- The property form no longer asks for a gross list price or monthly amortization; the property page shows the range of unit prices. Each unit has a Price & type button.
+- Design a floor by dragging designed units, hallways, elevators and stairs onto it. Units are created and numbered as you place them, and the layout can be copied to other floors. Designed floors show in the illustrated top view: each unit is built from its rooms with beds, kitchens, bathrooms and sofas, with a Unit and status label and a status line along its front.
+- Property floors and parking show the top-view plan only; the List and 3D views are removed. A floor that isn't designed yet shows only Design floor, instead of the old ready-made studio units and unit cards.
+- The Dashboard's "At a glance" panel is now called "Summary".
+- Opportunities, contacts, properties and developments get short codes (OPP-000123, CON-000045, PROP-0007, DEV-0003). Existing codes are renumbered, oldest first.
+
+### Fixed
+- Picking Full payment in Record payment now shows the filled-in balance in the amount box.
+- When changing an opportunity's units, a parking slot it once chose but another opportunity has since reserved no longer shows as available.
+- Paying an opportunity's reservation fee reserves its units and parking right away, even while the move to Reservation waits for approval, so no other opportunity can take them.
+- An opportunity keeps the reservation fee and monthly amortization it was quoted when its units and parking were chosen; editing a unit type or slot later no longer changes open or won opportunities. Existing opportunities keep today's amounts.
+- Saving a parking type no longer overwrites a slot's own price or reservation fee; only slots still on the type's old amount follow the change.
+- A unit added in Design floor no longer gets an identifier (such as 101) that another unit on the plan already has.
+- "Parking without a floor" shows each slot's own price instead of an old property-wide price.
+- Changing a floor's unit identifiers no longer fails when new identifiers swap with existing ones.
+- Saving sections no longer fails after one of their floors is removed; the removed floor is dropped from its section.
+
+- A floor opens with no unit picked, instead of the first unit outlined with its tag and wall sizes showing.
+- Switching floors is faster: the 3D view stays open between floors and reuses its painted floors, names, tags and shapes instead of rebuilding them, with lighter shadows; "Loading floor…" shows only while it first opens. The full-screen button on the floor view opens it full screen again.
+- A removed unit or parking slot also comes off its floor's design, so the plan doesn't keep an empty spot and saving the floor doesn't bring it back.
+- Unit codes and room names on floor and unit plans no longer show squashed letters.
+- Adding a property opens again instead of showing an error.
+
 ## [0.4.6] - 2026-11-21
 
 ### Changed

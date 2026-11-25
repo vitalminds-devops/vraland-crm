@@ -15,7 +15,7 @@ export default async function NewCampaignPage() {
   return (
     <PageContainer className="max-w-7xl">
       <PageHeader
-        title="New campaign"
+        title="Add campaign"
         description="Pick a message and who gets it."
         actions={<BackButton fallbackHref="/marketing/campaigns" label="Back to campaigns" />}
       />

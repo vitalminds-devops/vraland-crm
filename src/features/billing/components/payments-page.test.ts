@@ -48,7 +48,16 @@ vi.mock("@/features/billing/queries/billing.queries", () => ({
       },
     ],
     total: 2,
-    summary: { collected: "11500", thisMonth: "11500", count: 2 },
+    summary: {
+      collected: "11500",
+      thisMonth: "11500",
+      count: 2,
+      thisMonthCount: 2,
+      reservation: "1500",
+      reservationCount: 1,
+      monthly: "10000",
+      monthlyCount: 1,
+    },
   }),
 }));
 
@@ -67,13 +76,22 @@ it("keeps payment details and bill links while separating each purchased unit", 
     "DEAL-6FC1B03C",
     "Monthly",
     "Bank transfer",
-    "Invoice: INV-TEST-0001",
+    "Invoice no. INV-TEST-0001",
     "₱10,000.00",
     "Nov 16, 2026",
     "Broker Test",
     "No broker",
-    "No invoice number",
+    "No invoice no.",
   ]) {
     expect(html).toContain(text);
   }
+});
+
+it("leads each summary with the amount, the number of payments underneath", async () => {
+  const html = (await render()).replace(/<[^>]+>/g, " ");
+  expect(html).toContain("Reservation");
+  expect(html).toContain("₱1,500.00");
+  expect(html).toContain("1 payment");
+  expect(html).toContain("Date paid");
+  expect(html).not.toContain("Paid on");
 });

@@ -10,7 +10,7 @@ type SearchInputProps = InputHTMLAttributes<HTMLInputElement> & {
 
 const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
   (
-    { placeholder = "Search name, email, code...", value = "", onClear, className = "", ...props },
+    { placeholder = "Search name, email, code…", value = "", onClear, className = "", ...props },
     ref,
   ) => {
     const hasValue = value !== "" && value !== undefined;
@@ -23,7 +23,7 @@ const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
           type="text"
           placeholder={placeholder}
           defaultValue={value}
-          className={`h-9 w-full rounded-lg border border-border/60 bg-background px-3 pl-9 pr-9 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-all hover:border-border focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/25 ${className}`}
+          className={`h-9 w-full rounded-lg border border-border/60 bg-background px-3 pl-9 pr-9 text-base sm:text-sm text-foreground placeholder:text-muted-foreground outline-none transition-all hover:border-border focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/25 ${className}`}
           {...props}
         />
         {hasValue && onClear && (
@@ -54,7 +54,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
       <NativeSelect
         ref={ref}
         wrapperClassName="max-sm:flex-1 max-sm:basis-[calc(50%-0.25rem)]"
-        className={`h-9 max-sm:w-full rounded-lg border border-border/60 bg-background text-sm text-foreground outline-none transition-all hover:border-border focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/25 cursor-pointer ${className}`}
+        className={`h-9 max-sm:w-full rounded-lg border border-border/60 bg-background text-base sm:text-sm text-foreground outline-none transition-all hover:border-border focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/25 cursor-pointer ${className}`}
         {...props}
       >
         {children}
@@ -80,7 +80,7 @@ export const ToolbarSearch = forwardRef<HTMLInputElement, ToolbarSearchProps>(
         type="text"
         value={value}
         onChange={(e) => onValueChange(e.target.value)}
-        className={`h-9 w-full rounded-lg border border-border/60 bg-background px-3 pl-9 pr-9 text-sm text-foreground placeholder:text-muted-foreground outline-none transition-all hover:border-border focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/25 ${className}`}
+        className={`h-9 w-full rounded-lg border border-border/60 bg-background px-3 pl-9 pr-9 text-base sm:text-sm text-foreground placeholder:text-muted-foreground outline-none transition-all hover:border-border focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/25 ${className}`}
         {...props}
       />
       <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">

@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import { cn } from "@/lib/utils/cn";
 import { useRouter } from "next/navigation";
 import { User } from "lucide-react";
 import { ContactRow } from "./contact-row";
@@ -205,11 +206,11 @@ export function ContactsTable({
     <>
       <div className="overflow-x-auto">
         <Table className="w-full text-left text-sm">
-          <TableHeader className={tableHeadClass}>
+          <TableHeader className={cn(tableHeadClass, "max-sm:hidden")}>
             <TableRow>
               <TableHead
                 scope="col"
-                className="sticky left-0 z-10 bg-muted/50 px-4 py-3"
+                className="sticky left-0 z-10 bg-muted/50 px-4 py-3 max-md:bg-transparent"
                 aria-sort={sortAria("contact")}
               >
                 <button
@@ -263,7 +264,10 @@ export function ContactsTable({
                 </>
               )}
               <TableHead scope="col" className="w-16 px-4 py-3 text-right">
-                <ColumnsToggleButton pressed={showAdditionalColumns} onToggle={toggleColumns} />
+                {/* The extra columns only show from xl, so the toggle does nothing below it. */}
+                <span className="hidden xl:inline-flex">
+                  <ColumnsToggleButton pressed={showAdditionalColumns} onToggle={toggleColumns} />
+                </span>
               </TableHead>
             </TableRow>
           </TableHeader>

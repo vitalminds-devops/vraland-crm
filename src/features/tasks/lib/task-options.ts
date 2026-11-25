@@ -72,6 +72,7 @@ export function titleCase(value: string): string {
   return value.replaceAll("_", " ").replace(/^./, (character) => character.toUpperCase());
 }
 
-export const taskTypeLabel = titleCase;
+export const taskTypeLabel = (value: string) =>
+  value === "follow_up" ? "Follow-up" : titleCase(value);
 export const taskStatusLabel = titleCase;
 export const taskPriorityLabel = titleCase;

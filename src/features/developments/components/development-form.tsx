@@ -140,7 +140,7 @@ export function DevelopmentForm({ developmentId, initial, coverImageUrl = null }
         notify(
           savedId
             ? "Development saved; could not confirm the remaining changes"
-            : "Could not confirm development save",
+            : "Couldn't confirm development save",
           "error",
           {
             id: toastId,
@@ -170,7 +170,7 @@ export function DevelopmentForm({ developmentId, initial, coverImageUrl = null }
 
   return (
     <form
-      onSubmit={handleSubmit(submit, () => notify("Review the highlighted fields.", "error"))}
+      onSubmit={handleSubmit(submit, () => notify("Review the highlighted fields below.", "error"))}
       className={formShellClass}
     >
       <FormStyle />

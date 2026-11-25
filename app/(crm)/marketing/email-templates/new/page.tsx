@@ -15,7 +15,7 @@ export default async function NewEmailTemplatePage() {
   return (
     <PageContainer className="max-w-7xl">
       <PageHeader
-        title="New email template"
+        title="Add email template"
         actions={<BackButton fallbackHref="/marketing/email-templates" label="Back to templates" />}
       />
       <div className="mt-6 flex gap-8">

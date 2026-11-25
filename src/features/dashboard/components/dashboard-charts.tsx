@@ -41,7 +41,7 @@ export function RevenueChart({
   return (
     <div
       className="h-60 w-full sm:h-72"
-      aria-label="Closed sales and probability-weighted forecast chart"
+      aria-label="Won sales and probability-weighted forecast chart"
     >
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 12, right: 8, left: 0, bottom: 0 }}>
@@ -78,7 +78,7 @@ export function RevenueChart({
           <Area
             type="monotone"
             dataKey="closedSales"
-            name="Closed sales"
+            name="Won sales"
             stroke={CLOSED_COLOR}
             fill="url(#closed-sales)"
             strokeWidth={2}

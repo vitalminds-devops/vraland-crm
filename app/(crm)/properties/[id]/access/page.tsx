@@ -61,6 +61,7 @@ export default async function PropertyAccessPage({
         selectedUserId={editor.selectedUserId}
         floors={editor.floors}
         units={editor.units}
+        unitDesigns={editor.unitDesigns}
         parkingSlots={editor.parkingSlots}
         grant={editor.grant}
         canGrantEveryProperty={editor.canGrantEveryProperty}
@@ -78,6 +79,7 @@ async function loadViewer(propertyId: string) {
     selectedUserId: null,
     floors: [],
     units: [],
+    unitDesigns: {},
     parkingSlots: [],
     grant: null,
     canGrantEveryProperty: false,
@@ -119,7 +121,11 @@ async function loadEditor(
       unitCount: floor.unitCount,
       availableUnits: availableByFloor.get(floor.id) ?? 0,
       hasAccess: mineFloors.has(floor.id),
+      layout: floor.layout,
     })),
+    unitDesigns: Object.fromEntries(
+      full.unitTypes.flatMap((type) => (type.layout ? [[type.id, type.layout] as const] : [])),
+    ),
     units: full.units.map((unit) => ({
       id: unit.id,
       code: unit.code,
@@ -127,6 +133,7 @@ async function loadEditor(
       floorId: unit.floorId,
       imageStorageKey: unit.imageStorageKey,
       accessible: mineUnits.has(unit.id),
+      group: unit.group,
     })),
     parkingSlots,
     grant,

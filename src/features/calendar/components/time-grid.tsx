@@ -81,7 +81,7 @@ export function TimeGrid({
             >
               {slot.getMinutes() === 0 ? (
                 <span className="absolute -top-2 right-1 text-[10px] tabular-nums text-muted-foreground">
-                  {format(slot, "HH:mm")}
+                  {format(slot, "h a")}
                 </span>
               ) : null}
             </div>

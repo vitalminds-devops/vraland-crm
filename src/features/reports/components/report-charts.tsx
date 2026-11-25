@@ -68,7 +68,7 @@ export function SalesTrendChart({
             labelFormatter={(label) => reportMonth(String(label))}
             contentStyle={tooltipStyle}
           />
-          <Bar dataKey="value" name="Closed sales" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="value" name="Won sales" fill="var(--primary)" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -161,7 +161,7 @@ export function ArimaForecastChart({
     <div
       className="h-80"
       role="img"
-      aria-label="Historical closed sales and six-month ARIMA forecast with 95 percent prediction intervals"
+      aria-label="Historical won sales and six-month ARIMA forecast with 95 percent prediction intervals"
     >
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={data}>
@@ -203,7 +203,7 @@ export function ArimaForecastChart({
           <Line
             type="linear"
             dataKey="actual"
-            name="Closed sales"
+            name="Won sales"
             stroke="var(--foreground)"
             strokeWidth={2}
             dot={false}

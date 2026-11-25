@@ -21,7 +21,7 @@ export function writeErrorMessage(error: {
       return "The selected agent, development or unit no longer exists. Refresh and pick again.";
     case "42703":
     case "42P01":
-      return "The database is out of date. Ask an admin to run the database migrations.";
+      return "The database is out of date. Ask an Administrator to run the database migrations.";
     default:
       return null;
   }

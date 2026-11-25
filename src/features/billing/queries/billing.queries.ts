@@ -13,6 +13,8 @@ import {
   payments,
   pipelineStages,
   properties,
+  propertyParkingSlots,
+  unitTypes,
   units,
   users,
 } from "@/db/schema";
@@ -27,7 +29,12 @@ import { manilaDate } from "@/lib/utils/manila-time";
 import { leadNotArchived } from "@/features/deals/lib/lead-not-archived";
 import { isContactsFirstDeal } from "@/features/deals/lib/first-deal";
 import { billApplicantSchema } from "../schemas/bill-applicant.schema";
-import { dealMonthlyAmortization, dealReservationFee } from "../lib/deal-payment";
+import { suggestedUnitPrices } from "../lib/suggested-prices";
+import {
+  dealMonthlyAmortization,
+  dealReservationFee,
+  parkingReservationFee,
+} from "../lib/deal-payment";
 
 export const billStatuses = ["unbilled", "unpaid", "partial", "paid"] as const;
 export type BillStatus = (typeof billStatuses)[number];
@@ -83,8 +90,13 @@ const dealRows = () =>
       amount: deals.amount,
       parkingSlots: deals.parkingSlots,
       parkingAmount: deals.parkingAmount,
+      parkingSlotIds: deals.parkingSlotIds,
       // The same amounts the payment gates need, summed over the deal's units.
       reservationFee: dealReservationFee,
+      // The parking part, as quoted, else today's slot fees.
+      parkingReservationFee: sql<
+        string | null
+      >`coalesce(${deals.parkingReservationFee}, ${parkingReservationFee})`,
       monthlyAmortization: dealMonthlyAmortization,
       stageName: pipelineStages.name,
       dealStatus: deals.status,
@@ -109,7 +121,6 @@ const dealRows = () =>
       billId: bills.id,
       unitLabel: bills.unitLabel,
       unitPrice: bills.unitPrice,
-      askingPrice: properties.askingPrice,
       miscellaneousFee: bills.miscellaneousFee,
       reservationDiscount: bills.reservationDiscount,
       notes: bills.notes,
@@ -140,7 +151,7 @@ export type BillLine = {
 
 /**
  * Each opportunity's bill lines: the saved ones once billed, otherwise one suggested line per unit
- * (the opportunity's unit plus every unit the lead picked), priced from the deal amount or gross list price.
+ * (the opportunity's unit plus every unit the lead picked) and per parking slot, at their own prices.
  */
 async function billLinesFor(
   organizationId: string,
@@ -163,7 +174,10 @@ async function billLinesFor(
       ),
     ),
   ];
-  const [itemRows, unitRows] = await Promise.all([
+  const slotIds = [
+    ...new Set(rows.flatMap((row) => (row.billId ? [] : (row.parkingSlotIds ?? [])))),
+  ];
+  const [itemRows, unitRows, slotRows] = await Promise.all([
     billIds.length
       ? db
           .select({
@@ -183,14 +197,32 @@ async function billLinesFor(
             code: units.code,
             propertyTitle: properties.title,
             developmentName: developments.name,
-            askingPrice: properties.askingPrice,
+            price: sql<string | null>`coalesce(${units.price}, ${unitTypes.price})`,
           })
           .from(units)
           .innerJoin(properties, eq(units.buildingId, properties.id))
+          .leftJoin(unitTypes, eq(units.unitTypeId, unitTypes.id))
           .leftJoin(developments, eq(properties.developmentId, developments.id))
           .where(and(inArray(units.id, unitIds), eq(properties.organizationId, organizationId)))
       : [],
+    slotIds.length
+      ? db
+          .select({
+            id: propertyParkingSlots.id,
+            code: propertyParkingSlots.code,
+            price: propertyParkingSlots.price,
+          })
+          .from(propertyParkingSlots)
+          .innerJoin(properties, eq(propertyParkingSlots.buildingId, properties.id))
+          .where(
+            and(
+              inArray(propertyParkingSlots.id, slotIds),
+              eq(properties.organizationId, organizationId),
+            ),
+          )
+      : [],
   ]);
+  const slotById = new Map(slotRows.map((slot) => [slot.id, slot]));
   const unitById = new Map(unitRows.map((unit) => [unit.id, unit]));
 
   return new Map(
@@ -224,28 +256,26 @@ async function billLinesFor(
         const unit = id ? unitById.get(id) : undefined;
         return unit ? [unit] : [];
       });
-      const suggested = picked.map((unit) => ({
+      const prices = suggestedUnitPrices(
+        picked.map((unit) => unit.price),
+        row,
+      );
+      const suggested = picked.map((unit, index) => ({
         unitLabel: [`Unit ${unit.code}`, unit.propertyTitle, unit.developmentName]
           .filter(Boolean)
           .join(" · "),
-        // New totals include parking; older single-unit deals keep their entered amount.
-        unitPrice:
-          (row.parkingAmount !== null && row.amount !== null
-            ? ((Number(row.amount) - Number(row.parkingAmount)) / picked.length).toFixed(2)
-            : picked.length === 1
-              ? row.amount
-              : null) ??
-          unit.askingPrice ??
-          "",
+        unitPrice: prices[index] ?? "",
         miscellaneousFee: "",
       }));
-      if (row.parkingSlots > 0 && row.parkingAmount !== null) {
+      // One line per parking slot, named by its identifier, at its own price.
+      for (const slot of (row.parkingSlotIds ?? [])
+        .flatMap((id) => slotById.get(id) ?? [])
+        .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true })))
         suggested.push({
-          unitLabel: `Parking (${row.parkingSlots} ${row.parkingSlots === 1 ? "slot" : "slots"}) · ${row.propertyTitle ?? ""}`,
-          unitPrice: row.parkingAmount,
+          unitLabel: [`Parking ${slot.code}`, row.propertyTitle].filter(Boolean).join(" · "),
+          unitPrice: slot.price ?? "",
           miscellaneousFee: "",
         });
-      }
       return [
         row.dealId,
         suggested.length
@@ -254,7 +284,8 @@ async function billLinesFor(
               {
                 unitLabel:
                   [row.propertyTitle, row.developmentName].filter(Boolean).join(" · ") || row.title,
-                unitPrice: row.amount ?? row.askingPrice ?? "",
+                // No units: the opportunity's amount if it has one; never the old asking price.
+                unitPrice: row.amount ?? "",
                 miscellaneousFee: "",
               },
             ],
@@ -548,6 +579,12 @@ export async function listPayments(input: { page: number; pageSize: number; sear
         count: sql<number>`count(*)::int`,
         collected: sql<string>`coalesce(sum(${payments.amount}), 0)`,
         thisMonth: sql<string>`coalesce(sum(${payments.amount}) filter (where ${gte(payments.paidOn, `${manilaDate().slice(0, 7)}-01`)}), 0)`,
+        thisMonthCount: sql<number>`(count(*) filter (where ${gte(payments.paidOn, `${manilaDate().slice(0, 7)}-01`)}))::int`,
+        // By what each payment was for.
+        reservation: sql<string>`coalesce(sum(${payments.amount}) filter (where ${payments.classification} = 'reservation'), 0)`,
+        reservationCount: sql<number>`(count(*) filter (where ${payments.classification} = 'reservation'))::int`,
+        monthly: sql<string>`coalesce(sum(${payments.amount}) filter (where ${payments.classification} = 'monthly'), 0)`,
+        monthlyCount: sql<number>`(count(*) filter (where ${payments.classification} = 'monthly'))::int`,
       })
       .from(payments)
       .innerJoin(bills, eq(payments.billId, bills.id))
@@ -558,7 +595,16 @@ export async function listPayments(input: { page: number; pageSize: number; sear
   return {
     rows,
     total: rows[0]?.fullCount ?? 0,
-    summary: summary ?? { count: 0, collected: "0", thisMonth: "0" },
+    summary: summary ?? {
+      count: 0,
+      collected: "0",
+      thisMonth: "0",
+      thisMonthCount: 0,
+      reservation: "0",
+      reservationCount: 0,
+      monthly: "0",
+      monthlyCount: 0,
+    },
   };
 }
 
@@ -573,6 +619,11 @@ export async function listOpenBills() {
       firstName: contacts.firstName,
       lastName: contacts.lastName,
       balance: sql<string>`${total} - ${paid}`,
+      // What Record payment fills in: the fees quoted, and reservation payments made so far.
+      reservationFee: dealReservationFee,
+      monthlyAmortization: dealMonthlyAmortization,
+      reservationPaid: sql<string>`coalesce((select sum(p.amount) from payments p
+        where p.bill_id = ${bills.id} and p.deleted_at is null and p.classification = 'reservation'), 0)`,
     })
     .from(bills)
     .innerJoin(deals, eq(bills.dealId, deals.id))

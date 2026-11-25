@@ -110,15 +110,15 @@ export const permissionMetadata = {
   "dashboard.view_metrics": {
     label: "Show dashboard figures",
     description:
-      "Show Active contacts, Active properties, Open opportunities and Collected this month.",
+      "Show sales values, payments received, available units, floors, active contacts, active properties and open opportunities.",
   },
   "dashboard.view_revenue": {
-    label: "Show closed sales & forecast",
-    description: "Show Closed sales & forecast on Dashboard. Requires Sales pipeline access.",
+    label: "Show won sales & forecast",
+    description: "Show Won sales & forecast on Dashboard. Requires Sales pipeline access.",
   },
   "dashboard.view_summary": {
-    label: "Show at a glance",
-    description: "Show At a glance on Dashboard for records you can access.",
+    label: "Show summary",
+    description: "Show Summary on Dashboard for records you can access.",
   },
   "dashboard.view_priorities": {
     label: "Show upcoming tasks & viewings",
@@ -171,12 +171,12 @@ export const permissionMetadata = {
   },
 
   "requirements.view": {
-    label: "View client documents",
+    label: "View contact documents",
     description: "See the document checklist on visible contacts.",
   },
   "requirements.manage": {
-    label: "Manage client documents",
-    description: "Add, upload and remove client documents.",
+    label: "Manage contact documents",
+    description: "Add, upload and remove contact documents.",
   },
 
   "properties.view": {
@@ -200,7 +200,7 @@ export const permissionMetadata = {
     description: "Add, rename, update and remove floors, units and parking slots.",
   },
   "properties.manage_unit_pictures": {
-    label: "Manage unit pictures",
+    label: "Manage unit photos",
     description: "Add, replace and remove unit photos.",
   },
   "properties.grant_unit_access": {
@@ -267,7 +267,7 @@ export const permissionMetadata = {
     description: "Open Tasks and My tasks. View Assignee and Created by for each task.",
   },
   "tasks.create": {
-    label: "Create tasks",
+    label: "Add tasks",
     description: "Add a task.",
   },
   "tasks.update": {
@@ -413,7 +413,7 @@ export const permissionMetadata = {
 const moduleLabels: Record<string, string> = {
   dashboard: "Dashboard",
   contacts: "Contacts & leads",
-  requirements: "Client documents",
+  requirements: "Contact documents",
   properties: "Properties",
   developments: "Developments",
   deals: "Sales pipeline",

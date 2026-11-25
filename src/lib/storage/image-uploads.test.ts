@@ -7,7 +7,7 @@ it("rejects large images before trying to read their contents", async () => {
   const read = vi.spyOn(file, "slice");
   expect(await checkImageUpload(file)).toMatchObject({
     ok: false,
-    message: "Pictures must be 5 MB or smaller.",
+    message: "Photos must be 5 MB or smaller.",
   });
   expect(read).not.toHaveBeenCalled();
 });
@@ -19,7 +19,7 @@ it("returns a clear validation error if a selected image cannot be read", async 
   });
   expect(await checkImageUpload(file)).toMatchObject({
     ok: false,
-    message: expect.stringContaining("could not be read"),
+    message: expect.stringContaining("Couldn't read the photo"),
   });
 });
 
@@ -31,5 +31,5 @@ it("accepts a matching image and explains a mismatched file", async () => {
   ).toMatchObject({ ok: true, extension: "jpg" });
   expect(
     await checkImageUpload(new File(["text"], "photo.jpg", { type: "image/jpeg" })),
-  ).toMatchObject({ ok: false, message: expect.stringContaining("contents do not match") });
+  ).toMatchObject({ ok: false, message: expect.stringContaining("doesn't match its file type") });
 });

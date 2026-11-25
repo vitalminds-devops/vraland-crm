@@ -71,6 +71,8 @@ it.each([getPropertyInventory, getPropertyInventoryForGrants])(
     const queries = fixture.filters.map((condition) => new PgDialect().sqlToQuery(condition));
     expect(queries[1].params).toContain("granted-floor");
     expect(queries[2].params).toContain("granted-unit");
-    expect(queries).toHaveLength(3);
+    // Unit types are read for this property only.
+    expect(queries[3].params).toContain("property");
+    expect(queries).toHaveLength(4);
   },
 );

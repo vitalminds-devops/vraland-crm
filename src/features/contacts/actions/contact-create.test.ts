@@ -86,6 +86,7 @@ vi.mock("@/lib/permissions/active-assignees", () => ({
   lockActiveAssignees: async () => {},
   InactiveAssigneeError: class extends Error {},
 }));
+vi.mock("@/lib/record-codes", () => ({ nextRecordCode: async () => "CON-000001" }));
 vi.mock("../lib/contact-duplicate-lookup", () => ({ findDuplicateMatch: async () => null }));
 vi.mock("@/features/marketing/lib/auto-enroll", () => ({ enrollByTrigger: async () => 0 }));
 vi.mock("@/features/deals/lib/open-deal", () => ({

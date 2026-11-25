@@ -1,12 +1,15 @@
 "use client";
 
 import { Building2, Check } from "lucide-react";
+import type { FloorLayout, UnitDesign } from "../lib/floor-layout";
+import { LayoutUnitPicker } from "./layout-unit-picker";
 import { useRef, useState } from "react";
 
 import { Paginator } from "@/components/ui/paginator";
 import { cn } from "@/lib/utils/cn";
 import { InventoryUnitCard } from "./inventory-unit-card";
 import { UnitPanoramaViewer } from "./unit-panorama-viewer";
+import type { UnitGroup } from "../lib/floor-groups";
 
 export type InventoryBuildingData = {
   id: string;
@@ -37,11 +40,15 @@ export type InventoryUnitCardData = {
   imageUrl: string | null;
   photoCount: number;
   accessible: boolean;
+  group?: UnitGroup | null;
 };
 
 type InventoryBrowserProps = {
   buildings: InventoryBuildingData[];
   units: InventoryUnitCardData[];
+  /** Designed floors by floor id: these show their plan to click units on, instead of cards. */
+  floorLayouts?: Readonly<Record<string, FloorLayout>>;
+  designs?: Readonly<Record<string, UnitDesign>>;
   activeFloorId: string | null;
   onActiveFloorChange: (floorId: string | null) => void;
   selectedFloorIds: string[];
@@ -73,6 +80,8 @@ const UNITS_PER_PAGE = 20;
 export function InventoryBrowser({
   buildings,
   units,
+  floorLayouts = {},
+  designs = {},
   activeFloorId,
   onActiveFloorChange,
   selectedFloorIds,
@@ -141,8 +150,8 @@ export function InventoryBrowser({
   };
 
   return (
-    <div className="grid gap-3 lg:grid-cols-[15rem_minmax(0,1fr)]">
-      <div className="flex max-h-[min(34rem,calc(100dvh_-_12rem))] flex-col self-start overflow-hidden rounded-xl border border-border/60 bg-card">
+    <div className="grid lg:grid-cols-[13rem_minmax(0,1fr)]">
+      <div className="flex max-h-[min(34rem,calc(100dvh_-_12rem))] flex-col overflow-hidden border-b border-border/60 bg-muted/20 lg:border-r lg:border-b-0">
         <h3 className="shrink-0 border-b border-border/40 px-3 py-2 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
           Floors
         </h3>
@@ -347,7 +356,7 @@ export function InventoryBrowser({
 
       <div
         ref={unitsPanelRef}
-        className="flex min-w-0 max-h-[min(34rem,calc(100dvh_-_12rem))] scroll-mt-20 flex-col rounded-xl border border-border/60 bg-card"
+        className="flex min-w-0 max-h-[min(34rem,calc(100dvh_-_12rem))] scroll-mt-20 flex-col"
       >
         {activeFloor && activeBuilding ? (
           <>
@@ -393,44 +402,62 @@ export function InventoryBrowser({
               </span>
             </div>
 
-            <ul className="grid min-h-0 flex-1 content-start gap-2 overflow-y-auto overscroll-contain p-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-              {pageUnits.map((unit) => {
-                const granted = isGranted(unit.id);
-                return (
-                  <li key={unit.id}>
-                    <InventoryUnitCard
-                      code={unit.code}
-                      status={unit.status}
-                      imageUrl={unit.imageUrl}
-                      selected={granted}
-                      heldBack={isHeldBack(unit.id)}
-                      disabled={disabled || !unit.accessible}
-                      onToggle={() => onToggleUnit(unit.id)}
-                      selectionLabel={
-                        !unit.accessible
-                          ? `${unit.code} is not yours to share`
-                          : `${granted ? "Hold back" : "Give"} ${unit.code}`
-                      }
-                      onPreview={unit.imageUrl ? () => setPreviewUnitId(unit.id) : undefined}
-                      unavailableLabel={!unit.accessible ? "Not yours to share" : undefined}
-                    />
-                  </li>
-                );
-              })}
-              {!activeUnits.length && (
-                <li className="col-span-full text-[13px] text-muted-foreground">{emptyLabel}</li>
-              )}
-            </ul>
+            {floorLayouts[activeFloor.id] ? (
+              <div className="min-h-0 flex-1 overflow-auto p-3">
+                <LayoutUnitPicker
+                  layout={floorLayouts[activeFloor.id]}
+                  designs={designs}
+                  units={activeUnits}
+                  isGranted={isGranted}
+                  isHeldBack={isHeldBack}
+                  onToggle={onToggleUnit}
+                  disabled={disabled}
+                />
+              </div>
+            ) : (
+              <>
+                <ul className="grid min-h-0 flex-1 content-start gap-2 overflow-y-auto overscroll-contain p-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                  {pageUnits.map((unit) => {
+                    const granted = isGranted(unit.id);
+                    return (
+                      <li key={unit.id}>
+                        <InventoryUnitCard
+                          code={unit.code}
+                          status={unit.status}
+                          imageUrl={unit.imageUrl}
+                          selected={granted}
+                          heldBack={isHeldBack(unit.id)}
+                          disabled={disabled || !unit.accessible}
+                          onToggle={() => onToggleUnit(unit.id)}
+                          selectionLabel={
+                            !unit.accessible
+                              ? `${unit.code} is not yours to share`
+                              : `${granted ? "Hold back" : "Give"} ${unit.code}`
+                          }
+                          onPreview={unit.imageUrl ? () => setPreviewUnitId(unit.id) : undefined}
+                          unavailableLabel={!unit.accessible ? "Not yours to share" : undefined}
+                        />
+                      </li>
+                    );
+                  })}
+                  {!activeUnits.length && (
+                    <li className="col-span-full text-[13px] text-muted-foreground">
+                      {emptyLabel}
+                    </li>
+                  )}
+                </ul>
 
-            <Paginator
-              page={currentPage}
-              pageCount={pageCount}
-              onPageChange={goToPage}
-              total={activeUnits.length}
-              perPage={UNITS_PER_PAGE}
-              noun="units"
-              disabled={disabled}
-            />
+                <Paginator
+                  page={currentPage}
+                  pageCount={pageCount}
+                  onPageChange={goToPage}
+                  total={activeUnits.length}
+                  perPage={UNITS_PER_PAGE}
+                  noun="units"
+                  disabled={disabled}
+                />
+              </>
+            )}
           </>
         ) : (
           <p className="grid flex-1 place-content-center p-4 text-center text-[13px] text-muted-foreground">

@@ -26,17 +26,24 @@ import {
   calendarEvents,
   contacts,
   deals,
+  floors,
   organizations,
   permissions,
   payments,
   pipelineStages,
   properties,
+  propertyParkingSlots,
   propertyViewings,
   tasks,
+  units,
   users,
 } from "@/db/schema";
 import { requirePermission } from "@/lib/permissions/authorization";
-import { grantedPropertyCondition } from "@/lib/permissions/property-access";
+import {
+  grantedParkingCondition,
+  grantedPropertyCondition,
+  grantedUnitsCondition,
+} from "@/lib/permissions/property-access";
 import { dashboardPanelKeys } from "@/lib/permissions/catalog";
 import { hasOrganizationWideAccess, resolveDataScope } from "@/lib/permissions/policy";
 import { dataScopeCondition } from "@/lib/permissions/scope";
@@ -191,6 +198,13 @@ export async function getDashboardData() {
     taskLoadRows,
     completedTaskRows,
     inventoryStatusRows,
+    reservationRows,
+    floorRows,
+    wonTotalRows,
+    wonCollectedRows,
+    monthlyPaidRows,
+    unitAvailabilityRows,
+    parkingAvailabilityRows,
   ] = await Promise.all([
     db
       .select({ key: permissions.key })
@@ -502,6 +516,117 @@ export async function getDashboardData() {
       )
       .groupBy(properties.status)
       .orderBy(desc(count())),
+    // Opportunities in the Reservation stage now.
+    db
+      .select({ count: count(), value: sum(deals.amount) })
+      .from(deals)
+      .innerJoin(pipelineStages, eq(deals.stageId, pipelineStages.id))
+      .where(
+        and(
+          eq(deals.organizationId, context.organizationId),
+          eq(pipelineStages.slug, "reservation"),
+          eq(deals.status, "open"),
+          isNull(deals.deletedAt),
+          dealScope,
+        ),
+      ),
+    // Floors of the properties the viewer can see, and how many properties have them.
+    db
+      .select({
+        floors: count(),
+        properties: sql<number>`count(distinct ${floors.buildingId})::int`,
+      })
+      .from(floors)
+      .innerJoin(properties, eq(floors.buildingId, properties.id))
+      .where(
+        and(
+          eq(properties.organizationId, context.organizationId),
+          isNull(properties.deletedAt),
+          grantedPropertyCondition(context, { propertyId: properties.id }),
+          propertyScope,
+        ),
+      ),
+    // Every won opportunity, all time.
+    db
+      .select({ count: count(), value: sum(deals.amount) })
+      .from(deals)
+      .where(
+        and(
+          eq(deals.organizationId, context.organizationId),
+          eq(deals.status, "won"),
+          isNull(deals.deletedAt),
+          dealScope,
+        ),
+      ),
+    // What has been collected on those won opportunities.
+    db
+      .select({ value: sum(payments.amount) })
+      .from(payments)
+      .innerJoin(bills, eq(bills.id, payments.billId))
+      .innerJoin(deals, eq(deals.id, bills.dealId))
+      .where(
+        and(
+          eq(payments.organizationId, context.organizationId),
+          isNull(payments.deletedAt),
+          eq(deals.status, "won"),
+          isNull(deals.deletedAt),
+          dealScope,
+        ),
+      ),
+    // Monthly amortization payments received, all time.
+    db
+      .select({ count: count(), value: sum(payments.amount) })
+      .from(payments)
+      .innerJoin(bills, eq(bills.id, payments.billId))
+      .innerJoin(deals, eq(deals.id, bills.dealId))
+      .where(
+        and(
+          eq(payments.organizationId, context.organizationId),
+          isNull(payments.deletedAt),
+          eq(payments.classification, "monthly"),
+          isNull(deals.deletedAt),
+          dealScope,
+        ),
+      ),
+    // Units the viewer can see, and how many are still available.
+    db
+      .select({
+        total: count(),
+        available: sql<number>`(count(*) filter (where ${units.status} = 'available'))::int`,
+      })
+      .from(units)
+      .innerJoin(properties, eq(units.buildingId, properties.id))
+      .where(
+        and(
+          eq(properties.organizationId, context.organizationId),
+          isNull(properties.deletedAt),
+          grantedUnitsCondition(context, {
+            propertyId: units.buildingId,
+            floorId: units.floorId,
+            unitId: units.id,
+          }),
+          propertyScope,
+        ),
+      ),
+    // Parking slots the viewer can see, and how many are still available.
+    db
+      .select({
+        total: count(),
+        available: sql<number>`(count(*) filter (where ${propertyParkingSlots.status} = 'available'))::int`,
+      })
+      .from(propertyParkingSlots)
+      .innerJoin(properties, eq(propertyParkingSlots.buildingId, properties.id))
+      .where(
+        and(
+          eq(properties.organizationId, context.organizationId),
+          isNull(properties.deletedAt),
+          grantedParkingCondition(context, {
+            propertyId: propertyParkingSlots.buildingId,
+            parkingSlotId: propertyParkingSlots.id,
+          }),
+          propertyScope,
+        ),
+      ),
   ]);
 
   const sections = dashboardSections(
@@ -545,10 +670,16 @@ export async function getDashboardData() {
       hint: "Next 7 days",
     },
     canViewContacts && {
+      key: "activeContacts",
+      label: "Active contacts",
+      value: (activeLeadRows[0]?.value ?? 0).toLocaleString(),
+      hint: "Not yet converted",
+    },
+    canViewContacts && {
       key: "newLeads",
       label: "New contacts this month",
       value: newLeads.toLocaleString(),
-      hint: `Created since ${format(parseISO(manilaDate(monthStart)), "d MMM")}`,
+      hint: `Created since ${format(parseISO(manilaDate(monthStart)), "MMM d")}`,
     },
     canViewDeals && {
       key: "closed",
@@ -584,6 +715,19 @@ export async function getDashboardData() {
       pipelineValue: Number(pipelineRows[0]?.value ?? 0),
       payments: collectedRows[0]?.count ?? 0,
       collected: Number(collectedRows[0]?.value ?? 0),
+      reservations: reservationRows[0]?.count ?? 0,
+      reservationValue: Number(reservationRows[0]?.value ?? 0),
+      availableUnits: unitAvailabilityRows[0]?.available ?? 0,
+      totalUnits: unitAvailabilityRows[0]?.total ?? 0,
+      availableParking: parkingAvailabilityRows[0]?.available ?? 0,
+      totalParking: parkingAvailabilityRows[0]?.total ?? 0,
+      floors: floorRows[0]?.floors ?? 0,
+      floorProperties: floorRows[0]?.properties ?? 0,
+      wonCount: wonTotalRows[0]?.count ?? 0,
+      wonValue: Number(wonTotalRows[0]?.value ?? 0),
+      wonCollected: Number(wonCollectedRows[0]?.value ?? 0),
+      monthlyPayments: monthlyPaidRows[0]?.count ?? 0,
+      monthlyPaid: Number(monthlyPaidRows[0]?.value ?? 0),
     },
     revenueSeries: revenueSeries(closedSalesRows, forecastRows, now),
     pipelineStages: stageRows

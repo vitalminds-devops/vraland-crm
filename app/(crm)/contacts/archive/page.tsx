@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Archive } from "lucide-react";
+import { Archive, Search } from "lucide-react";
 import { BackButton } from "@/components/common/back-button";
 import { PageContainer } from "@/components/common/page-container";
 import { FilterForm } from "@/components/common/filter-form";
@@ -61,19 +61,26 @@ export default async function ArchivedContactsPage({
         description="Restore to bring one back"
         actions={<BackButton fallbackHref="/contacts" label="Back to contacts" />}
       />
-      <div className="mt-6 rounded-xl border border-border bg-card">
+      <div className="rounded-xl border border-border bg-card sm:mt-6">
         <FilterForm className="flex flex-col gap-2 border-b border-border/40 p-4 sm:flex-row">
-          <Input
-            name="search"
-            defaultValue={q.search}
-            placeholder="Search archived contacts"
-            aria-label="Search archived contacts"
-            className="h-9 flex-1 rounded-lg border border-border/60 bg-background px-3 text-sm"
-          />
+          <label className="relative min-w-0 flex-1">
+            <Search
+              aria-hidden="true"
+              className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+            />
+            <Input
+              name="search"
+              defaultValue={q.search}
+              placeholder="Search archived contacts"
+              aria-label="Search archived contacts"
+              className="h-9 w-full rounded-lg border border-border/60 bg-background pr-3 pl-9 text-base sm:text-sm"
+            />
+          </label>
           <NativeSelect
             name="pageSize"
             defaultValue={String(pageSize)}
             aria-label="Rows per page"
+            wrapperClassName="max-sm:hidden"
             className="h-9 rounded-lg border border-border/60 bg-background px-3 text-sm"
           >
             {PAGE_SIZES.map((size) => (
@@ -91,7 +98,7 @@ export default async function ArchivedContactsPage({
         ) : (
           <div className="overflow-x-auto">
             <Table className="w-full text-left text-sm">
-              <TableHeader className="bg-muted/50 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <TableHeader className="bg-muted/50 text-xs font-medium uppercase tracking-wide text-muted-foreground max-sm:hidden">
                 <TableRow>
                   <TableHead className="px-4 py-3">Contact</TableHead>
                   <TableHead className="hidden px-4 py-3 sm:table-cell">Code</TableHead>
@@ -106,7 +113,14 @@ export default async function ArchivedContactsPage({
                   <TableRow key={row.id} className="hover:bg-muted/30">
                     <TableCell className="px-4 py-3">
                       <p className="font-medium text-foreground">{formatContactName(row)}</p>
-                      <p className="text-xs text-muted-foreground">{row.email || "No email"}</p>
+                      {/* Phones hide the Code column, so the code shows here instead of "No email". */}
+                      <p className="text-xs text-muted-foreground">
+                        <span className="sm:hidden">
+                          {row.contactCode}
+                          {row.email && ` · ${row.email}`}
+                        </span>
+                        <span className="max-sm:hidden">{row.email || "No email"}</span>
+                      </p>
                     </TableCell>
                     <TableCell className="hidden px-4 py-3 text-muted-foreground sm:table-cell">
                       {row.contactCode}
@@ -155,7 +169,7 @@ export default async function ArchivedContactsPage({
                 Previous
               </Link>
             )}
-            <span>
+            <span className={data.pages <= 1 ? "max-sm:hidden" : undefined}>
               Page {page} of {data.pages}
             </span>
             {page < data.pages && (

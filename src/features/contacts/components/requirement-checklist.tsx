@@ -74,7 +74,7 @@ export function RequirementChecklist({
         setUploadError(
           "Confirmation was not received. Refresh this checklist to check whether the document was saved before trying again.",
         );
-        notify("Could not confirm document changes", "error", {
+        notify("Couldn't confirm document changes", "error", {
           id: toastId,
           description:
             "Refresh this checklist to check whether the document was saved before trying again.",

@@ -78,7 +78,7 @@ export default async function CampaignsPage({
             {canManage ? (
               <ButtonLink href="/marketing/campaigns/new" variant="primary" className="gap-2">
                 <Plus aria-hidden="true" className="size-4" />
-                New campaign
+                Add campaign
               </ButtonLink>
             ) : null}
           </div>
@@ -222,7 +222,7 @@ export default async function CampaignsPage({
                 ) : canManage ? (
                   <ButtonLink href="/marketing/campaigns/new" variant="primary" className="gap-2">
                     <Plus aria-hidden="true" className="size-4" />
-                    New campaign
+                    Add campaign
                   </ButtonLink>
                 ) : undefined
               }

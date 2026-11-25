@@ -228,7 +228,7 @@ export function BillForm({
           </span>
         </summary>
         <fieldset className="mt-4 min-w-0 rounded-xl border p-4 @min-[32rem]:p-5">
-          <legend className="px-2 text-sm font-semibold">Applicant Information</legend>
+          <legend className="px-2 text-sm font-semibold">Applicant information</legend>
           <div className="grid gap-5 @min-[32rem]:grid-cols-2 @min-[48rem]:grid-cols-3">
             {applicantFields.map((field) => (
               <label

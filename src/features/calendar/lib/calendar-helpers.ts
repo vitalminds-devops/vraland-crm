@@ -12,8 +12,8 @@ export const manilaWall = (date: Date) =>
   new Date(date.getTime() + (480 + date.getTimezoneOffset()) * 60_000);
 
 /** The event's start time as shown, or "All day". */
-export const timeLabel = (event: Pick<CalendarEvent, "allDay" | "startAt">, pattern = "HH:mm") =>
-  event.allDay ? "All day" : format(event.startAt, pattern);
+export const timeLabel = (event: Pick<CalendarEvent, "allDay" | "startAt">) =>
+  event.allDay ? "All day" : format(event.startAt, "h:mm a");
 
 /** Format an anchor date for the URL (`yyyy-MM-dd`). */
 export function formatDate(date: Date): string {

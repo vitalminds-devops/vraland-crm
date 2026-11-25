@@ -24,7 +24,7 @@ export default async function NewContactPage() {
             .filter((section) => section.id === "section-1" || section.id === "section-4")
             .map((section, index) => ({
               ...section,
-              label: `${index + 1}. ${section.id === "section-1" ? "Details" : "Deal"}`,
+              label: `${index + 1}. ${section.id === "section-1" ? "Details" : "Opportunity"}`,
             }))}
         />
         <div className={formCardClass}>

@@ -1,17 +1,19 @@
 "use server";
 
-import { and, eq, isNull, sql } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
+import { and, eq, isNull } from "drizzle-orm";
+import { revalidateProperty } from "../lib/revalidate-property";
 import { z } from "zod";
 import { db } from "@/db";
-import { auditLogs, deals, floors, properties, propertyParkingSlots } from "@/db/schema";
+import { auditLogs, floors, properties, propertyParkingSlots } from "@/db/schema";
 import { logError } from "@/lib/logger";
 import { requirePermission } from "@/lib/permissions/authorization";
 import { activeHold, heldMessage, InventoryHeldError } from "../lib/inventory-hold";
 import { canWriteProperty } from "../lib/property-scope";
 import { unitStatuses } from "../lib/unit-codes";
 import { nextParkingCode } from "../lib/parking-codes";
-import { syncParkingCount } from "../lib/parking-sync";
+import { placeOnDesignedFloor, syncParkingCount } from "../lib/parking-sync";
+import { parkingRemovalBlocker } from "../lib/parking-removal";
+import { dropFromFloorPlans } from "../lib/floor-plan-cleanup";
 
 export type ParkingActionResult = { success: boolean; message: string };
 
@@ -83,13 +85,15 @@ export async function addParkingSlot(
           .where(eq(propertyParkingSlots.buildingId, propertyId))
       ).map((slot) => slot.code);
       let next = "";
-      for (let added = 0; added < count; added += 1) {
+      const added: string[] = [];
+      for (let made = 0; made < count; made += 1) {
         next = nextParkingCode(taken);
         taken.push(next);
         const [slot] = await tx
           .insert(propertyParkingSlots)
           .values({ buildingId: propertyId, floorId, code: next })
           .returning({ id: propertyParkingSlots.id });
+        added.push(slot.id);
         await tx.insert(auditLogs).values({
           organizationId: context.organizationId,
           actorUserId: context.userId,
@@ -99,10 +103,11 @@ export async function addParkingSlot(
           newValues: { propertyId, floorId, code: next },
         });
       }
+      await placeOnDesignedFloor(tx, floorId, added);
       await syncParkingCount(tx, propertyId);
       return next;
     });
-    revalidatePath(`/properties/${propertyId}`);
+    revalidateProperty(propertyId);
     return {
       success: true,
       message: count === 1 ? `Parking ${code} added.` : `${count} parking slots added.`,
@@ -150,7 +155,7 @@ export async function setParkingSlotStatus(
         newValues: { status: parsed.data },
       });
     });
-    revalidatePath(`/properties/${slot.buildingId}`);
+    revalidateProperty(slot.buildingId);
     return { success: true, message: `Parking ${slot.code} updated.` };
   } catch (error) {
     if (error instanceof InventoryHeldError) return { success: false, message: error.message };
@@ -198,7 +203,7 @@ export async function renameParkingSlot(
         newValues: { code: next },
       });
     });
-    revalidatePath(`/properties/${slot.buildingId}`);
+    revalidateProperty(slot.buildingId);
     return { success: true, message: `Parking renamed to ${next}.` };
   } catch (error) {
     return failed(error);
@@ -233,6 +238,7 @@ export async function assignParkingSlotFloor(
         .update(propertyParkingSlots)
         .set({ floorId, updatedAt: new Date() })
         .where(eq(propertyParkingSlots.id, slot.id));
+      await placeOnDesignedFloor(tx, floorId, [slot.id]);
       await tx.insert(auditLogs).values({
         organizationId: context.organizationId,
         actorUserId: context.userId,
@@ -243,7 +249,7 @@ export async function assignParkingSlotFloor(
         newValues: { floorId },
       });
     });
-    revalidatePath(`/properties/${slot.buildingId}`);
+    revalidateProperty(slot.buildingId);
     return {
       success: true,
       message: floorLabel
@@ -261,27 +267,9 @@ export async function deleteParkingSlot(slotId: string): Promise<ParkingActionRe
   if (!slot) return { success: false, message: "Parking slot not found." };
   try {
     const blocker = await db.transaction(async (tx) => {
-      const [current] = await tx
-        .select()
-        .from(propertyParkingSlots)
-        .where(eq(propertyParkingSlots.id, slot.id))
-        .for("update");
-      if (!current) return "Parking slot not found.";
-      if (current.status === "deposit_paid" || current.status === "sold" || current.reservedDealId)
-        return `Parking ${current.code} is ${current.status === "sold" ? "sold" : "reserved"}, so it cannot be removed.`;
-      const [linked] = await tx
-        .select({ dealCode: deals.dealCode })
-        .from(deals)
-        .where(
-          and(
-            sql`${slot.id}::uuid = any(${deals.parkingSlotIds})`,
-            eq(deals.status, "open"),
-            isNull(deals.deletedAt),
-          ),
-        )
-        .limit(1);
-      if (linked)
-        return `Parking ${current.code} is on open opportunity ${linked.dealCode}, so it cannot be removed.`;
+      const blocked = await parkingRemovalBlocker(tx, [slot.id]);
+      if (blocked) return blocked;
+      await dropFromFloorPlans(tx, [slot.floorId], { slotIds: [slot.id] });
       await tx.delete(propertyParkingSlots).where(eq(propertyParkingSlots.id, slot.id));
       await syncParkingCount(tx, slot.buildingId);
       await tx.insert(auditLogs).values({
@@ -295,7 +283,7 @@ export async function deleteParkingSlot(slotId: string): Promise<ParkingActionRe
       return null;
     });
     if (blocker) return { success: false, message: blocker };
-    revalidatePath(`/properties/${slot.buildingId}`);
+    revalidateProperty(slot.buildingId);
     return { success: true, message: `Parking ${slot.code} removed.` };
   } catch (error) {
     return failed(error);

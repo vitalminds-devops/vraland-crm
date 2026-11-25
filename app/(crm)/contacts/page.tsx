@@ -1,9 +1,7 @@
-import { Download, Plus } from "lucide-react";
 import { PageContainer } from "@/components/common/page-container";
 import { PageHeader } from "@/components/common/page-header";
 import { Card } from "@/components/ui/card";
-import { ButtonLink, buttonVariants } from "@/components/ui/button";
-import { ImportForm } from "@/features/contacts";
+import { ContactPageActions } from "@/features/contacts/components/contact-page-actions";
 import { ContactsPageWrapper } from "./contacts-page-wrapper";
 import {
   listContacts,
@@ -64,32 +62,17 @@ export default async function ContactsPage({
         title="Contacts & leads"
         description="Your clients and leads."
         actions={
-          // Navigation, then the Import/Export pair, then the primary action.
-          // Phones: Archived and Add contact span the row; Import/Export share one.
-          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:justify-end [&>*:first-child]:col-span-2 [&>*:last-child]:col-span-2">
-            {/* The archive page needs contacts.delete; without it the link only leads to Access denied. */}
-            {actions.canArchive && (
-              <ButtonLink href="/contacts/archive" variant="secondary">
-                Archived
-              </ButtonLink>
-            )}
-            {actions.canImport && <ImportForm />}
-            {actions.canExport && (
-              <a href="/api/contacts/export" className={buttonVariants({ variant: "secondary" })}>
-                <Download className="mr-2 h-4 w-4" />
-                Export
-              </a>
-            )}
-            {actions.canCreate && (
-              <ButtonLink href="/contacts/new" variant="primary">
-                <Plus className="mr-2 h-4 w-4" />
-                Add contact
-              </ButtonLink>
-            )}
-          </div>
+          // The archive page needs contacts.delete; without it the link only leads to Access denied.
+          <ContactPageActions
+            canArchive={actions.canArchive}
+            canImport={actions.canImport}
+            canExport={actions.canExport}
+            canCreate={actions.canCreate}
+          />
         }
       />
-      <Card className="sm:mt-6">
+      {/* Phones: room below the list so the round Add button never covers the last row. */}
+      <Card className="max-sm:mb-20 sm:mt-6">
         <ContactsPageWrapper
           data={data}
           brokers={brokers}

@@ -1,32 +1,64 @@
 "use client";
 
-import { useEffect, useMemo, useRef, type RefObject } from "react";
+import { useEffect, useMemo, useRef, type ReactNode, type RefObject } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, RoundedBox } from "@react-three/drei";
-import { CanvasTexture, RepeatWrapping, Shape, Vector3, type PerspectiveCamera } from "three";
+import {
+  CanvasTexture,
+  RepeatWrapping,
+  Shape,
+  Vector3,
+  type Group,
+  type PerspectiveCamera,
+} from "three";
 import { Button } from "@/components/ui/button";
+import { statusColor } from "./floor-scene-kit";
 import { ParkingBay, type ParkingSlot } from "./parking-slots";
 import styles from "./parking-slots.module.css";
-import { parkingBayPosition } from "../lib/parking-layout";
+import { footprint } from "../lib/floor-layout";
+import type { FloorSpace } from "../lib/floor-layout";
+import { parkingBayPosition, type ParkingPlan } from "../lib/parking-layout";
+
+/** Designed parking is laid out in metres; drawn at this scale it matches the plain lot's cars. */
+const METRE = 0.8;
 
 export default function ParkingScene({
-  slots,
+  slots: allSlots,
   canManage,
   topView,
   onFallback,
+  layout = null,
 }: {
   slots: ParkingSlot[];
   canManage: boolean;
   topView: boolean;
   onFallback: () => void;
+  /** The floor's designed parking; without one, slots stand in two plain rows. */
+  layout?: ParkingPlan | null;
 }) {
+  const placedById = new Map((layout?.slots ?? []).map((slot) => [slot.slotId, slot]));
+  // A designed floor shows the slots on its plan; any not placed yet wait for the designer.
+  const shown = layout ? allSlots.filter((slot) => placedById.has(slot.id)) : allSlots;
+  const slots = shown;
   const columns = Math.ceil(slots.length / 2);
-  const width = columns * 2.2 + 1.8;
+  const width = layout ? layout.width * METRE : columns * 2.2 + 1.8;
+  const depth = layout ? layout.depth * METRE : 10;
+  const positionOf = (slot: ParkingSlot, index: number): [number, number, number] => {
+    const placed = layout && placedById.get(slot.id);
+    if (!placed) return parkingBayPosition(index, slots.length);
+    const [fw, fh] = footprint(placed);
+    return [
+      (placed.x + fw / 2 - layout.width / 2) * METRE,
+      0,
+      (placed.y + fh / 2 - layout.depth / 2) * METRE,
+    ];
+  };
   const anchors = useRef(new Map<string, HTMLDivElement>());
   return (
     <div className={styles.stage}>
       <Canvas
-        shadows
+        // Standard shadow maps: the "soft" kind was removed from three.js and only logged a warning.
+        shadows="percentage"
         frameloop="demand"
         dpr={[1, 1.5]}
         camera={{ position: topView ? [0, 22, 0.01] : [0, 18, 12], fov: 38, near: 0.1, far: 100 }}
@@ -53,29 +85,57 @@ export default function ParkingScene({
           shadow-camera-bottom={-10}
           shadow-normalBias={0.025}
         />
-        <CameraFit width={width} topView={topView} />
-        <ParkingStructure width={width} columns={columns} />
+        <CameraFit width={width} depth={depth} topView={topView} />
+        {layout ? (
+          <DesignedLot layout={layout} />
+        ) : (
+          <ParkingStructure width={width} columns={columns} />
+        )}
         {slots.map((slot, index) => {
           const row = index < columns ? 0 : 1;
           const taken = slot.status === "deposit_paid" || slot.status === "sold";
+          const placed = layout && placedById.get(slot.id);
+          if (placed)
+            return (
+              <group
+                key={slot.id}
+                position={positionOf(slot, index)}
+                rotation={[0, (-placed.rotation * Math.PI) / 180, 0]}
+                scale={METRE}
+              >
+                <SlotPaint w={placed.w} h={placed.h} inactive={slot.status === "inactive"} />
+                {taken && (
+                  // In from the bay's open end, where the drive path is.
+                  <DrivingIn from={[0, placed.h]}>
+                    <ParkedCar status={slot.status} reverse />
+                  </DrivingIn>
+                )}
+              </group>
+            );
           return (
             <group key={slot.id} position={parkingBayPosition(index, slots.length)}>
               <BayPaint row={row} inactive={slot.status === "inactive"} />
-              {taken && <ParkedCar blue={slot.status === "sold"} reverse={row === 0} />}
+              {taken && (
+                <DrivingIn from={[0, row === 0 ? 3.4 : -3.4]}>
+                  <ParkedCar status={slot.status} reverse={row === 0} />
+                </DrivingIn>
+              )}
             </group>
           );
         })}
-        <ProjectControls slots={slots} anchors={anchors} />
+        <ProjectControls slots={slots} anchors={anchors} positionOf={positionOf} />
         <OrbitControls
           makeDefault
           enableDamping={false}
           enablePan={false}
+          enableRotate={!topView}
           minDistance={10}
-          maxDistance={35}
+          maxDistance={Math.max(35, width * 2, depth * 2)}
+          // The top view is pinned straight down: zoom only, never tilted or turned.
           minPolarAngle={0.02}
-          maxPolarAngle={Math.PI / 3}
-          minAzimuthAngle={-Math.PI / 6}
-          maxAzimuthAngle={Math.PI / 6}
+          maxPolarAngle={topView ? 0.02 : Math.PI / 3}
+          minAzimuthAngle={topView ? 0 : -Math.PI / 6}
+          maxAzimuthAngle={topView ? 0 : Math.PI / 6}
         />
       </Canvas>
       <div className={styles.overlayRoot}>
@@ -101,16 +161,18 @@ export default function ParkingScene({
 function ProjectControls({
   slots,
   anchors,
+  positionOf,
 }: {
   slots: ParkingSlot[];
   anchors: RefObject<Map<string, HTMLDivElement>>;
+  positionOf: (slot: ParkingSlot, index: number) => [number, number, number];
 }) {
   const point = useMemo(() => new Vector3(), []);
   useFrame(({ camera, size }) => {
     slots.forEach((slot, index) => {
       const anchor = anchors.current.get(slot.id);
       if (!anchor) return;
-      point.set(...parkingBayPosition(index, slots.length));
+      point.set(...positionOf(slot, index));
       point.y = 0.05;
       const distance = camera.position.distanceTo(point);
       const scale =
@@ -126,12 +188,12 @@ function ProjectControls({
   return null;
 }
 
-function CameraFit({ width, topView }: { width: number; topView: boolean }) {
+function CameraFit({ width, depth, topView }: { width: number; depth: number; topView: boolean }) {
   const { camera, size, invalidate } = useThree();
   useEffect(() => {
     const perspective = camera as PerspectiveCamera;
     const distance =
-      (Math.max((width + 1.4) / (size.width / size.height), topView ? 10.8 : 9.8) /
+      (Math.max((width + 1.4) / (size.width / size.height), depth + (topView ? 0.8 : -0.2)) /
         (2 * Math.tan((perspective.fov * Math.PI) / 360))) *
       1.12;
     perspective.position.set(
@@ -142,11 +204,11 @@ function CameraFit({ width, topView }: { width: number; topView: boolean }) {
     perspective.lookAt(0, 0, 0);
     perspective.updateProjectionMatrix();
     invalidate();
-  }, [camera, size.width, size.height, width, topView, invalidate]);
+  }, [camera, size.width, size.height, width, depth, topView, invalidate]);
   return null;
 }
 
-function ParkingStructure({ width, columns }: { width: number; columns: number }) {
+export function useAsphalt(repeatX: number, repeatY: number) {
   const asphalt = useMemo(() => {
     const canvas = document.createElement("canvas");
     canvas.width = canvas.height = 128;
@@ -162,10 +224,178 @@ function ParkingStructure({ width, columns }: { width: number; columns: number }
     context.putImageData(image, 0, 0);
     const texture = new CanvasTexture(canvas);
     texture.wrapS = texture.wrapT = RepeatWrapping;
-    texture.repeat.set(10, 7);
+    texture.repeat.set(repeatX, repeatY);
     return texture;
-  }, []);
+  }, [repeatX, repeatY]);
   useEffect(() => () => asphalt.dispose(), [asphalt]);
+  return asphalt;
+}
+
+/** A designed floor's parking, drawn in metres from its plan. */
+function DesignedLot({ layout }: { layout: ParkingPlan }) {
+  const asphalt = useAsphalt(layout.width / 4, layout.depth / 4);
+  const { width, depth } = layout;
+  return (
+    <group scale={METRE}>
+      <mesh receiveShadow position={[0, -0.18, 0]}>
+        <boxGeometry args={[width, 0.36, depth]} />
+        <meshStandardMaterial color="#747d83" map={asphalt} roughness={0.96} />
+      </mesh>
+      {[-1, 1].map((side) => (
+        <group key={side}>
+          <Block
+            position={[0, 0.3, side * (depth / 2 - 0.1)]}
+            size={[width, 0.6, 0.2]}
+            color="#9ca7ae"
+          />
+          <Block
+            position={[side * (width / 2 - 0.1), 0.3, 0]}
+            size={[0.2, 0.6, depth]}
+            color="#9ca7ae"
+          />
+        </group>
+      ))}
+      {layout.pieces.map((piece) => {
+        const [fw, fh] = footprint(piece);
+        return (
+          <group
+            key={piece.id}
+            position={[piece.x + fw / 2 - width / 2, 0, piece.y + fh / 2 - depth / 2]}
+            rotation={[0, (-piece.rotation * Math.PI) / 180, 0]}
+          >
+            <PieceModel piece={piece} />
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
+/** One drive path, ramp, pillar, stairs or elevator, centred, at its own size. */
+export function PieceModel({ piece }: { piece: FloorSpace }) {
+  const { w, h } = piece;
+  switch (piece.kind) {
+    case "driveway": {
+      // Dashes and arrows run along the long side, the way cars drive.
+      const along = w >= h;
+      const length = along ? w : h;
+      const dashes = Math.max(1, Math.floor(length / 1.6));
+      return (
+        <>
+          <Block position={[0, 0.006, 0]} size={[w, 0.012, h]} color="#6c757b" />
+          {Array.from({ length: dashes }, (_, index) => {
+            const at = -length / 2 + (index + 0.5) * (length / dashes);
+            return (
+              <Block
+                key={index}
+                position={along ? [at, 0.02, 0] : [0, 0.02, at]}
+                size={along ? [0.8, 0.012, 0.1] : [0.1, 0.012, 0.8]}
+                color="#ebeee7"
+              />
+            );
+          })}
+        </>
+      );
+    }
+    case "ramp": {
+      const tilt = Math.atan2(0.9, h);
+      return (
+        <mesh position={[0, 0.45, 0]} rotation={[tilt, 0, 0]} castShadow receiveShadow>
+          <boxGeometry args={[w, 0.12, Math.hypot(h, 0.9)]} />
+          <meshStandardMaterial color="#a9b2b7" roughness={0.9} />
+        </mesh>
+      );
+    }
+    case "pillar":
+      return <Block position={[0, 1.2, 0]} size={[w, 2.4, h]} color="#c9cfd3" />;
+    case "stairs": {
+      const steps = Math.max(3, Math.floor(w / 0.3));
+      return (
+        <>
+          {Array.from({ length: steps }, (_, index) => (
+            <Block
+              key={index}
+              position={[-w / 2 + (index + 0.5) * (w / steps), 0.05 + index * 0.05, 0]}
+              size={[w / steps - 0.02, 0.1 + index * 0.1, h - 0.1]}
+              color={index % 2 ? "#cfd4d9" : "#c3c9cf"}
+            />
+          ))}
+        </>
+      );
+    }
+    case "elevator":
+      return (
+        <>
+          <Block position={[0, 0.9, 0]} size={[w - 0.1, 1.8, h - 0.1]} color="#b9c0c7" />
+          <Block position={[0, 1.81, 0]} size={[0.04, 0.01, h - 0.3]} color="#5d656c" />
+        </>
+      );
+  }
+}
+
+/** A designed slot's lines, in metres: its sides, its back line and a wheel stop. */
+function SlotPaint({
+  w,
+  h,
+  inactive,
+  color,
+}: {
+  w: number;
+  h: number;
+  inactive: boolean;
+  /** Overrides the line colour, e.g. to mark the picked slot. */
+  color?: string;
+}) {
+  const line = color ?? (inactive ? "#aab0b1" : "#eeefe7");
+  return (
+    <>
+      {[-w / 2, w / 2].map((x) => (
+        <Block key={x} position={[x, 0.012, 0]} size={[0.08, 0.02, h]} color={line} />
+      ))}
+      <Block position={[0, 0.012, -h / 2]} size={[w, 0.02, 0.08]} color={line} />
+      <Block position={[0, 0.06, -h / 2 + 0.6]} size={[w * 0.4, 0.12, 0.15]} color="#c5ac66" />
+    </>
+  );
+}
+
+/**
+ * One bay as the parking lot draws it, in metres and centred: asphalt, white lines, the wheel
+ * stop and a warm light at the back. Used for slots placed on a floor's design.
+ */
+export function ParkingBayModel({
+  w,
+  h,
+  status,
+  selected,
+}: {
+  w: number;
+  h: number;
+  status: string;
+  selected: boolean;
+}) {
+  const asphalt = useAsphalt(Math.max(1, w / 2.5), Math.max(1, h / 2.5));
+  const primary = selected
+    ? getComputedStyle(document.documentElement).getPropertyValue("--primary").trim()
+    : undefined;
+  return (
+    <>
+      <mesh position={[0, 0.012, 0]} receiveShadow>
+        <boxGeometry args={[w, 0.024, h]} />
+        <meshStandardMaterial color="#747d83" map={asphalt} roughness={0.96} />
+      </mesh>
+      <group position={[0, 0.024, 0]}>
+        <SlotPaint w={w} h={h} inactive={status === "inactive"} color={primary} />
+      </group>
+      <mesh position={[0, 0.07, -h / 2 + 0.08]}>
+        <boxGeometry args={[Math.min(0.6, w * 0.3), 0.06, 0.08]} />
+        <meshStandardMaterial color="#fff1cb" emissive="#ffd08a" emissiveIntensity={2.5} />
+      </mesh>
+    </>
+  );
+}
+
+function ParkingStructure({ width, columns }: { width: number; columns: number }) {
+  const asphalt = useAsphalt(10, 7);
   const arrow = useMemo(
     () =>
       new Shape()
@@ -336,8 +566,41 @@ function Plant({ position }: { position: [number, number, number] }) {
   );
 }
 
-function ParkedCar({ blue, reverse }: { blue: boolean; reverse: boolean }) {
-  const paint = blue ? "#367b9e" : "#dbe2e6";
+/**
+ * A car that drives into its bay once, from `from` (its offset on the ground), easing to a stop.
+ * Shows up already parked when the viewer asks for reduced motion.
+ */
+export function DrivingIn({ from, children }: { from: [number, number]; children: ReactNode }) {
+  const group = useRef<Group>(null);
+  const started = useRef<number | null>(null);
+  const { invalidate } = useThree();
+  const still = useMemo(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    [],
+  );
+  useEffect(() => invalidate(), [invalidate]);
+  useFrame(({ clock }) => {
+    const node = group.current;
+    if (!node || still) return;
+    started.current ??= clock.elapsedTime;
+    const t = Math.min(1, (clock.elapsedTime - started.current) / 1.6);
+    const left = Math.pow(1 - t, 3);
+    node.position.set(from[0] * left, 0, from[1] * left);
+    // The scene only draws on demand, so ask for frames until the car has stopped.
+    if (t < 1) invalidate();
+  });
+  return (
+    <group ref={group} position={still ? [0, 0, 0] : [from[0], 0, from[1]]}>
+      {children}
+    </group>
+  );
+}
+
+/** The car on a taken bay is painted its slot's status colour: amber reserved, red sold out. */
+export function ParkedCar({ status, reverse }: { status: string; reverse: boolean }) {
+  const paint = statusColor[status] ?? statusColor.inactive;
   return (
     <group position={[0, 0, 0.03]} rotation={[0, reverse ? Math.PI : 0, 0]}>
       <RoundedBox
