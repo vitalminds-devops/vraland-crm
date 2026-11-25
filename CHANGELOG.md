@@ -5,6 +5,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+- The dashboard's Won sales & forecast chart has its own legend, and a user's profile details in Settings are easier to read.
+
+### Fixed
+- Sizes in Design unit and Design floor can be typed normally: typing 12 no longer jumps to 2 on the first digit. A size below the minimum or not a number settles when you leave the field.
+- Sections made from old odd and even side names (such as Sunrise) can be saved again.
+- A unit type can't be removed while units use it ("12 units use 2BR. Remove them in Design floor or give them another type first."), instead of leaving those units with no price or size and their floors unable to save.
+
 ## [0.5.0] - 2026-11-25
 
 ### Added

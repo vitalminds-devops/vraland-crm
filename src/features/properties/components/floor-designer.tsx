@@ -11,7 +11,6 @@ import {
   DialogPortal,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { notify } from "@/components/ui/toast";
 import { cn } from "@/lib/utils/cn";
 import { saveFloorLayout } from "../actions/floor-layout.actions";
@@ -35,6 +34,7 @@ import { floorCodes, nextFreeCode, type UnitNumbering } from "../lib/unit-number
 import { nextParkingCode } from "../lib/parking-codes";
 import { SLOT_SIZE, floorWithParking, type ParkingLayout } from "../lib/parking-layout";
 import { LayoutCanvas } from "./layout-canvas";
+import { MetreInput } from "./metre-input";
 import { useLayoutHistory } from "./use-layout-history";
 import { ParkingArt, PlacedLabel, SpaceArt, UnitArt, UnitThumbnail } from "./layout-art";
 import { PaletteItem, SelectionBar } from "./layout-palette";
@@ -319,27 +319,23 @@ export function FloorDesigner({
               <fieldset className="grid gap-1 text-xs font-medium text-muted-foreground">
                 <legend className="mb-1">Floor size (m)</legend>
                 <div className="flex items-center gap-1.5">
-                  <Input
-                    type="number"
-                    inputMode="decimal"
+                  <MetreInput
                     min={4}
                     max={200}
                     step={0.5}
                     aria-label="Floor width in metres"
                     value={size.width}
-                    onChange={(event) => resize("width", event.target.value)}
+                    onCommit={(metres) => resize("width", String(metres))}
                     className="h-9 w-20 text-base text-foreground sm:text-sm"
                   />
                   <span aria-hidden="true">×</span>
-                  <Input
-                    type="number"
-                    inputMode="decimal"
+                  <MetreInput
                     min={4}
                     max={200}
                     step={0.5}
                     aria-label="Floor depth in metres"
                     value={size.depth}
-                    onChange={(event) => resize("depth", event.target.value)}
+                    onCommit={(metres) => resize("depth", String(metres))}
                     className="h-9 w-20 text-base text-foreground sm:text-sm"
                   />
                 </div>

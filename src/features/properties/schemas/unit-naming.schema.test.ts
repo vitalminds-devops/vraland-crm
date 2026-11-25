@@ -47,3 +47,16 @@ it("needs picked units for a pick section, and lets picks share a floor apart", 
   expect(parse([garden, { ...garden, id: "g5", endings: ["C"] }]).success).toBe(true);
   expect(parse([garden, { ...garden, id: "g5", endings: ["B"] }]).success).toBe(false);
 });
+
+it("accepts the section ids migration 0070 made from old side names", () => {
+  const evenSide = { ...group, id: `even-${propertyId}` };
+  expect(evenSide.id.length).toBe(41);
+  expect(
+    unitNamingSchema.safeParse({
+      propertyId,
+      style: "number",
+      endings: [],
+      floorGroups: [evenSide],
+    }).success,
+  ).toBe(true);
+});

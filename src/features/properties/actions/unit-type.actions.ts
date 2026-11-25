@@ -1,6 +1,8 @@
 "use server";
 
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, count, eq, inArray, isNull } from "drizzle-orm";
+import { z } from "zod";
+import { ActionErrorCode } from "@/lib/errors/action-error";
 import { revalidateProperty } from "../lib/revalidate-property";
 import { db } from "@/db";
 import { auditLogs, properties, unitTypes, units } from "@/db/schema";
@@ -11,6 +13,7 @@ import {
   type ActionResult,
   databaseFailure,
   failure,
+  failureFrom,
   notFoundFailure,
   success,
   validationFailure,
@@ -114,9 +117,13 @@ export async function saveUnitType(
   }
 }
 
-/** Removes a unit type; its units keep their own size and price, if any. */
+/**
+ * Removes a unit type nobody uses. While units use it, their price, size and place on the floor
+ * plans depend on it, so removal is refused until they are removed or given another type.
+ */
 export async function deleteUnitType(id: string): Promise<ActionResult> {
   const context = await requirePermission("properties.manage_units");
+  if (!z.uuid().safeParse(id).success) return notFoundFailure("Unit type");
   const [type] = await db
     .select({ id: unitTypes.id, propertyId: unitTypes.propertyId, name: unitTypes.name })
     .from(unitTypes)
@@ -126,7 +133,18 @@ export async function deleteUnitType(id: string): Promise<ActionResult> {
   if (!type) return notFoundFailure("Unit type");
   if (!(await canWriteProperty(context, type.propertyId))) return failure(outOfScope());
   try {
-    await db.transaction(async (tx) => {
+    const outcome = await db.transaction(async (tx) => {
+      // Locked so no floor can place a unit of this type while it is being removed.
+      await tx
+        .select({ id: unitTypes.id })
+        .from(unitTypes)
+        .where(eq(unitTypes.id, type.id))
+        .for("update");
+      const [used] = await tx
+        .select({ value: count() })
+        .from(units)
+        .where(eq(units.unitTypeId, type.id));
+      if (used && used.value > 0) return used.value;
       await tx.delete(unitTypes).where(eq(unitTypes.id, type.id));
       await tx.insert(auditLogs).values({
         organizationId: context.organizationId,
@@ -136,7 +154,13 @@ export async function deleteUnitType(id: string): Promise<ActionResult> {
         entityId: type.id,
         oldValues: { name: type.name, propertyId: type.propertyId },
       });
+      return 0;
     });
+    if (outcome > 0)
+      return failureFrom(
+        ActionErrorCode.CONFLICT,
+        `${outcome} ${outcome === 1 ? "unit uses" : "units use"} ${type.name}. Remove ${outcome === 1 ? "it" : "them"} in Design floor or give ${outcome === 1 ? "it" : "them"} another type first.`,
+      );
     revalidateProperty(type.propertyId);
     return success();
   } catch (error) {

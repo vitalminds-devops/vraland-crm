@@ -33,6 +33,7 @@ import {
   type UnitTypeFacts,
 } from "../lib/floor-layout";
 import { LayoutCanvas } from "./layout-canvas";
+import { MetreInput } from "./metre-input";
 import { useLayoutHistory } from "./use-layout-history";
 import { RoomArt } from "./layout-art";
 import { PaletteItem, SelectionBar } from "./layout-palette";
@@ -192,15 +193,13 @@ export function UnitDesigner({
                         {(["width", "depth"] as const).map((key, index) => (
                           <Fragment key={key}>
                             {index > 0 && <span aria-hidden="true">×</span>}
-                            <Input
-                              type="number"
-                              inputMode="decimal"
+                            <MetreInput
                               min={2}
                               max={60}
                               step={0.5}
                               aria-label={key === "width" ? "Width in metres" : "Depth in metres"}
                               value={design[key]}
-                              onChange={(event) => resize(key, event.target.value)}
+                              onCommit={(metres) => resize(key, String(metres))}
                               className="h-8 w-14 rounded-sm border-0 bg-transparent px-1 shadow-none [appearance:textfield] text-center text-base text-foreground tabular-nums sm:text-sm [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                             />
                           </Fragment>

@@ -26,7 +26,7 @@ import { avatarSrc } from "@/features/account/lib/avatar";
 
 import { displayName, initialsOf, type UserRow } from "./user-types";
 
-const detailLabel = "text-xs font-medium uppercase tracking-wide text-muted-foreground";
+const detailLabel = "text-xs font-medium text-muted-foreground";
 
 function formatDateTime(value: Date | null): string {
   if (!value) return "Never";
@@ -46,9 +46,9 @@ function formatBytes(bytes: number | null): string | null {
 
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="grid gap-1 py-2.5">
+    <div className="min-w-0 space-y-1.5 py-3">
       <dt className={detailLabel}>{label}</dt>
-      <dd className="text-sm text-foreground">{children}</dd>
+      <dd className="text-sm leading-5 break-words text-foreground">{children}</dd>
     </div>
   );
 }
@@ -65,10 +65,10 @@ function QuickAction({
   return (
     <Link
       href={href}
-      className="inline-flex h-9 items-center gap-2 rounded-lg border border-border/60 bg-card px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
+      className="inline-flex min-h-10 min-w-0 items-center justify-center gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25 sm:justify-start"
     >
-      <Icon className="h-4 w-4" aria-hidden="true" />
-      {label}
+      <Icon className="size-4 shrink-0" aria-hidden="true" />
+      <span className="min-w-0 text-left">{label}</span>
     </Link>
   );
 }
@@ -100,35 +100,35 @@ export function UserProfileDialog({
       }}
     >
       <DialogPortal>
-        <DialogOverlay className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm fixed inset-0 z-50 grid place-items-center overflow-y-auto p-4">
-          <DialogPopup className="relative max-h-[calc(100dvh-2rem)] w-full max-w-2xl overflow-hidden rounded-xl border border-border/60 bg-card shadow-xl">
-            <header className="flex items-start gap-3 border-b border-border/50 bg-muted/30 p-5">
+        <DialogOverlay className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-3 backdrop-blur-sm sm:p-4">
+          <DialogPopup className="relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-card shadow-xl sm:max-h-[calc(100dvh-2rem)]">
+            <header className="flex shrink-0 items-start gap-3 border-b border-border/50 p-4 sm:p-5">
               <InitialsAvatar
                 initials={initialsOf(user)}
                 src={avatarSrc(user.id, user.avatarUrl)}
                 className="h-12 w-12 text-sm"
               />
               <div className="min-w-0 flex-1">
-                <DialogTitle className="truncate text-lg font-semibold">
-                  {displayName(user)}
-                </DialogTitle>
-                <DialogDescription className="mt-0.5 truncate text-sm text-muted-foreground">
-                  {user.email}
-                </DialogDescription>
-                <div className="mt-2">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                  <DialogTitle className="min-w-0 text-lg leading-6 break-words font-semibold tracking-tight">
+                    {displayName(user)}
+                  </DialogTitle>
                   <StatusBadge value={user.status} />
                 </div>
+                <DialogDescription className="mt-1 text-sm leading-5 [overflow-wrap:anywhere] text-muted-foreground">
+                  {user.email}
+                </DialogDescription>
               </div>
               <DialogClose
                 aria-label="Close profile"
-                className="inline-flex size-9 shrink-0 items-center justify-center rounded-md border hover:bg-muted"
+                className="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               >
                 <X aria-hidden="true" size={16} />
               </DialogClose>
             </header>
 
-            <div className="max-h-[calc(100dvh-14rem)] overflow-y-auto p-5">
-              <div className="flex flex-wrap gap-2">
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
+              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                 <QuickAction href={`mailto:${user.email}`} icon={Mail} label="Email" />
                 {user.phone && (
                   <QuickAction
@@ -149,7 +149,7 @@ export function UserProfileDialog({
                 />
               </div>
 
-              <dl className="mt-4 divide-y divide-border/40">
+              <dl className="mt-3 grid gap-x-6 sm:grid-cols-2 [&>div]:border-b [&>div]:border-border/40">
                 <DetailRow label="Email">{user.email}</DetailRow>
                 <DetailRow label="Phone">
                   {user.phone ?? <span className="text-muted-foreground">Not set</span>}
@@ -166,6 +166,8 @@ export function UserProfileDialog({
                     {formatDateTime(user.lastLoginAt)}
                   </span>
                 </DetailRow>
+              </dl>
+              <dl className="divide-y divide-border/40">
                 <DetailRow label="Data access">
                   <span className="block font-medium">{scopeLabel}</span>
                   <span className="mt-0.5 block text-xs text-muted-foreground">
@@ -202,11 +204,11 @@ export function UserProfileDialog({
                         return (
                           <li
                             key={document.id}
-                            className="flex items-center justify-between gap-3 rounded-md border border-border/40 bg-muted/30 px-2.5 py-1.5"
+                            className="flex items-start justify-between gap-3 py-1.5"
                           >
-                            <span className="min-w-0 truncate">
+                            <span className="min-w-0 break-words">
                               {document.name}
-                              <span className="ml-1.5 text-xs text-muted-foreground">
+                              <span className="mt-0.5 block text-xs text-muted-foreground">
                                 {document.documentType}
                               </span>
                             </span>
@@ -224,14 +226,13 @@ export function UserProfileDialog({
                   )}
                 </DetailRow>
                 <DetailRow label="User ID">
-                  <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{user.id}</code>
+                  <code className="text-xs break-all text-muted-foreground">{user.id}</code>
                 </DetailRow>
               </dl>
             </div>
 
-            <footer className="flex items-center justify-between gap-3 border-t border-border/50 bg-muted/30 p-4">
-              <span />
-              <div className="flex items-center gap-2">
+            <footer className="flex shrink-0 justify-end border-t border-border/50 px-4 py-3 sm:px-5">
+              <div className="flex w-full items-center gap-2 sm:w-auto [&>button]:flex-1 sm:[&>button]:flex-none">
                 <Button type="button" variant="ghost" onClick={onClose}>
                   Close
                 </Button>

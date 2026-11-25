@@ -8,7 +8,8 @@ import {
 } from "../lib/floor-groups";
 
 const floorGroupSchema = z.object({
-  id: z.string().min(1).max(40),
+  // 64, not 40: sections made from old side names have ids like "even-<uuid>" (41).
+  id: z.string().min(1).max(64),
   name: z
     .string()
     .trim()

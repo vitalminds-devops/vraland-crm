@@ -32,8 +32,7 @@ export function UnitTypesPanel({
   const [pending, startTransition] = useTransition();
 
   const remove = (type: UnitTypeFacts) => {
-    if (!window.confirm(`Remove ${type.name}? Its units keep their own size and price, if any.`))
-      return;
+    if (!window.confirm(`Remove ${type.name}?`)) return;
     startTransition(async () => {
       const result = await deleteUnitType(type.id);
       notify(
