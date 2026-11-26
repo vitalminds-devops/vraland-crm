@@ -105,7 +105,7 @@ export default async function ContactDetailPage({ params }: { params: Promise<{ 
               <Fact icon={<KanbanSquare />} label="Pipeline stage">
                 {data.deal?.stageName ?? "No opportunity"}
               </Fact>
-              <Fact icon={<FileText />} label="Transaction type">
+              <Fact icon={<FileText />} label="Offer type">
                 {data.deal ? label(data.deal.dealType) : "No opportunity"}
               </Fact>
               <Fact icon={<CheckCircle2 />} label="Marketing consent">

@@ -121,7 +121,7 @@ function describeWriteError(error: unknown): string {
     .filter(Boolean)
     .join(" — ");
   return process.env.NODE_ENV === "development" && diagnostic
-    ? `Contact could not be saved: ${diagnostic}`
+    ? `Couldn't save contact: ${diagnostic}`
     : "Couldn't save contact. Try again.";
 }
 
@@ -1047,7 +1047,7 @@ export async function addContactNote(input: {
       id: input.contactId,
     }))
   )
-    return validationFailure("The note could not be saved.");
+    return validationFailure("Couldn't save the note.");
   await db.transaction(async (tx) => {
     const [note] = await tx
       .insert(contactNotes)
@@ -1132,7 +1132,7 @@ export async function importContactsCsv(formData: FormData): Promise<ContactImpo
   } catch (error) {
     logError("Contact import failed", error, { operation: "contact_import" });
     return databaseFailure(
-      "The import could not be completed because of a server error. Please try again or contact an administrator.",
+      "Couldn't complete the import because of a server error. Try again or contact an administrator.",
     );
   }
 }
@@ -1270,7 +1270,7 @@ async function runImport(
       .set({ status: "failed", completedAt: new Date() })
       .where(eq(dataJobs.id, job.id));
     logError("Contact import failed", error, { operation: "contact_import" });
-    return databaseFailure("The import could not be completed. Nothing was saved.");
+    return databaseFailure("Couldn't complete the import. Nothing was saved.");
   }
 
   await db

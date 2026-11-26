@@ -50,8 +50,8 @@ function handleDatabaseError(error: unknown, what: string): ActionResult<void> {
     (cause as { message?: string })?.message;
   return databaseFailure(
     process.env.NODE_ENV === "development" && detail
-      ? `${what} could not be saved: ${detail}`
-      : `${what} could not be saved because of a database error.`,
+      ? `${what} couldn't be saved: ${detail}`
+      : `${what} couldn't be saved because of a database error.`,
     detail,
   );
 }
@@ -591,7 +591,7 @@ export async function saveUnitImage(formData: FormData): Promise<UnitActionResul
   const context = await requirePermission("properties.manage_unit_pictures");
 
   const parsed = unitIdSchema.safeParse(formData.get("unitId"));
-  if (!parsed.success) return { success: false, message: "That unit could not be found." };
+  if (!parsed.success) return { success: false, message: "Couldn't find that unit." };
 
   const file = formData.get("image");
   if (!(file instanceof File) || !file.size)
@@ -605,7 +605,7 @@ export async function saveUnitImage(formData: FormData): Promise<UnitActionResul
     return { success: false, message: "Photos must be 5 MB or smaller." };
 
   const unit = await loadUnitWithProperty(context.organizationId, parsed.data);
-  if (!unit) return { success: false, message: "That unit could not be found." };
+  if (!unit) return { success: false, message: "Couldn't find that unit." };
   if (!(await canWriteProperty(context, unit.buildingId)))
     return {
       success: false,
@@ -681,10 +681,10 @@ export async function removeUnitImage(unitId: string): Promise<UnitActionResult>
   const context = await requirePermission("properties.manage_unit_pictures");
 
   const parsed = unitIdSchema.safeParse(unitId);
-  if (!parsed.success) return { success: false, message: "That unit could not be found." };
+  if (!parsed.success) return { success: false, message: "Couldn't find that unit." };
 
   const unit = await loadUnitWithProperty(context.organizationId, parsed.data);
-  if (!unit) return { success: false, message: "That unit could not be found." };
+  if (!unit) return { success: false, message: "Couldn't find that unit." };
   if (!unit.imageStorageKey)
     return { success: false, message: "That unit has no photo to remove." };
   if (!(await canWriteProperty(context, unit.buildingId)))

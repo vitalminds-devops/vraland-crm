@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { listDeals } from "@/features/deals/queries/deal.queries";
-import { dealLabel } from "@/features/deals/lib/deal-label";
+import { dealLabel, dealTypeLabel } from "@/features/deals/lib/deal-label";
 import { requirePagePermission } from "@/lib/permissions/authorization";
 import { hasPermission } from "@/lib/permissions/policy";
 export default async function DealListPage({
@@ -136,7 +136,7 @@ export default async function DealListPage({
                           {dealLabel(d)}
                         </Link>
                         <p className="text-xs text-muted-foreground">
-                          {d.code} · {d.dealType}
+                          {d.code} · {dealTypeLabel(d.dealType)}
                         </p>
                       </TableCell>
                       <TableCell className="px-4 py-3">{d.stageName}</TableCell>

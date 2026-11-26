@@ -55,7 +55,7 @@ export function OpportunityParkingSelector({
   if (failed)
     return (
       <div role="alert" className="text-sm text-destructive">
-        Parking could not be loaded.{" "}
+        Couldn’t load parking.{" "}
         <Button
           type="button"
           variant="ghost"

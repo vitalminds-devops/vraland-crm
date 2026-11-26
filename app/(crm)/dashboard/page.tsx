@@ -35,7 +35,7 @@ function scopePhrase(organizationWide: boolean, scope: DataScope) {
     case "broker_team":
       return "across your team";
     case "own":
-      return "assigned to you";
+      return "your records";
     default:
       return "within your access";
   }

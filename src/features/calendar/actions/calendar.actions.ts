@@ -184,7 +184,9 @@ export async function createCalendarEvent(input: unknown): Promise<CalendarResul
     v.dealId ? canAccessResource(context, { type: "deal", id: v.dealId }) : true,
   ]);
   if (!contactAccessible || !propertyAccessible || !dealAccessible)
-    return failure(outOfScope("The selected contact, property or deal is not accessible to you."));
+    return failure(
+      outOfScope("The selected contact, property or opportunity is not accessible to you."),
+    );
   const invited = await inviteList(context, v.inviteeUserIds, v.inviteEveryone);
   if (!Array.isArray(invited)) return invited;
   // A repeating event is saved as one event per occurrence, each editable on its own.
@@ -267,7 +269,7 @@ export async function createCalendarEvent(input: unknown): Promise<CalendarResul
     return success({ id });
   } catch (error) {
     logError("Event creation failed", error, { operation: "event_create" });
-    return databaseFailure("The calendar event could not be saved.");
+    return databaseFailure("Couldn't save the calendar event.");
   }
 }
 export async function createViewing(input: unknown): Promise<CalendarResult> {
@@ -283,7 +285,7 @@ export async function createViewing(input: unknown): Promise<CalendarResult> {
   ]);
 
   if (!contactAccessible || !propertyAccessible) {
-    return failure(outOfScope("The selected client or property is not accessible to you."));
+    return failure(outOfScope("The selected contact or property is not accessible to you."));
   }
 
   // For non-organization-wide users (brokers), force agentUserId to themselves
@@ -392,7 +394,7 @@ export async function createViewing(input: unknown): Promise<CalendarResult> {
   } catch (error) {
     if (error instanceof InactiveAssigneeError) return validationFailure(error.message);
     logError("Viewing creation failed", error, { operation: "viewing_create" });
-    return databaseFailure("The viewing could not be scheduled.");
+    return databaseFailure("Couldn't schedule the viewing.");
   }
 }
 export async function updateViewingStatus(input: unknown): Promise<CalendarResult> {
@@ -515,7 +517,7 @@ export async function updateViewingStatus(input: unknown): Promise<CalendarResul
     return success({ id: v.id });
   } catch (error) {
     logError("Viewing update failed", error, { operation: "viewing_update" });
-    return databaseFailure("The viewing could not be updated.");
+    return databaseFailure("Couldn't update the viewing.");
   }
 }
 
@@ -648,7 +650,7 @@ export async function updateCalendarEvent(input: unknown): Promise<CalendarResul
     return success({ id: v.id });
   } catch (error) {
     logError("Event update failed", error, { operation: "event_update" });
-    return databaseFailure("The calendar event could not be saved.");
+    return databaseFailure("Couldn't save the calendar event.");
   }
 }
 
@@ -697,6 +699,6 @@ export async function deleteCalendarEvent(id: string): Promise<CalendarResult> {
     return success({ id });
   } catch (error) {
     logError("Event delete failed", error, { operation: "event_delete" });
-    return databaseFailure("The calendar event could not be deleted.");
+    return databaseFailure("Couldn't delete the calendar event.");
   }
 }

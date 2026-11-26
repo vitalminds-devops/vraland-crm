@@ -60,7 +60,7 @@ export default async function ContactsPage({
     <PageContainer>
       <PageHeader
         title="Contacts & leads"
-        description="Your clients and leads."
+        description="Your contacts and leads."
         actions={
           // The archive page needs contacts.delete; without it the link only leads to Access denied.
           <ContactPageActions

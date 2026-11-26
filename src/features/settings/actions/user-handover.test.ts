@@ -69,7 +69,7 @@ it("refuses to deactivate someone with open work when nobody takes it over", asy
     expect.objectContaining({
       success: false,
       error: expect.objectContaining({
-        message: "Choose who takes over their 3 contacts, 1 open deal.",
+        message: "Choose who takes over their 3 contacts, 1 open opportunity.",
       }),
     }),
   );

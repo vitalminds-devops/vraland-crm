@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { ageOn, financingPreferences, financingPreferenceLabels } from "./contact-options";
+import {
+  ageOn,
+  financingPreferences,
+  financingPreferenceLabels,
+  lifecycleLabel,
+  lifecycleStageOf,
+} from "./contact-options";
 import { paymentMethodLabels, paymentMethods } from "@/features/billing/schemas/billing.schema";
 
 it.each(paymentMethods)("keeps the saved %s method compatible with Billing", (method) => {
@@ -44,4 +50,14 @@ describe("ageOn", () => {
     expect(ageOn("06/05/1980", "2026-11-07")).toBeNull();
     expect(ageOn("2030-01-01", "2026-11-07")).toBeNull();
   });
+});
+
+it("reads stages from older versions as today's Active or Inactive", () => {
+  expect(
+    ["active_client", "lead", "Prospect", "past_client", "inactive"].map(lifecycleLabel),
+  ).toEqual(["Active", "Active", "Active", "Inactive", "Inactive"]);
+  expect(lifecycleStageOf("past_client")).toBe("inactive");
+  // Anything else is shown as stored, never dropped.
+  expect(lifecycleStageOf("vip")).toBeNull();
+  expect(lifecycleLabel("vip")).toBe("vip");
 });

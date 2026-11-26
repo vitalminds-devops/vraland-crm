@@ -201,7 +201,7 @@ export function reasonPromptFor(
     return {
       title: `Reopen this ${outcome} opportunity`,
       label: "Reason",
-      placeholder: "e.g. Buyer's financing fell through.",
+      placeholder: "e.g. The contact's financing fell through.",
       confirmLabel: "Reopen opportunity",
     };
   }
@@ -222,7 +222,7 @@ export function reasonPromptFor(
       title: "Cancel this opportunity",
       description: "The reason is shown on its card.",
       label: "Reason",
-      placeholder: "e.g. Buyer withdrew their offer.",
+      placeholder: "e.g. The contact withdrew their offer.",
       confirmLabel: "Cancel opportunity",
       destructive: true,
     };
@@ -233,7 +233,7 @@ export function reasonPromptFor(
       title: "Mark as lost",
       description: "A manager may need to approve this.",
       label: "Reason",
-      placeholder: "e.g. Buyer chose another unit.",
+      placeholder: "e.g. The contact chose another unit.",
       confirmLabel: "Mark lost",
       destructive: true,
     };

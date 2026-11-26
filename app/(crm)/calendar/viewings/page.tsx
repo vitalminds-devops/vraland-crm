@@ -89,7 +89,7 @@ export default async function ViewingsPage({
               <div className="flex items-start justify-between">
                 <div>
                   <Link
-                    href={`/properties/buildings/${v.propertyId}`}
+                    href={`/properties/${v.propertyId}`}
                     className="font-medium hover:underline"
                   >
                     {v.propertyTitle}

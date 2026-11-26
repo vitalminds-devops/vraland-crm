@@ -149,7 +149,7 @@ export async function reassignDealAgent(input: unknown): Promise<ActionResult<{ 
   } catch (error) {
     if (error instanceof InactiveAssigneeError) return validationFailure(error.message);
     logError("Deal agent reassignment failed", error, { operation: "deal_reassign_agent" });
-    return databaseFailure("The opportunity could not be reassigned because of a database error.");
+    return databaseFailure("Couldn't reassign the opportunity because of a database error.");
   }
   revalidatePath("/pipeline");
   revalidatePath("/pipeline/list");

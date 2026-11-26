@@ -76,7 +76,7 @@ export async function updateOwnProfile(input: AccountProfileInput): Promise<Acco
     return success();
   } catch (error) {
     logError("Profile update failed", error, { operation: "profile_update" });
-    return databaseFailure("Your profile could not be updated.");
+    return databaseFailure("Couldn't update your profile.");
   }
 }
 
@@ -121,7 +121,7 @@ export async function updateOwnAvatar(formData: FormData): Promise<AccountAction
   } catch (error) {
     if (storageKey) await storage.remove(storageKey).catch(() => {});
     logError("Avatar update failed", error, { operation: "avatar_update" });
-    return databaseFailure("Your photo could not be saved.");
+    return databaseFailure("Couldn't save your photo.");
   }
   if (previous)
     await storage

@@ -78,7 +78,7 @@ const props = {
 
 it("shows assigned agents independently of broker assignment", () => {
   const html = renderToStaticMarkup(createElement(ContactsPageWrapper, props));
-  expect(html).toContain("Assigned agent");
+  expect(html).toContain(">Agent<");
   expect(html).toContain("Agent: Ana Santos");
   expect(html).toContain("Broker: Mira Lim");
   expect(html).toContain("Agent: Unassigned");

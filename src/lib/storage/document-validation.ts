@@ -26,7 +26,7 @@ export async function documentFileError(
     if (!(await matchesDeclaredType(file)))
       return `${file.name}: the file contents do not match its declared type. Export it again in the correct format; renaming the extension is not enough.`;
   } catch {
-    return `${file.name} could not be read. Choose the file again or export a new copy.`;
+    return `Couldn't read ${file.name}. Choose the file again or export a new copy.`;
   }
   return null;
 }

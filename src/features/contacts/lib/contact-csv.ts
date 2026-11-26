@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { ContactInput } from "../schemas/contact.schema";
-import { preferredMethodOptions, type PreferredMethod } from "./contact-options";
+import { lifecycleLabel, preferredMethodOptions, type PreferredMethod } from "./contact-options";
 
 const approvalStatusOptions = ["pending", "approved", "rejected"] as const;
 
@@ -285,7 +285,7 @@ export function serializeContactsCsv(
     contact.facebookHandle || "",
     (contact.preferredContactMethods || []).join(";"),
     contact.employmentType || "",
-    contact.lifecycleStage || "",
+    contact.lifecycleStage ? lifecycleLabel(contact.lifecycleStage) : "",
     contact.assignedAgentId || "",
     contact.brokerUserId || "",
     contact.brokerFirstName || "",

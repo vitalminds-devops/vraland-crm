@@ -94,10 +94,10 @@ async function openWork(tx: Tx, organizationId: string, userId: string) {
 }
 
 function openWorkMessage(work: Awaited<ReturnType<typeof openWork>>) {
-  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+  const plural = (n: number, word: string, many = `${word}s`) => `${n} ${n === 1 ? word : many}`;
   const parts = [
     work.contacts && plural(work.contacts, "contact"),
-    work.deals && plural(work.deals, "open deal"),
+    work.deals && plural(work.deals, "open opportunity", "open opportunities"),
     work.team && plural(work.team, "team member"),
     work.tasks && plural(work.tasks, "open task"),
     work.viewings && plural(work.viewings, "upcoming viewing"),

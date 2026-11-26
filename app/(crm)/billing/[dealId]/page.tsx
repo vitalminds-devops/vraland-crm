@@ -203,9 +203,9 @@ export default async function DealBillingPage({ params }: { params: Promise<{ de
               </p>
             </div>
           </header>
-          <section className={styles.customer} aria-label="Customer and property details">
+          <section className={styles.customer} aria-label="Contact and property details">
             <div>
-              <h2>Customer</h2>
+              <h2>Contact</h2>
               <p className={styles.customerName}>{leadName}</p>
               {address && <p>{address}</p>}
             </div>

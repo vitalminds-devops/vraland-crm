@@ -602,7 +602,7 @@ export async function createUser(formData: FormData): Promise<SettingsResult> {
     if (error instanceof TeamAssignmentError) return validationFailure(error.message);
     logError("User creation failed", error, { operation: "user_create" });
     return databaseFailure(
-      "The user or onboarding documents could not be saved. The email may already be in use.",
+      "Couldn't save the user or onboarding documents. The email may already be in use.",
     );
   }
   refresh("/settings/users");
@@ -711,7 +711,7 @@ export async function updateUserAccess(input: unknown): Promise<SettingsResult> 
     if (error instanceof HandoverError)
       return validationFailure(`${error.message} Deactivate them from the users list.`);
     logError("User update failed", error, { operation: "user_update" });
-    return databaseFailure("The user access could not be updated.");
+    return databaseFailure("Couldn't update the user access.");
   }
 }
 
@@ -775,7 +775,7 @@ export async function setUserStatus(input: unknown): Promise<SettingsResult> {
   } catch (error) {
     if (error instanceof HandoverError) return validationFailure(error.message);
     logError("User status change failed", error, { operation: "user_status" });
-    return databaseFailure("The account status could not be changed.");
+    return databaseFailure("Couldn't change the account status.");
   }
 }
 
@@ -819,7 +819,7 @@ export async function setRoleCommissionRate(input: unknown): Promise<SettingsRes
     return success({ id });
   } catch (error) {
     logError("Role commission change failed", error, { operation: "role_commission" });
-    return databaseFailure("The commission could not be saved.");
+    return databaseFailure("Couldn't save the commission.");
   }
 }
 
@@ -881,7 +881,7 @@ export async function saveCommissionLink(input: unknown): Promise<SettingsResult
     return success({ id });
   } catch (error) {
     logError("Commission link save failed", error, { operation: "commission_link_save" });
-    return databaseFailure("The commission could not be saved.");
+    return databaseFailure("Couldn't save the commission.");
   }
 }
 
@@ -922,7 +922,7 @@ export async function removeCommissionLink(input: unknown): Promise<SettingsResu
     return success({ id });
   } catch (error) {
     logError("Commission link removal failed", error, { operation: "commission_link_remove" });
-    return databaseFailure("The link could not be removed.");
+    return databaseFailure("Couldn't remove the link.");
   }
 }
 
@@ -999,9 +999,7 @@ export async function setUserDeleted(input: unknown): Promise<SettingsResult> {
     logError("User deletion change failed", error, {
       operation: deleted ? "user_delete" : "user_restore",
     });
-    return databaseFailure(
-      deleted ? "The user could not be archived." : "The user could not be restored.",
-    );
+    return databaseFailure(deleted ? "Couldn't archive the user." : "Couldn't restore the user.");
   }
 }
 
@@ -1134,7 +1132,7 @@ export async function createAgentAccount(formData: FormData): Promise<SettingsRe
   } catch (error) {
     await removeOnboardingFiles(storedFiles);
     logError("Agent creation failed", error, { operation: "agent_create" });
-    return databaseFailure("The Agent could not be created. The email may already be in use.");
+    return databaseFailure("Couldn't create the agent. The email may already be in use.");
   }
   refresh("/settings/users");
   return success({ id: agentId });
@@ -1271,7 +1269,7 @@ export async function saveUserDocument(formData: FormData): Promise<SettingsResu
     logError("User document save failed", error, {
       operation: "document_save",
     });
-    return databaseFailure("The user document could not be saved.");
+    return databaseFailure("Couldn't save the user document.");
   }
   refresh("/settings/users");
   refresh("/documents");
@@ -1367,7 +1365,7 @@ export async function saveUserCertificate(formData: FormData): Promise<SettingsR
     logError("User certificate save failed", error, {
       operation: "certificate_save",
     });
-    return databaseFailure("The accreditation certificate could not be saved.");
+    return databaseFailure("Couldn't save the accreditation certificate.");
   }
 }
 
@@ -1477,7 +1475,7 @@ export async function updateRolePermissions(input: unknown): Promise<SettingsRes
     });
   } catch (error) {
     logError("Role permissions save failed", error, { operation: "role_permissions_save" });
-    return databaseFailure("The role permissions could not be saved.");
+    return databaseFailure("Couldn't save the role permissions.");
   }
   refresh("/settings/roles");
   return success({ id: role.id });

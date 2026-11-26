@@ -139,7 +139,7 @@ type ContactFormProps = {
       brokerFirstName: string | null;
       brokerLastName: string | null;
     }[];
-    /** Deal-related options used by the embedded "Deal information" section. */
+    /** Opportunity options used by the embedded opportunity section. */
     dealStages: MoveStage[];
     /** Developments offered as the contact's "Preferred development". */
     developments: { id: string; name: string }[];
@@ -389,7 +389,7 @@ export function ContactForm({
             dealValues,
           );
           if (!dealResult.success) {
-            const message = `${dealResult.error.message} The contact was saved, but its deal was not ${contactId ? "updated" : "created"}.`;
+            const message = `${dealResult.error.message} The contact was saved, but its opportunity was not ${contactId ? "updated" : "created"}.`;
             setDealError(message);
             notify(message, "error");
             router.push("/contacts");
@@ -402,7 +402,7 @@ export function ContactForm({
       } catch (error) {
         notify(
           savedContactId.current
-            ? "The contact was saved, but the remaining steps could not finish. Retry Save to continue with the same contact."
+            ? "The contact was saved, but the remaining steps couldn't finish. Retry Save to continue with the same contact."
             : getUserFacingMessage(error),
           "error",
         );
@@ -828,7 +828,7 @@ export function ContactForm({
               )}
             </FormField>
             {showDealFields && (
-              <FormField label="Transaction type" error={dealErrors.dealType?.message}>
+              <FormField label="Offer type" error={dealErrors.dealType?.message}>
                 <FormSelect {...registerDeal("dealType")}>
                   {propertyTransactionTypes.map((type) => (
                     <option key={type} value={type}>

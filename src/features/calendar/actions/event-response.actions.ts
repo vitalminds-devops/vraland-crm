@@ -87,6 +87,6 @@ export async function respondToCalendarEvent(
     return success({ id: v.eventId });
   } catch (error) {
     logError("Event response failed", error, { operation: "event_respond" });
-    return databaseFailure("Your answer could not be saved.");
+    return databaseFailure("Couldn't save your answer.");
   }
 }

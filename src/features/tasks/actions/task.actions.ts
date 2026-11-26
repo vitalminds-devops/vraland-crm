@@ -135,7 +135,7 @@ export async function createTask(input: unknown): Promise<TaskResult> {
   } catch (error) {
     if (error instanceof InactiveAssigneeError) return validationFailure(error.message);
     logError("Task creation failed", error, { operation: "task_create" });
-    return databaseFailure("The task could not be saved.");
+    return databaseFailure("Couldn't save the task.");
   }
 }
 export async function changeTaskStatus(input: unknown): Promise<TaskResult> {
@@ -192,7 +192,7 @@ export async function changeTaskStatus(input: unknown): Promise<TaskResult> {
     return success({ id: parsed.data.id });
   } catch (error) {
     logError("Task status failed", error, { operation: "task_status_update" });
-    return databaseFailure("The task status could not be updated.");
+    return databaseFailure("Couldn't update the task status.");
   }
 }
 export async function updateTask(id: string, input: unknown): Promise<TaskResult> {
@@ -270,7 +270,7 @@ export async function updateTask(id: string, input: unknown): Promise<TaskResult
   } catch (error) {
     if (error instanceof InactiveAssigneeError) return validationFailure(error.message);
     logError("Task update failed", error, { operation: "task_update" });
-    return databaseFailure("The task could not be saved.");
+    return databaseFailure("Couldn't save the task.");
   }
 }
 export async function deleteTask(id: string): Promise<TaskResult> {
@@ -313,7 +313,7 @@ export async function deleteTask(id: string): Promise<TaskResult> {
     return success({ id });
   } catch (error) {
     logError("Task delete failed", error, { operation: "task_delete" });
-    return databaseFailure("The task could not be deleted.");
+    return databaseFailure("Couldn't delete the task.");
   }
 }
 function refreshTasks() {

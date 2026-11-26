@@ -36,7 +36,7 @@ const entityCopy: Record<string, string> = {
   offer: "Offer",
   payment: "Payment",
   property: "Property",
-  property_access_grant: "Property access grant",
+  property_access_grant: "Property access",
   property_media: "Property media",
   property_viewing: "Viewing",
   role_permissions: "Role permissions",

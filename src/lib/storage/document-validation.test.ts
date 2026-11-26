@@ -40,5 +40,5 @@ it("accepts exactly 15 MB and explains a file read failure", async () => {
   vi.spyOn(file, "slice").mockImplementation(() => {
     throw new Error("unreadable");
   });
-  expect(await documentFileError(file)).toContain("id.pdf could not be read");
+  expect(await documentFileError(file)).toContain("Couldn't read id.pdf");
 });

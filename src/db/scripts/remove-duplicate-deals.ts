@@ -26,7 +26,8 @@ try {
       stageChanges: sql<number>`(select count(*)::int from deal_stage_history h where h.deal_id = ${deals.id})`,
       agents: sql<number>`(select count(*)::int from deal_agents a where a.deal_id = ${deals.id})`,
       // A client may hold one opportunity per development; "Add opportunity" ones are on purpose.
-      intentional: sql<boolean>`exists (select 1 from deal_stage_history h where h.deal_id = ${deals.id} and h.note = 'Another opportunity opened for this client')`,
+      // Notes written by open-deal.ts; older rows say "client".
+      intentional: sql<boolean>`exists (select 1 from deal_stage_history h where h.deal_id = ${deals.id} and h.note in ('Another opportunity opened for this contact', 'Another opportunity opened for this client'))`,
       attachments: sql<number>`(
         (select count(*) from bills b where b.deal_id = ${deals.id})
         + (select count(*) from offers o where o.deal_id = ${deals.id})

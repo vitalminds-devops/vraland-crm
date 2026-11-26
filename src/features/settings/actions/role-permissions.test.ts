@@ -81,7 +81,7 @@ it("returns a database failure instead of throwing when the save fails", async (
   const result = await updateRolePermissions({ roleId, permissionKeys: ["contacts.view"] });
   expect(result).toMatchObject({
     success: false,
-    error: { message: "The role permissions could not be saved." },
+    error: { message: "Couldn't save the role permissions." },
   });
 });
 

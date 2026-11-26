@@ -135,7 +135,7 @@ export function ContactsTable({
           <TableHeader className="bg-muted/50 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             <TableRow>
               <TableHead className="sticky left-0 bg-muted/50 px-4 py-3">Contact</TableHead>
-              <TableHead className="hidden px-4 py-3 md:table-cell">Assigned agent</TableHead>
+              <TableHead className="hidden px-4 py-3 md:table-cell">Agent</TableHead>
               <TableHead className="hidden px-4 py-3 lg:table-cell">Broker</TableHead>
               <TableHead className="hidden px-4 py-3 sm:table-cell">Pipeline stage</TableHead>
               <TableHead className="hidden px-4 py-3 md:table-cell">Created</TableHead>
@@ -223,7 +223,7 @@ export function ContactsTable({
                 </button>
               </TableHead>
               <TableHead scope="col" className="hidden px-4 py-3 md:table-cell">
-                Assigned agent
+                Agent
               </TableHead>
               <TableHead scope="col" className="hidden px-4 py-3 lg:table-cell">
                 Broker

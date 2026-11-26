@@ -3,9 +3,27 @@ import { propertyTypes } from "@/features/properties/lib/constants";
 import { paymentMethodLabels, paymentMethods } from "@/features/billing/schemas/billing.schema";
 
 export const lifecycleOptions = ["active_client", "inactive"] as const;
-export const lifecycleLabels: Record<(typeof lifecycleOptions)[number], string> = {
+export type LifecycleStage = (typeof lifecycleOptions)[number];
+export const lifecycleLabels: Record<LifecycleStage, string> = {
   active_client: "Active",
   inactive: "Inactive",
+};
+/** Stages from older versions, read as the stage they became. */
+const formerStages: Record<string, LifecycleStage> = {
+  lead: "active_client",
+  prospect: "active_client",
+  past_client: "inactive",
+};
+/** A stored stage as one of today's stages; null when it is none of them. */
+export function lifecycleStageOf(value: string): LifecycleStage | null {
+  const stage = value.toLowerCase();
+  return (lifecycleOptions as readonly string[]).includes(stage)
+    ? (stage as LifecycleStage)
+    : (formerStages[stage] ?? null);
+}
+export const lifecycleLabel = (value: string): string => {
+  const stage = lifecycleStageOf(value);
+  return stage ? lifecycleLabels[stage] : value;
 };
 export const employmentTypes = [
   "Private Company Employee",

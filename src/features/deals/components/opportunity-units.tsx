@@ -131,7 +131,7 @@ function ChangeUnitsDialog({ dealId, onClose }: { dealId: string; onClose: () =>
           live &&
           setEstimate({
             key,
-            result: { success: false, message: "The total could not be loaded." },
+            result: { success: false, message: "Couldn't load the total." },
           }),
       );
     return () => {
@@ -166,7 +166,7 @@ function ChangeUnitsDialog({ dealId, onClose }: { dealId: string; onClose: () =>
               </DialogClose>
             </header>
             {failed ? (
-              <p className="mt-4 text-sm text-destructive">This opportunity could not be loaded.</p>
+              <p className="mt-4 text-sm text-destructive">Couldn’t load this opportunity.</p>
             ) : !draft ? (
               <p className="mt-4 text-sm text-muted-foreground">Loading…</p>
             ) : (

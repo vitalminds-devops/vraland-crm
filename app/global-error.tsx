@@ -23,7 +23,7 @@ export default function GlobalError({
         <main style={{ textAlign: "center", padding: 16 }}>
           <h1 style={{ fontSize: 20, margin: 0 }}>Something went wrong</h1>
           <p style={{ marginTop: 8, color: "#5c5870" }}>
-            The CRM could not be loaded. Nothing was changed.
+            Couldn’t load the CRM. Nothing was changed.
           </p>
           <button
             type="button"

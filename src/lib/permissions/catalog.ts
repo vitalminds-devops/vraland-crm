@@ -423,7 +423,7 @@ export const permissionMetadata = {
 
   "records.view_own": {
     label: "See own records",
-    description: "Always on: everyone sees the records they own or are assigned.",
+    description: "Always on: everyone sees their own records.",
   },
   "records.view_team": {
     label: "See team records",

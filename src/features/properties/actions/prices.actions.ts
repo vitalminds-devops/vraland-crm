@@ -72,6 +72,6 @@ export async function saveSlotPrices(input: unknown): Promise<ActionResult> {
     return success();
   } catch (error) {
     logError("Parking slot prices save failed", error, { operation: "slot_prices_save" });
-    return databaseFailure("Prices could not be saved.");
+    return databaseFailure("Couldn't save prices.");
   }
 }

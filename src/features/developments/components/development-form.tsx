@@ -139,7 +139,7 @@ export function DevelopmentForm({ developmentId, initial, coverImageUrl = null }
       } catch {
         notify(
           savedId
-            ? "Development saved; could not confirm the remaining changes"
+            ? "Development saved; couldn't confirm the remaining changes"
             : "Couldn't confirm development save",
           "error",
           {

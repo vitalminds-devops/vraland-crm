@@ -70,7 +70,7 @@ export async function openDealForApprovedContact(
     .limit(1);
   if (!stage)
     return failure(
-      conflict("No active pipeline stage is configured, so a deal could not be opened."),
+      conflict("No active pipeline stage is configured, so an opportunity couldn't be opened."),
     );
 
   const dealType = input.dealType ?? "sale";
@@ -134,7 +134,7 @@ export async function openDealForApprovedContact(
     dealId: row.id,
     toStageId: stage.id,
     changedBy: context.userId,
-    note: input.another ? "Another opportunity opened for this client" : "Lead created",
+    note: input.another ? "Another opportunity opened for this contact" : "Lead created",
   });
   await tx.insert(activities).values({
     organizationId: context.organizationId,

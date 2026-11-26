@@ -505,7 +505,7 @@ export function OpportunityDialog({
             key: selectionKey,
             result: {
               success: false,
-              message: "The expected amount could not be loaded. Try selecting the unit again.",
+              message: "Couldn't load the expected amount. Try selecting the unit again.",
             },
           });
       });
@@ -657,7 +657,7 @@ export function OpportunityDialog({
 
             {failed ? (
               <p role="alert" className="mt-5 text-sm text-destructive">
-                Lead details could not be loaded. Close this dialog, refresh the pipeline, and try
+                Couldn’t load the lead details. Close this dialog, refresh the pipeline, and try
                 again.
               </p>
             ) : !draft ? (
@@ -673,7 +673,7 @@ export function OpportunityDialog({
                   {draftStatus === "saved"
                     ? "Draft saved on this browser"
                     : draftStatus === "unavailable"
-                      ? "Draft could not be saved. Keep this tab open to preserve your entries."
+                      ? "Couldn't save draft. Keep this tab open to preserve your entries."
                       : "Saving draft…"}
                 </p>
                 <ol className="grid grid-cols-2 gap-2 text-xs font-medium sm:flex sm:items-center">

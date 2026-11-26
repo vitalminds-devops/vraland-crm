@@ -120,7 +120,7 @@ export async function saveParkingType(input: unknown): Promise<ActionResult<{ id
     return success({ id: next.id });
   } catch (error) {
     logError("Parking type save failed", error, { operation: "parking_type_save" });
-    return databaseFailure("The parking type could not be saved.");
+    return databaseFailure("Couldn't save the parking type.");
   }
 }
 
@@ -163,6 +163,6 @@ export async function deleteParkingType(propertyId: string, typeId: string): Pro
     return success();
   } catch (error) {
     logError("Parking type delete failed", error, { operation: "parking_type_delete" });
-    return databaseFailure("The parking type could not be removed.");
+    return databaseFailure("Couldn't remove the parking type.");
   }
 }

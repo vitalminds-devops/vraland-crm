@@ -28,7 +28,7 @@ function writeFailure(error: unknown): DevelopmentActionResult {
     (cause as { message?: string })?.message;
   return databaseFailure(
     process.env.NODE_ENV === "development" && detail
-      ? `Development could not be saved: ${detail}`
+      ? `Couldn't save development: ${detail}`
       : "Couldn't save the development. Try again.",
   );
 }

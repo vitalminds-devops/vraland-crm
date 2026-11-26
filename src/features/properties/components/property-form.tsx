@@ -214,7 +214,7 @@ export function PropertyForm({ propertyId, initial, options }: Props) {
               ))}
             </FormSelect>
           </FormField>
-          <FormField label="Transaction type" required error={errors.listingType?.message}>
+          <FormField label="Offer type" required error={errors.listingType?.message}>
             <FormSelect {...register("listingType")}>
               {propertyTransactionTypes.map((v) => (
                 <option key={v} value={v}>

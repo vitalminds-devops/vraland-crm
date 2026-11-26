@@ -71,11 +71,11 @@ export const propertySchema = z
   })
   .refine((v) => !v.floorCount || !!v.unitsPerFloor, {
     path: ["unitsPerFloor"],
-    message: "Enter units per floor to create the inventory.",
+    message: "Enter units per floor to create the units.",
   })
   .refine((v) => !v.unitsPerFloor || !!v.floorCount, {
     path: ["floorCount"],
-    message: "Enter the number of floors to create the inventory.",
+    message: "Enter the number of floors to create the units.",
   })
   .refine((v) => v.latitude === null || (v.latitude >= -90 && v.latitude <= 90), {
     path: ["latitude"],

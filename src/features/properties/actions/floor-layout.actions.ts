@@ -420,6 +420,6 @@ export async function saveFloorLayout(
           : "Two units on a floor would share an identifier. Rename one and try again.",
       );
     logError("Floor layout save failed", error, { operation: "floor_layout_save" });
-    return databaseFailure("The floor layout could not be saved.");
+    return databaseFailure("Couldn't save the floor layout.");
   }
 }

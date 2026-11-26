@@ -80,7 +80,7 @@ export async function uploadDocument(formData: FormData): Promise<DocumentResult
       parsed.data.dealId ||
       parsed.data.documentType !== "general")
   )
-    return validationFailure("Shared files cannot be linked to client, property or deal records.");
+    return validationFailure("Shared files can't be linked to a contact, property or opportunity.");
   const file = formData.get("file");
   if (!(file instanceof File)) return validationFailure("Select a file to upload.");
   const fileError = await documentFileError(
@@ -180,7 +180,7 @@ export async function uploadDocument(formData: FormData): Promise<DocumentResult
   } catch (error) {
     await storage.remove(key).catch(() => undefined);
     logError("Document upload failed", error, { operation: "document_upload" });
-    return databaseFailure("The document could not be uploaded.");
+    return databaseFailure("Couldn't upload the document.");
   }
 }
 /** Same reach as the download route: record scope, sensitivity, and no user onboarding files. */

@@ -82,7 +82,7 @@ export default async function DocumentPage({ params }: { params: Promise<{ id: s
                   )}
                   {d.propertyId && (
                     <Link
-                      href={`/properties/buildings/${d.propertyId}`}
+                      href={`/properties/${d.propertyId}`}
                       className="rounded border px-3 py-2 text-sm"
                     >
                       {data.propertyTitle}

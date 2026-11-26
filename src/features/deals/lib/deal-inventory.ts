@@ -104,7 +104,7 @@ export async function syncDealInventory(
           )
         )
           throw new InventoryUnavailable(
-            `The selected ${label}${row ? ` ${row.code}` : ""} is no longer available. Refresh and select available inventory.`,
+            `The selected ${label}${row ? ` ${row.code}` : ""} is no longer available. Refresh and pick another.`,
           );
       }
     }
@@ -167,7 +167,7 @@ export async function syncDealInventory(
       organizationId: input.organizationId,
       actorUserId: input.actorUserId,
       activityType: "deal.inventory_changed",
-      summary: `${changes.length} inventory items updated with the opportunity.`,
+      summary: `${changes.length} ${changes.length === 1 ? "unit or parking slot" : "units and parking slots"} updated with the opportunity.`,
       dealId: input.dealId,
       metadata: { status: input.status, unitIds, parkingSlotIds: parkingIds },
     });

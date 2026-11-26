@@ -1,4 +1,4 @@
-import { dealLabel } from "@/features/deals/lib/deal-label";
+import { dealLabel, dealStatusLabel, dealTypeLabel } from "@/features/deals/lib/deal-label";
 import { listDeals } from "@/features/deals/queries/deal.queries";
 import { csvResponse, limitNote } from "@/lib/http/csv";
 import { getAuthorizationContext } from "@/lib/permissions/authorization";
@@ -31,7 +31,7 @@ export async function GET(request: Request) {
         "Opportunity",
         "Stage",
         "Status",
-        "Type",
+        "Offer type",
         "Value",
         "Currency",
         "Probability %",
@@ -42,8 +42,8 @@ export async function GET(request: Request) {
         deal.code,
         dealLabel(deal),
         deal.stageName,
-        deal.status,
-        deal.dealType,
+        dealStatusLabel(deal.status),
+        dealTypeLabel(deal.dealType),
         deal.amount,
         deal.currency,
         deal.probability,

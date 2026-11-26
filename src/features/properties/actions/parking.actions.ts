@@ -26,7 +26,7 @@ const slotCode = z
 
 function failed(error: unknown): ParkingActionResult {
   logError("Parking slot write failed", error, { operation: "parking_write" });
-  return { success: false, message: "Parking could not be saved because of a database error." };
+  return { success: false, message: "Couldn't save parking because of a database error." };
 }
 
 /** The slot and its property, when the caller may change it. */

@@ -1,4 +1,5 @@
 import { label } from "@/features/properties";
+import { unitStatusLabel } from "@/features/properties/lib/unit-codes";
 import {
   PROPERTY_EXPORT_LIMIT,
   exportPropertyUnits,
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
         "Property",
         "Development",
         "Type",
-        "Listing",
+        "Offer type",
         "Property status",
         "City",
         "Province",
@@ -51,7 +52,7 @@ export async function GET(request: Request) {
         row.currency,
         row.floorLabel,
         row.unitCode,
-        row.unitStatus && label(row.unitStatus),
+        row.unitStatus && unitStatusLabel(row.unitStatus),
       ]),
       ...limitNote(rows.length, PROPERTY_EXPORT_LIMIT),
     ],

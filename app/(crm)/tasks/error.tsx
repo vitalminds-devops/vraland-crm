@@ -12,7 +12,7 @@ export default function Error({ retry }: { retry: () => void }) {
           <span className="mx-auto grid size-10 place-items-center rounded-full bg-destructive/10 text-destructive">
             <AlertTriangle aria-hidden="true" className="size-5" />
           </span>
-          <h2 className="mt-4 text-lg font-semibold">Tasks could not be loaded</h2>
+          <h2 className="mt-4 text-lg font-semibold">Couldn’t load tasks</h2>
           <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
             Something went wrong. Try again.
           </p>

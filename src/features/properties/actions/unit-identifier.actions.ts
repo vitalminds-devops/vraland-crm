@@ -166,6 +166,6 @@ export async function applyIdentifiersToAllFloors(
     return success(outcome);
   } catch (error) {
     logError("Unit identifier update failed", error, { operation: "unit_identifiers_all" });
-    return databaseFailure("Unit identifiers could not be updated.");
+    return databaseFailure("Couldn't update unit identifiers.");
   }
 }

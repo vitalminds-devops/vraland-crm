@@ -46,7 +46,7 @@ function writeFailure(error: unknown): DevelopmentCoverActionResult {
   });
   return {
     success: false,
-    message: "The cover photo could not be saved.",
+    message: "Couldn't save the cover photo.",
   };
 }
 
@@ -56,13 +56,13 @@ export async function saveDevelopmentCoverImage(
   const context = await requirePermission("developments.update");
 
   const parsed = developmentIdSchema.safeParse(formData.get("developmentId"));
-  if (!parsed.success) return { success: false, message: "That development could not be found." };
+  if (!parsed.success) return { success: false, message: "Couldn't find that development." };
 
   const upload = await checkImageUpload(formData.get("image"));
   if (!upload.ok) return { success: false, message: upload.message };
 
   const development = await loadCoverTarget(context.organizationId, parsed.data);
-  if (!development) return { success: false, message: "That development could not be found." };
+  if (!development) return { success: false, message: "Couldn't find that development." };
 
   const storageKey = `${context.organizationId}/developments/${development.id}/cover/${randomUUID()}.${upload.extension}`;
   const body = Buffer.from(await upload.file.arrayBuffer());
@@ -144,10 +144,10 @@ export async function removeDevelopmentCoverImage(
   const context = await requirePermission("developments.update");
 
   const parsed = developmentIdSchema.safeParse(developmentId);
-  if (!parsed.success) return { success: false, message: "That development could not be found." };
+  if (!parsed.success) return { success: false, message: "Couldn't find that development." };
 
   const development = await loadCoverTarget(context.organizationId, parsed.data);
-  if (!development) return { success: false, message: "That development could not be found." };
+  if (!development) return { success: false, message: "Couldn't find that development." };
   if (!development.coverImageStorageKey)
     return {
       success: false,

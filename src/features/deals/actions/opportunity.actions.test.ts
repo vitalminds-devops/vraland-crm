@@ -199,7 +199,7 @@ it("saves the building, parking quantity, and authoritative total before moving"
   expect(await openOpportunity(leadForm())).toMatchObject({
     success: true,
     data: {
-      message: "Selected units and parking spaces remain available to others until Reservation.",
+      message: "Selected units and parking slots remain available to others until Reservation.",
     },
   });
   expect(inventory.updates).toContainEqual(
@@ -312,8 +312,7 @@ it("returns an actionable upload error without saving details", async () => {
   expect(await openOpportunity(form)).toMatchObject({
     success: false,
     error: {
-      message:
-        "The documents could not be uploaded. The lead has not moved to Opportunity. Please try again.",
+      message: "Couldn't upload the documents. The lead has not moved to Opportunity. Try again.",
     },
   });
   expect(inventory.updates).toEqual([]);
@@ -367,7 +366,7 @@ it("rejects parking quantities beyond building capacity and missing property acc
     }),
   ).toMatchObject({
     success: false,
-    message: expect.stringContaining("2 parking spaces"),
+    message: expect.stringContaining("2 parking slots"),
   });
   inventory.permissions.delete("properties.view");
   expect(await getOpportunityEstimate(selection)).toMatchObject({ success: false });

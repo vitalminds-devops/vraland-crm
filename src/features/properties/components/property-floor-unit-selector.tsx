@@ -121,7 +121,7 @@ export function PropertyFloorUnitSelector({
         setSelectedFloorId(null);
       } catch {
         if (controller.signal.aborted) return;
-        notify("Properties could not be loaded.", "error");
+        notify("Couldn't load properties.", "error");
         setBuildingData({ key: developmentId, rows: EMPTY_PROPERTIES });
       }
     });
@@ -146,7 +146,7 @@ export function PropertyFloorUnitSelector({
         setSelectedFloorId(data.length === 1 ? data[0].id : null);
       } catch {
         if (controller.signal.aborted) return;
-        notify("Floors could not be loaded.", "error");
+        notify("Couldn't load floors.", "error");
         setFloorData({ key: selectedBuildingId, rows: EMPTY_FLOORS });
       }
     });
@@ -173,7 +173,7 @@ export function PropertyFloorUnitSelector({
         });
       } catch {
         if (controller.signal.aborted) return;
-        notify("Units could not be loaded.", "error");
+        notify("Couldn't load units.", "error");
         setUnitData({
           key: selectedFloorId,
           rows: EMPTY_UNITS,

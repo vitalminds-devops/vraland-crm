@@ -285,7 +285,7 @@ export async function setPropertyGrant(input: unknown): Promise<PropertyAccessRe
       propertyId: v.propertyId,
       userId: v.userId,
     });
-    return databaseFailure("The access grant could not be saved.");
+    return databaseFailure("Property access couldn't be saved.");
   }
 }
 
@@ -353,7 +353,7 @@ export async function clearPropertyGrant(input: unknown): Promise<PropertyAccess
       propertyId: v.propertyId,
       userId: v.userId,
     });
-    return databaseFailure("The access grant could not be removed.");
+    return databaseFailure("Property access couldn't be removed.");
   }
 }
 
@@ -430,7 +430,7 @@ export async function grantEveryProperty(input: unknown): Promise<PropertyAccess
         organizationId: context.organizationId,
         actorUserId: context.userId,
         activityType: "property.access_granted_in_bulk",
-        summary: `${inserted.length} full-property ${inserted.length === 1 ? "grant" : "grants"} written across ${propertyRows.length} ${propertyRows.length === 1 ? "property" : "properties"}.`,
+        summary: `Whole-property access given ${inserted.length} ${inserted.length === 1 ? "time" : "times"} across ${propertyRows.length} ${propertyRows.length === 1 ? "property" : "properties"}.`,
         metadata: {
           users: granteeIds.length,
           properties: propertyRows.length,
@@ -449,7 +449,7 @@ export async function grantEveryProperty(input: unknown): Promise<PropertyAccess
       everyone: v.everyone,
       userId: v.userId,
     });
-    return databaseFailure("Access could not be granted.");
+    return databaseFailure("Couldn't give access.");
   }
 }
 

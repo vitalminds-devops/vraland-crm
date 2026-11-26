@@ -232,7 +232,7 @@ export async function saveBill(input: unknown): Promise<ActionResult<{ id: strin
   } catch (error) {
     if (error instanceof InventoryUnavailable) return failure(conflict(error.message));
     logError("Bill save failed", error, { operation: "billing_save_bill" });
-    return databaseFailure("The bill could not be saved.");
+    return databaseFailure("Couldn't save the bill.");
   }
 }
 
@@ -465,14 +465,14 @@ export async function recordPayment(
       return success({
         id: savedPaymentId,
         message:
-          "Payment recorded. Automatic updates could not finish; refresh the bill to check its status.",
+          "Payment recorded. Automatic updates couldn't finish; refresh the bill to check its status.",
       });
     }
     if (error instanceof InventoryUnavailable) return failure(conflict(error.message));
     logError("Payment record failed", error, {
       operation: "billing_record_payment",
     });
-    return databaseFailure("The payment could not be saved.");
+    return databaseFailure("Couldn't save the payment.");
   }
 }
 
@@ -597,6 +597,6 @@ export async function removePayment(input: unknown): Promise<ActionResult<{ id: 
     logError("Payment removal failed", error, {
       operation: "billing_remove_payment",
     });
-    return databaseFailure("The payment could not be removed.");
+    return databaseFailure("Couldn't remove the payment.");
   }
 }

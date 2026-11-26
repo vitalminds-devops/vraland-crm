@@ -111,7 +111,7 @@ export async function deleteUnits(input: unknown): Promise<ActionResult<{ remove
   } catch (error) {
     if (error instanceof Blocked) return validationFailure(error.message);
     logError("Bulk unit removal failed", error, { operation: "units_bulk_delete" });
-    return databaseFailure("The units could not be removed.");
+    return databaseFailure("Couldn't remove the units.");
   }
 }
 
@@ -176,6 +176,6 @@ export async function deleteParkingSlots(
   } catch (error) {
     if (error instanceof Blocked) return validationFailure(error.message);
     logError("Bulk parking removal failed", error, { operation: "parking_bulk_delete" });
-    return databaseFailure("The parking slots could not be removed.");
+    return databaseFailure("Couldn't remove the parking slots.");
   }
 }

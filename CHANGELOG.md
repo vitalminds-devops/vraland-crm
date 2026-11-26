@@ -5,6 +5,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+- Property links on the calendar, viewings, tasks and document pages opened a missing page; they now open the property.
+- The properties CSV export shows unit status as Reserved and Sold out, as the app does, instead of "Deposit paid" and "Sold".
+- The opportunities CSV export and the opportunity list show status and type as words (Open, Won, Sale) instead of raw values.
+- Contacts saved with an older stage (lead, prospect, past client) show as Active or Inactive instead of the raw value, on the list and in the contacts CSV.
+- "Deal" no longer appears in the app: the contact form step, follow-up trigger, user handover prompt and several messages say Opportunity.
+- Client, buyer and customer now read Contact: the contacts page description, the bill's Contact section, the contact detail's Property interest heading, loss-reason examples and several messages.
+- Building, inventory, parking spaces and access grant now read property, units, parking slots and Property access in messages, Logs and the opportunity checklist.
+- The contacts table, permission help and the dashboard say Agent and "Your records" instead of "Assigned agent" and "assigned to you".
+- A property's and an opportunity's sale, rent or lease field is called Offer type everywhere: the property and contact forms, the contact and opportunity pages, and both CSV exports (was Transaction type, Listing and Type).
+- About 90 error messages and page error headings now read "Couldn't …" (for example "Couldn't save the task."), as the rest of the app does, instead of "… could not be saved" or "Failed to …".
+
 ## [0.7.0] - 2026-11-26
 
 ### Added

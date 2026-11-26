@@ -133,6 +133,6 @@ it("saves access and permission changes in one transaction, failing together", a
   expect(mocks.transaction).toHaveBeenCalledTimes(1);
   expect(result).toMatchObject({
     success: false,
-    error: { message: "The user access could not be updated." },
+    error: { message: "Couldn't update the user access." },
   });
 });

@@ -79,7 +79,7 @@ export async function missingOpportunityDetails(
   if (!opportunityAddressSchema.safeParse(row).success) missing.push("address");
   if (!opportunityInterestSchema.safeParse(row).success) missing.push("budget range");
   if (!row?.developmentId) missing.push("development");
-  if (!row?.buildingId) missing.push("building");
+  if (!row?.buildingId) missing.push("property");
   if (!row?.unitId) missing.push("unit");
   if (!row?.financing) missing.push("financing");
   if (!(Number(row?.amount) > 0)) missing.push("amount");

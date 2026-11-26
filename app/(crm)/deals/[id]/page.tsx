@@ -15,6 +15,7 @@ import {
 } from "@/features/deals/components/opportunity-units";
 import { unitStatusLabel, unitStatusToneFor } from "@/features/properties/lib/unit-codes";
 import { getDeal, getDealOptions } from "@/features/deals/queries/deal.queries";
+import { dealStatusLabel, dealTypeLabel } from "@/features/deals/lib/deal-label";
 import { requirePagePermission } from "@/lib/permissions/authorization";
 
 const headClass = "border-b border-border/60 pb-3 text-[16px] font-semibold leading-none";
@@ -40,7 +41,7 @@ export default async function DealPage({
     <PageContainer>
       <PageHeader
         title={d.title}
-        description={`${d.dealCode} · ${data.stageName} · ${label(d.status)}`}
+        description={`${d.dealCode} · ${data.stageName} · ${dealStatusLabel(d.status)}`}
         actions={
           <>
             <BackButton fallbackHref="/pipeline" label="Back to pipeline" />
@@ -143,7 +144,7 @@ export default async function DealPage({
             <dl className="mt-5 grid gap-x-6 gap-y-5 border-t border-border/60 pt-5 sm:grid-cols-2 lg:grid-cols-3">
               <Info label="Expected close" value={date(d.expectedCloseDate)} />
               <Info label="Actual close" value={date(d.actualCloseDate)} />
-              <Info label="Type" value={label(d.dealType)} />
+              <Info label="Offer type" value={dealTypeLabel(d.dealType)} />
               <Info label="Primary agent" value={person(data.agentFirstName, data.agentLastName)} />
               <Info label="Broker" value={person(data.brokerFirstName, data.brokerLastName)} />
               {data.lostReasonName && <Info label="Loss reason" value={data.lostReasonName} />}

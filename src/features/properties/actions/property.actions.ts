@@ -82,7 +82,7 @@ function handleDatabaseError(error: unknown): ActionResult<{ id: string }> {
     (cause as { message?: string })?.message;
   return databaseFailure(
     process.env.NODE_ENV === "development" && detail
-      ? `Property could not be saved: ${detail}`
+      ? `Couldn't save property: ${detail}`
       : "Couldn't save the property. Try again.",
     detail,
   );

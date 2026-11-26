@@ -174,7 +174,9 @@ it("counts open deals where the leaver is only a co-agent in the prompt", async 
   mocks.rows.set(propertyViewings, [{ n: 0 }]);
   expect(await setUserStatus({ id: leaving, status: "inactive", handoverToUserId: "" })).toEqual(
     expect.objectContaining({
-      error: expect.objectContaining({ message: "Choose who takes over their 1 open deal." }),
+      error: expect.objectContaining({
+        message: "Choose who takes over their 1 open opportunity.",
+      }),
     }),
   );
   const [count] = mocks.dealCounts;

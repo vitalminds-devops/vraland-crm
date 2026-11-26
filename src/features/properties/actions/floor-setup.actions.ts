@@ -42,6 +42,6 @@ export async function setUpFloors(propertyId: string, input: unknown): Promise<A
     if (error instanceof HasFloorsError)
       return databaseFailure("This property already has floors.");
     logError("Floor setup failed", error, { operation: "floor_setup", propertyId });
-    return databaseFailure("Floors could not be added.");
+    return databaseFailure("Couldn't add floors.");
   }
 }

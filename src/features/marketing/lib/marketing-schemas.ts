@@ -127,7 +127,7 @@ export const enrollmentSchema = z
   })
   .refine((value) => Boolean(value.contactId || value.dealId), {
     path: ["contactId"],
-    message: "Select a contact or a deal.",
+    message: "Select a contact or an opportunity.",
   });
 
 export type EnrollmentInput = z.infer<typeof enrollmentSchema>;

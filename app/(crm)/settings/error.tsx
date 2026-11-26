@@ -6,7 +6,7 @@ export default function Error({ retry }: { retry: () => void }) {
   return (
     <div className="grid min-h-96 place-items-center text-center">
       <div>
-        <h2 className="font-semibold">Settings could not be loaded.</h2>
+        <h2 className="font-semibold">Couldn’t load Settings</h2>
         <Button variant="secondary" className="mt-3" onClick={retry}>
           Try again
         </Button>

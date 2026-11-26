@@ -104,6 +104,6 @@ export async function saveUnitNaming(input: unknown): Promise<ActionResult> {
     return success();
   } catch (error) {
     logError("Unit naming save failed", error, { operation: "unit_naming_save" });
-    return databaseFailure("Unit naming could not be saved.");
+    return databaseFailure("Couldn't save the unit identifiers.");
   }
 }

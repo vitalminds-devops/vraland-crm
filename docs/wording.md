@@ -52,6 +52,7 @@ When a word isn't here, copy what the nearest existing page says, then add it he
 | Property / Properties | building, inventory, listing, tower | |
 | Floor | level, storey | |
 | Unit | lot, room, inventory | |
+| Offer type | transaction type, listing, listing type, type (alone) | Sale, Rent or Lease, on a property and an opportunity. Also the CSV column. |
 | Parking slot | parking space, Parking Slots | One slot. "Parking" as a section or list name. |
 | Section | floor group, wing, zone | A named, coloured set of a property's floors, or their odd, even or picked units, such as Tower A or Sunrise. Set on the Design page. |
 | Unit identifier, Identifier | numbering, unit number, unit code | What names a unit: letters (2A), numbers (201) or custom endings. Set with Identifier in Design floor. |

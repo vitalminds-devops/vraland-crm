@@ -51,7 +51,7 @@ export async function updateUserPermissions(input: unknown): Promise<ActionResul
     await db.transaction((tx) => writePermissionOverrides(tx, context, userId, checked.data));
   } catch (error) {
     logError("User permissions save failed", error, { operation: "user_permissions_save" });
-    return databaseFailure("The permissions could not be saved.");
+    return databaseFailure("Couldn't save the permissions.");
   }
   revalidatePath("/settings/users");
   revalidatePath(`/settings/users/${userId}`);

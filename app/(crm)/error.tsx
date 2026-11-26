@@ -13,7 +13,7 @@ export default function CrmError({
       <span className="grid size-11 place-items-center rounded-full bg-destructive/10 text-destructive">
         <AlertTriangle aria-hidden="true" className="size-5" />
       </span>
-      <h2 className="mt-4 text-lg font-semibold">This page could not be loaded</h2>
+      <h2 className="mt-4 text-lg font-semibold">Couldn’t load this page</h2>
       <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
         Something went wrong on our side. If you were saving, check the record list before trying
         again.

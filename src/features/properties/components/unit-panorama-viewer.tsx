@@ -132,7 +132,7 @@ export function UnitPanoramaViewer({ imageUrl, unitCode, onClose }: UnitPanorama
               <div className="grid h-full min-h-40 place-content-center gap-3 p-6 text-center text-zinc-400">
                 <ImageOff aria-hidden="true" className="mx-auto size-8" />
                 <p className="text-sm">
-                  {failed ? "This photo could not be loaded." : "No photo available for this unit."}
+                  {failed ? "Couldn't load this photo." : "No photo available for this unit."}
                 </p>
               </div>
             ) : (

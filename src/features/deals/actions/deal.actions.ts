@@ -229,7 +229,7 @@ export async function createDealForContact(
   } catch (error) {
     if (error instanceof InactiveAssigneeError) return validationFailure(error.message);
     logError("Deal creation failed", error, { operation: "deal_create_for_contact" });
-    return databaseFailure("The opportunity could not be created because of a database error.");
+    return databaseFailure("Couldn't create the opportunity because of a database error.");
   }
 }
 
@@ -365,7 +365,7 @@ export async function saveDealForContact(
     });
   } catch (error) {
     logError("Deal update failed", error, { operation: "deal_update" });
-    return databaseFailure("The opportunity could not be updated because of a database error.");
+    return databaseFailure("Couldn't update the opportunity because of a database error.");
   }
   if (existing.stageId !== v.stageId) {
     const moved = await changeDealStage({
@@ -880,7 +880,7 @@ async function applyStageChange(
     if (error instanceof InventoryUnavailable) return failure(conflict(error.message));
     if (error instanceof RequestAlreadyDecided) return failure(conflict(error.message));
     logError("Stage change failed", error, { operation: "deal_stage_change" });
-    return databaseFailure("The stage could not be changed.");
+    return databaseFailure("Couldn't change the stage.");
   }
 }
 
@@ -1060,7 +1060,7 @@ async function decideRequest(
   if (request.status !== "pending")
     return failure(conflict("That request has already been decided."));
   if (!(await canAccessResource(context, { type: "deal", id: request.dealId })))
-    return notFoundFailure("Deal");
+    return notFoundFailure("Opportunity");
   const decided = await db.transaction(async (tx) => {
     const rows = await tx
       .update(dealStageChangeRequests)

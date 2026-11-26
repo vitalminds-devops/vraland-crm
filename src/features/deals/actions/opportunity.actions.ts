@@ -286,10 +286,10 @@ const detailsSchema = z
     ...opportunityAddressSchema.shape,
     ...opportunityInterestSchema.shape,
     dealId: z.uuid({
-      error: "This lead could not be identified. Refresh the pipeline and try again.",
+      error: "Couldn't identify this lead. Refresh the pipeline and try again.",
     }),
     stageId: z.uuid({
-      error: "The Opportunity stage could not be identified. Refresh the pipeline and try again.",
+      error: "Couldn't identify the Opportunity stage. Refresh the pipeline and try again.",
     }),
     tinNumber: z
       .string()
@@ -325,7 +325,7 @@ const detailsSchema = z
       ctx.addIssue({
         code: "custom",
         path: ["financingPreferenceOther"],
-        message: "Describe how the client will pay under Other financing.",
+        message: "Describe how the contact will pay under Other financing.",
       });
   });
 
@@ -384,7 +384,7 @@ async function estimateSelection(
   if (building.parkingSpaces !== null && input.parkingSlotIds.length > building.parkingSpaces)
     return {
       success: false as const,
-      message: `This building has ${building.parkingSpaces} parking spaces. Select fewer slots.`,
+      message: `This property has ${building.parkingSpaces} parking slots. Select fewer.`,
     };
   // Each slot's own price, set on it or by its parking type.
   let slotPrices: (string | null)[] = [];
@@ -818,8 +818,8 @@ export async function openOpportunity(formData: FormData): Promise<DealActionRes
     logError("Opportunity details save failed", error, { operation: "opportunity_details" });
     return databaseFailure(
       uploadsComplete
-        ? "The lead could not be moved to Opportunity because its details could not be saved. Please try again."
-        : "The documents could not be uploaded. The lead has not moved to Opportunity. Please try again.",
+        ? "Couldn't move the lead to Opportunity because its details couldn't be saved. Try again."
+        : "Couldn't upload the documents. The lead has not moved to Opportunity. Try again.",
     );
   }
   revalidatePath(`/contacts/${contactId}`);
@@ -843,7 +843,7 @@ export async function openOpportunity(formData: FormData): Promise<DealActionRes
       ...result.data,
       message: result.data.approvalRequested
         ? "A manager must approve this move. The lead will stay in Leads until then."
-        : "Selected units and parking spaces remain available to others until Reservation.",
+        : "Selected units and parking slots remain available to others until Reservation.",
     },
   };
 }
@@ -990,7 +990,7 @@ export async function changeOpportunityUnits(input: unknown): Promise<DealAction
   } catch (error) {
     if (error instanceof InventoryUnavailable) return failure(conflict(error.message));
     logError("Opportunity unit change failed", error, { operation: "opportunity_change_units" });
-    return databaseFailure("The units could not be changed.");
+    return databaseFailure("Couldn't change the units.");
   }
 }
 
@@ -1045,6 +1045,6 @@ export async function addOpportunityForContact(dealId: string): Promise<DealActi
   } catch (error) {
     if (error instanceof InactiveAssigneeError) return validationFailure(error.message);
     logError("Another opportunity failed", error, { operation: "opportunity_add_another" });
-    return databaseFailure("The opportunity could not be opened.");
+    return databaseFailure("Couldn't open the opportunity.");
   }
 }

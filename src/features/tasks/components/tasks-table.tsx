@@ -295,10 +295,7 @@ export function TasksTable({
                           </RecordLink>
                         )}
                         {row.propertyId && (
-                          <RecordLink
-                            href={`/properties/buildings/${row.propertyId}`}
-                            icon={Building2}
-                          >
+                          <RecordLink href={`/properties/${row.propertyId}`} icon={Building2}>
                             {row.propertyTitle}
                           </RecordLink>
                         )}

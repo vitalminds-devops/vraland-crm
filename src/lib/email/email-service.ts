@@ -89,7 +89,7 @@ class EmailService {
     } catch (error) {
       console.error(`Email service: Failed to send email to ${message.to}`, error);
       throw new Error(
-        `Failed to send email: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Couldn't send email: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     }
   }

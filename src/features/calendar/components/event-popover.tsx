@@ -141,7 +141,7 @@ export function EventPopover({
             icon={Tag}
             label="Property"
             value={event.propertyTitle}
-            href={event.propertyId ? `/properties/buildings/${event.propertyId}` : undefined}
+            href={event.propertyId ? `/properties/${event.propertyId}` : undefined}
           />
         ) : null}
         {event.location ? <Detail icon={MapPin} label="Location" value={event.location} /> : null}

@@ -45,7 +45,7 @@ const recipientStatusLabels: Record<string, string> = {
 
 const triggerLabels: Record<string, string> = {
   lead_created: "A new lead is added",
-  deal_stage_changed: "A deal changes stage",
+  deal_stage_changed: "An opportunity changes stage",
   viewing_completed: "A viewing is completed",
   manual: "I add people myself",
 };

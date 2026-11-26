@@ -125,7 +125,7 @@ export const permissionDetails = {
     conditions: [
       "Shows only contacts within the user's data access, never archived ones",
       "See own records: only contacts assigned to the user, not ones they created",
-      "See team records: contacts assigned to them or their agents, or brokered by them",
+      "See team records: contacts whose Agent is them or one of their agents, or that they broker",
       "Also needed to open Add contact, Edit contact and contact documents pages",
       "Duplicate check shows matches outside data access without their details",
       "Shows the Contacts menu item and the dashboard leads count",
@@ -137,7 +137,7 @@ export const permissionDetails = {
     conditions: [
       'Needs "View contacts & leads" too; the form page loads contact options',
       "No two contacts may share an email or mobile number",
-      "Assigned agent must be within the user's data access",
+      "The Agent must be within the user's data access",
       "Development and units must belong to the organization",
       "New contacts are approved at once and get an opportunity automatically",
       "Fails if no active pipeline stage exists",
@@ -151,7 +151,7 @@ export const permissionDetails = {
       "Only contacts within the user's data access",
       'Needs "View contacts & leads" too to open the edit page',
       "Email and mobile must not belong to another contact",
-      'Changing the assigned agent also needs "Reassign a contact\'s broker"',
+      'Changing the Agent also needs "Reassign a contact\'s broker"',
       'Saving the contact\'s opportunity also needs "Edit opportunities"; a new one needs "Add opportunities"',
       'Moving a lead to Opportunity also needs "Move opportunities between stages"',
       "Changing agent moves the contact's open opportunities to the new agent",
@@ -198,7 +198,7 @@ export const permissionDetails = {
       "Target must be an active broker in the organization",
       "Up to 500 contacts at once; a reason is required",
       "Contacts with won sales are blocked; only Super Administrator can override",
-      "Also required to change a contact's assigned agent when editing",
+      "Also required to change a contact's Agent when editing",
     ],
   },
   "requirements.view": {
@@ -455,7 +455,7 @@ export const permissionDetails = {
       "Only requests on opportunities in the user's data access",
       "Cannot approve their own request",
       "Rejecting requires a reason",
-      "Approving applies all stage rules to the approver: own-deal limits, payment gates, one stage",
+      "Approving applies all stage rules to the approver: own-opportunity limits, payment gates, one stage",
       'Approving does not need "Move opportunities between stages"',
       'Their own direct moves still need "Move opportunities between stages"',
       "Their lost or cancelled moves need no reason and no approval",
@@ -815,7 +815,7 @@ export const permissionDetails = {
     ],
   },
   "records.view_own": {
-    allows: "See only records they own or are assigned to.",
+    allows: "See only their own records.",
     conditions: [
       "Same as holding no data access permission: everyone sees at least their own",
       "Team or all records wins if the user also holds either",

@@ -555,7 +555,7 @@ export async function enrollInSequence(input: unknown): Promise<MarketingResult>
     })
     .refine((v) => v.contactId || v.dealId)
     .safeParse(input);
-  if (!p.success) return validationFailureFromZod(p.error, "Select a contact or deal.");
+  if (!p.success) return validationFailureFromZod(p.error, "Select a contact or opportunity.");
   const [seq] = await db
     .select({ id: automationSequences.id })
     .from(automationSequences)
@@ -604,7 +604,7 @@ export async function enrollInSequence(input: unknown): Promise<MarketingResult>
         ),
       )
       .limit(1);
-    if (!deal) return failure(outOfScope("The selected deal is unavailable."));
+    if (!deal) return failure(outOfScope("The selected opportunity is unavailable."));
   }
   const { sequenceId, contactId, dealId } = p.data;
   const r = await db.transaction(async (tx) => {
@@ -736,7 +736,7 @@ export async function executeNextStep(enrollmentId: string): Promise<MarketingRe
     .returning({ id: automationRuns.id });
   try {
     if (step.actionType === "create_task") {
-      // The follow-up belongs to the contact's agent, else the deal's, not whoever ran the step.
+      // The follow-up belongs to the contact's agent, else the opportunity's, not whoever ran the step.
       const [owner] = enrollment.contactId
         ? await db
             .select({ userId: contacts.assignedUserId })

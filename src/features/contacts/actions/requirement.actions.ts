@@ -134,7 +134,7 @@ export async function addContactRequirement(input: {
     logError("Requirement create failed", error, {
       operation: "requirement_create",
     });
-    return databaseFailure("The document could not be saved. It may already exist.");
+    return databaseFailure("Couldn't save the document. It may already exist.");
   }
 }
 
@@ -227,7 +227,7 @@ export async function uploadRequirementDocument(
   } catch (error) {
     await storage.remove(key).catch(() => undefined);
     logError("Requirement upload failed", error, { operation: "requirement_upload" });
-    return databaseFailure("The file could not be uploaded. Please try again.");
+    return databaseFailure("Couldn't upload the file. Try again.");
   }
 }
 

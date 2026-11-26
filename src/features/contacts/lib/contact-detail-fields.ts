@@ -174,7 +174,7 @@ export function buildContactDetailGroups(c: ContactDetailView): InfoFieldGroup[]
 export function buildPurchasePreferenceGroups(c: ContactDetailView): InfoFieldGroup[] {
   return [
     {
-      heading: "Buyer type",
+      heading: "Property interest",
       fields: [
         {
           label: "Budget range",

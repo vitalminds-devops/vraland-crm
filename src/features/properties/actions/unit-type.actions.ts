@@ -158,7 +158,7 @@ export async function saveUnitType(
     if ((error as { cause?: { code?: string } })?.cause?.code === "23505")
       return validationFailure("This property already has a unit type with that name.");
     logError("Unit type save failed", error, { operation: "unit_type_save" });
-    return databaseFailure("The unit type could not be saved.");
+    return databaseFailure("Couldn't save the unit type.");
   }
 }
 
@@ -210,7 +210,7 @@ export async function deleteUnitType(id: string): Promise<ActionResult> {
     return success();
   } catch (error) {
     logError("Unit type delete failed", error, { operation: "unit_type_delete" });
-    return databaseFailure("The unit type could not be removed.");
+    return databaseFailure("Couldn't remove the unit type.");
   }
 }
 
@@ -290,6 +290,6 @@ export async function saveUnitDetails(input: unknown): Promise<ActionResult> {
     return success();
   } catch (error) {
     logError("Unit details save failed", error, { operation: "unit_details_save" });
-    return databaseFailure("The unit could not be saved.");
+    return databaseFailure("Couldn't save the unit.");
   }
 }
