@@ -1,7 +1,7 @@
 "use server";
 
 import { createHash, randomUUID } from "node:crypto";
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import {
@@ -18,16 +18,15 @@ import { documentFileError, requirementFileTypes } from "@/lib/storage/document-
 import { getDocumentStorage } from "@/lib/storage/document-storage";
 import { conflict, permissionDenied } from "@/lib/errors";
 import { InventoryUnavailable } from "@/features/deals/lib/deal-inventory";
-import {
-  NO_FIRST_MONTH_MESSAGE,
-  NO_RESERVATION_MESSAGE,
-} from "@/features/deals/lib/stage-transitions";
+import { missingPaymentOf } from "@/features/deals/lib/stage-transitions";
 import {
   inventoryHeldElsewhere,
   lockDealForInventory,
   syncBillingInventory,
 } from "../lib/billing-inventory";
 import {
+  billPaid,
+  billTotal,
   dealFirstMonthPaid,
   dealMonthlyAmortization,
   dealReservationFee,
@@ -49,10 +48,6 @@ import {
   type ActionResult,
 } from "@/lib/types/action-result";
 import { billSchema, paymentSchema, removePaymentSchema } from "../schemas/billing.schema";
-
-const paidSum = (billId: string) =>
-  sql<string>`coalesce((select sum(${payments.amount}) from ${payments}
-    where ${payments.billId} = ${billId} and ${payments.deletedAt} is null), 0)`;
 
 const money = (value: number) => value.toFixed(2);
 
@@ -139,7 +134,7 @@ export async function saveBill(input: unknown): Promise<ActionResult<{ id: strin
         return { kind: "won-price" as const };
       if (existing) {
         const [{ paid }] = await tx
-          .select({ paid: paidSum(existing.id) })
+          .select({ paid: billPaid() })
           .from(bills)
           .where(eq(bills.id, existing.id));
         if (total < Number(paid)) return { kind: "below-paid" as const, paid: Number(paid) };
@@ -276,7 +271,7 @@ export async function recordPayment(
         .select({
           id: bills.id,
           dealId: bills.dealId,
-          total: sql<string>`${bills.unitPrice} - ${bills.reservationDiscount} + ${bills.miscellaneousFee}`,
+          total: billTotal,
         })
         .from(bills)
         .where(and(eq(bills.id, value.billId), eq(bills.organizationId, context.organizationId)))
@@ -284,12 +279,10 @@ export async function recordPayment(
       if (!bill) return { kind: "missing" as const };
       const [{ paid, reservationFee, reservationPaid, monthlyAmount }] = await tx
         .select({
-          paid: paidSum(bill.id),
+          paid: billPaid(),
           reservationFee: dealReservationFee,
           monthlyAmount: dealMonthlyAmortization,
-          reservationPaid: sql<string>`coalesce((select sum(${payments.amount}) from ${payments}
-            where ${payments.billId} = ${bill.id} and ${payments.deletedAt} is null
-              and ${payments.classification} = 'reservation'), 0)`,
+          reservationPaid: billPaid("reservation"),
         })
         .from(bills)
         .innerJoin(deals, eq(deals.id, bills.dealId))
@@ -436,10 +429,11 @@ export async function recordPayment(
       for (const stage of outcome.nextStages) {
         const moved = await changeDealStage({ dealId: outcome.dealId, stageId: stage.id });
         if (!moved.success) {
+          const missing = missingPaymentOf(moved.error.details);
           stopped =
-            moved.error.message === NO_RESERVATION_MESSAGE
+            missing === "reservation"
               ? "Reservation fee not fully paid yet."
-              : moved.error.message === NO_FIRST_MONTH_MESSAGE
+              : missing === "first-month"
                 ? "Monthly amortization not fully paid yet."
                 : `Not moved to ${stage.name}.`;
           break;

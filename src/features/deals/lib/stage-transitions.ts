@@ -41,13 +41,24 @@ export const NO_FIRST_MONTH_MESSAGE =
   "Before moving this opportunity to Won, make sure the first monthly payment is fully recorded in Billing. Then try the move again.";
 export const MOVE_BACK_MESSAGE = "You don't have permission to move opportunities back.";
 
-export function paymentMessageForUser(message: string, canManageBilling: boolean): string {
-  if (canManageBilling) return message;
-  if (message === NO_RESERVATION_MESSAGE)
-    return "Ask the billing team to record the full reservation fee. This opportunity will then move to Reservation automatically.";
-  if (message === NO_FIRST_MONTH_MESSAGE)
-    return "Ask the billing team to record the full first monthly payment. Then try moving this opportunity to Won again.";
-  return message;
+/** A payment a move still needs. Code decides by this, never by the message text. */
+export type MissingPayment = "reservation" | "first-month";
+
+/** What to tell the user about a missing payment; without Billing access, who to ask. */
+export function missingPaymentMessage(missing: MissingPayment, canManageBilling: boolean): string {
+  if (missing === "reservation")
+    return canManageBilling
+      ? NO_RESERVATION_MESSAGE
+      : "Ask the billing team to record the full reservation fee. This opportunity will then move to Reservation automatically.";
+  return canManageBilling
+    ? NO_FIRST_MONTH_MESSAGE
+    : "Ask the billing team to record the full first monthly payment. Then try moving this opportunity to Won again.";
+}
+
+/** The missing payment a refused stage change carries in its error details, if any. */
+export function missingPaymentOf(details: unknown): MissingPayment | null {
+  const payment = (details as { payment?: unknown } | null | undefined)?.payment;
+  return payment === "reservation" || payment === "first-month" ? payment : null;
 }
 
 /**
@@ -58,20 +69,20 @@ export function missingPaymentFor(input: {
   from?: Pick<StagePosition, "slug">;
   to: Pick<StagePosition, "slug" | "isWonStage">;
   payments: PaymentProgress;
-}): string | null {
+}): MissingPayment | null {
   if (!input.from) return null;
   if (
     input.from.slug === "opportunity" &&
     input.to.slug === "reservation" &&
     input.payments.reservationPaid === false
   )
-    return NO_RESERVATION_MESSAGE;
+    return "reservation";
   if (
     input.from.slug === "reservation" &&
     input.to.isWonStage &&
     input.payments.firstMonthPaid === false
   )
-    return NO_FIRST_MONTH_MESSAGE;
+    return "first-month";
   return null;
 }
 
@@ -98,7 +109,8 @@ export function resolveMoveRole(
   return scope === "organization" ? "sales-manager" : scope === "broker_team" ? "broker" : "agent";
 }
 
-export type MoveCheck = { allowed: true } | { allowed: false; message: string };
+export type MoveCheck =
+  { allowed: true } | { allowed: false; message: string; payment?: MissingPayment };
 
 const MAX_FORWARD_SKIP = 1;
 
@@ -209,7 +221,12 @@ export function canMoveStage(context: MoveContext): MoveCheck {
     to: toStage,
     payments: context.payments,
   });
-  if (missingPayment) return { allowed: false, message: missingPayment };
+  if (missingPayment)
+    return {
+      allowed: false,
+      message: missingPaymentMessage(missingPayment, true),
+      payment: missingPayment,
+    };
 
   return { allowed: true };
 }

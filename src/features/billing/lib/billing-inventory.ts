@@ -1,10 +1,10 @@
 import "server-only";
 
-import { and, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, ne } from "drizzle-orm";
 import type { db } from "@/db";
 import { bills, deals, pipelineStages, propertyParkingSlots, units } from "@/db/schema";
 import { syncDealInventory } from "@/features/deals/lib/deal-inventory";
-import { dealReservationReceived } from "./deal-payment";
+import { billPaid, billTotal, dealReservationReceived } from "./deal-payment";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -70,8 +70,8 @@ export async function inventoryHeldElsewhere(
 export async function readDealPayments(tx: Transaction, dealId: string) {
   const [bill] = await tx
     .select({
-      total: sql<string>`${bills.unitPrice} - ${bills.reservationDiscount} + ${bills.miscellaneousFee}`,
-      paid: sql<string>`coalesce((select sum(p.amount) from payments p where p.bill_id = "bills"."id" and p.deleted_at is null), 0)`,
+      total: billTotal,
+      paid: billPaid(),
     })
     .from(bills)
     .where(eq(bills.dealId, dealId));

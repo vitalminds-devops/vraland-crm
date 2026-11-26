@@ -42,7 +42,7 @@ import { cn } from "@/lib/utils/cn";
 import { changeDealStage } from "../actions/deal.actions";
 import {
   canActOnDeal,
-  stageMoveBlockedMessage,
+  stageMoveBlock,
   dropHintFor,
   dropHintTone,
   reasonPromptFor,
@@ -52,7 +52,7 @@ import {
   type ReasonPrompt,
 } from "../lib/stage-move";
 import { dealLabel } from "../lib/deal-label";
-import { NO_RESERVATION_MESSAGE, paymentMessageForUser } from "../lib/stage-transitions";
+import { missingPaymentMessage } from "../lib/stage-transitions";
 import { BOARD_COLUMN_LIMIT } from "../lib/board-limit";
 import { formatContactName } from "@/features/contacts";
 import { notify } from "@/components/ui/toast";
@@ -268,7 +268,7 @@ export function PipelineBoard({
     if (!toStage) return;
 
     // UI-level validation before the server call, mirroring the server's rules.
-    const blockedMessage = stageMoveBlockedMessage(
+    const blocked = stageMoveBlock(
       before,
       toStage,
       sortedStages,
@@ -276,14 +276,16 @@ export function PipelineBoard({
       userRole,
       canMoveBack,
     );
-    if (blockedMessage) {
-      const automaticReservation = blockedMessage === NO_RESERVATION_MESSAGE;
+    if (blocked) {
+      const automaticReservation = blocked.payment === "reservation";
       notify(
         automaticReservation ? "Reservation is automatic" : `Cannot move to ${toStage.name}`,
         automaticReservation ? "info" : "error",
         {
           id: `stage-move-${dealId}`,
-          description: paymentMessageForUser(blockedMessage, canManageBilling),
+          description: blocked.payment
+            ? missingPaymentMessage(blocked.payment, canManageBilling)
+            : blocked.message,
         },
       );
       return;

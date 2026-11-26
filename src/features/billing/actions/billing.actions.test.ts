@@ -463,11 +463,22 @@ it("stops a full payment's moves at a stage sent for approval", async () => {
 });
 
 it.each([
-  [NO_RESERVATION_MESSAGE, "Payment recorded. Reservation fee not fully paid yet."],
-  ["Not allowed.", "Payment recorded. Not moved to Reservation."],
-])("keeps the payment when the move is refused: %s", async (refusal, message) => {
+  [
+    NO_RESERVATION_MESSAGE,
+    { payment: "reservation" },
+    "Payment recorded. Reservation fee not fully paid yet.",
+  ],
+  // Any wording works: the reason comes from the error's code, not its text.
+  [
+    "Reworded later.",
+    { payment: "reservation" },
+    "Payment recorded. Reservation fee not fully paid yet.",
+  ],
+  [NO_RESERVATION_MESSAGE, undefined, "Payment recorded. Not moved to Reservation."],
+  ["Not allowed.", undefined, "Payment recorded. Not moved to Reservation."],
+])("keeps the payment when the move is refused: %s", async (refusal, details, message) => {
   mock.reads = fullPaymentReads();
-  vi.mocked(changeDealStage).mockResolvedValueOnce(failureFrom("INVALID_INPUT", refusal));
+  vi.mocked(changeDealStage).mockResolvedValueOnce(failureFrom("INVALID_INPUT", refusal, details));
   expect(await recordPayment(fullPayment, transactionSlip())).toMatchObject({
     success: true,
     data: { message },
@@ -479,7 +490,9 @@ it("reports the stage reached when a later move is refused", async () => {
   mock.reads = fullPaymentReads();
   vi.mocked(changeDealStage)
     .mockResolvedValueOnce({ success: true, data: { id: "deal" } })
-    .mockResolvedValueOnce(failureFrom("INVALID_INPUT", NO_FIRST_MONTH_MESSAGE));
+    .mockResolvedValueOnce(
+      failureFrom("INVALID_INPUT", NO_FIRST_MONTH_MESSAGE, { payment: "first-month" }),
+    );
   expect(await recordPayment(fullPayment, transactionSlip())).toMatchObject({
     data: {
       message: "Payment recorded. Moved to Reservation. Monthly amortization not fully paid yet.",

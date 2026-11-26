@@ -84,8 +84,8 @@ it("qualifies the outer bill ID in the payment sum so payment IDs cannot shadow 
   await readDealPayments(tx, "deal");
   const expression = select.mock.calls[0][0]!.paid;
   const statement = new PgDialect().sqlToQuery(expression).sql;
-  expect(statement).toContain('p.bill_id = "bills"."id"');
-  expect(statement).toContain("p.deleted_at is null");
+  expect(statement).toContain('p."bill_id" = "bills"."id"');
+  expect(statement).toContain('p."deleted_at" is null');
 });
 
 it("locks the persisted deal snapshot before billing or inventory writes", async () => {

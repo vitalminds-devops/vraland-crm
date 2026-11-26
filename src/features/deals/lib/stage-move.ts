@@ -1,9 +1,9 @@
 import {
   MAX_BACKWARD_SKIP,
-  NO_RESERVATION_MESSAGE,
-  NO_FIRST_MONTH_MESSAGE,
   missingPaymentFor,
+  missingPaymentMessage,
   reopensLostPastGate,
+  type MissingPayment,
   type PaymentProgress,
 } from "./stage-transitions";
 
@@ -77,46 +77,51 @@ export function canMoveDealToStage(
   userRole?: MoveRole,
   canMoveBack = false,
 ): boolean {
-  return (
-    stageMoveBlockedMessage(deal, toStage, stages, canChangeStage, userRole, canMoveBack) === null
-  );
+  return stageMoveBlock(deal, toStage, stages, canChangeStage, userRole, canMoveBack) === null;
 }
 
-export function stageMoveBlockedMessage(
+/** Why the pipeline refuses this move before asking the server, or null; `payment` names a missing payment. */
+export type StageMoveBlock = { message: string; payment?: MissingPayment };
+
+export function stageMoveBlock(
   deal: StagedDeal,
   toStage: MoveStage,
   stages: MoveStage[],
   canChangeStage: boolean,
   userRole?: MoveRole,
   canMoveBack = false,
-): string | null {
+): StageMoveBlock | null {
+  const refuse = (message: string) => ({ message });
   if (!canChangeStage || userRole === "viewer")
-    return "You cannot change this opportunity's stage. Ask your administrator for help.";
+    return refuse("You cannot change this opportunity's stage. Ask your administrator for help.");
   const fromStage = stages.find((s) => s.id === deal.stageId);
   if (!fromStage)
-    return "The current stage is no longer available. Refresh the pipeline and try again.";
-  if (fromStage.id === toStage.id) return "This opportunity is already in that stage.";
+    return refuse("The current stage is no longer available. Refresh the pipeline and try again.");
+  if (fromStage.id === toStage.id) return refuse("This opportunity is already in that stage.");
   if (reopensLostPastGate(fromStage, toStage))
-    return "Reopen this opportunity in Leads or Opportunity first.";
+    return refuse("Reopen this opportunity in Leads or Opportunity first.");
 
   if (toStage.position < fromStage.position) {
-    if (!canMoveBack) return "You cannot move opportunities back. Ask your administrator for help.";
+    if (!canMoveBack)
+      return refuse("You cannot move opportunities back. Ask your administrator for help.");
     if (
       userRole !== "admin" &&
       !fromStage.isLostStage &&
       fromStage.position - toStage.position > MAX_BACKWARD_SKIP
     )
-      return "Move this opportunity back one stage at a time.";
+      return refuse("Move this opportunity back one stage at a time.");
     return null;
   }
 
   if (isWonOrCancelled(fromStage) && userRole !== "admin")
-    return "This opportunity is closed. Ask your administrator to reopen it before changing its outcome.";
+    return refuse(
+      "This opportunity is closed. Ask your administrator to reopen it before changing its outcome.",
+    );
 
   if (toStage.isLostStage || toStage.isCancelledStage) return null;
 
-  const paymentMessage = paymentNeededFor(deal, fromStage, toStage);
-  if (paymentMessage) return paymentMessage;
+  const payment = missingPaymentFor({ from: fromStage, to: toStage, payments: deal });
+  if (payment) return { message: missingPaymentMessage(payment, true), payment };
 
   if (toStage.position - fromStage.position > 1) {
     const nextStage = stages
@@ -128,24 +133,13 @@ export function stageMoveBlockedMessage(
           !stage.isCancelledStage,
       )
       .sort((a, b) => a.position - b.position)[0];
-    return nextStage
-      ? `Move this opportunity to ${nextStage.name} first. Stages cannot be skipped.`
-      : "Move this opportunity one stage at a time. Refresh the pipeline to see the available stages.";
+    return refuse(
+      nextStage
+        ? `Move this opportunity to ${nextStage.name} first. Stages cannot be skipped.`
+        : "Move this opportunity one stage at a time. Refresh the pipeline to see the available stages.",
+    );
   }
   return null;
-}
-
-/** The message for the payment this move still needs, or null. */
-export function paymentNeededFor(
-  deal: StagedDeal,
-  fromStage: MoveStage | undefined,
-  toStage: MoveStage,
-): string | null {
-  return missingPaymentFor({
-    from: fromStage,
-    to: toStage,
-    payments: deal,
-  });
 }
 
 /** Label for a move that will be parked for a manager to approve. */
@@ -162,22 +156,15 @@ export function dropHintFor(
 ): DropHint | null {
   if (toStage.id === deal.stageId) return null;
 
-  const blockedMessage = stageMoveBlockedMessage(
-    deal,
-    toStage,
-    stages,
-    canChangeStage,
-    userRole,
-    canMoveBack,
-  );
-  if (blockedMessage)
+  const blocked = stageMoveBlock(deal, toStage, stages, canChangeStage, userRole, canMoveBack);
+  if (blocked)
     return {
       text:
-        blockedMessage === NO_RESERVATION_MESSAGE
+        blocked.payment === "reservation"
           ? "Moves automatically after Billing"
-          : blockedMessage === NO_FIRST_MONTH_MESSAGE
+          : blocked.payment === "first-month"
             ? "First monthly payment needed"
-            : blockedMessage,
+            : blocked.message,
       tone: "blocked",
     };
 

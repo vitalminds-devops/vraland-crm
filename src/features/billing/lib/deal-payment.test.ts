@@ -7,20 +7,22 @@ import {
   dealReservationFee,
   dealReservationPaid,
   dealReservationReceived,
+  billPaid,
+  billTotal,
 } from "./deal-payment";
 
 const render = (gate: SQL) => new PgDialect().sqlToQuery(gate);
 
 it("opens each gate with its own payment type or a full payment", () => {
-  expect(render(dealReservationPaid).params).toEqual(["reservation"]);
-  expect(render(dealFirstMonthPaid).params).toEqual(["monthly"]);
-  expect(render(dealReservationPaid).sql).toContain(`p."classification" = 'full_payment'`);
+  expect(render(dealReservationPaid).params).toEqual(["full_payment", "reservation"]);
+  expect(render(dealFirstMonthPaid).params).toEqual(["full_payment", "monthly"]);
 });
 
 it("needs reservation payments to add up to the reservation fee", () => {
   const { sql } = render(dealReservationPaid);
-  expect(sql).toContain(`p."classification" = $1
-    ) >= greatest(coalesce(coalesce("deals"."reservation_fee"`);
+  expect(sql).toContain(
+    `p."classification" = $2), 0) >= greatest(coalesce(coalesce("deals"."reservation_fee"`,
+  );
 });
 
 it("adds each parking slot's reservation fee", () => {
@@ -52,12 +54,24 @@ it("sums each unit's type monthly amortization the same way", () => {
 it("ignores removed payments and treats a fully paid bill as passing", () => {
   const { sql } = render(dealFirstMonthPaid);
   expect(sql.match(/p\."deleted_at" is null/g)).toHaveLength(3);
-  expect(sql).toContain(`>= b."unit_price" - b."reservation_discount" + b."miscellaneous_fee"`);
+  expect(sql).toContain(
+    `>= ("bills"."unit_price" - "bills"."reservation_discount" + "bills"."miscellaneous_fee")`,
+  );
 });
 
 it("holds units on any reservation payment, even below a fee that rose since", () => {
   const { sql, params } = render(dealReservationReceived);
-  expect(params).toEqual(["reservation"]);
+  expect(params).toEqual(["full_payment", "reservation"]);
   expect(sql).toContain(">= greatest(0, 0.01)");
   expect(sql).not.toContain("reservation_fee");
+});
+
+it("sums a bill's live payments and total from the bills row in scope", () => {
+  // Table names are explicit, so a payment's own id can never stand in for the bill's.
+  expect(render(billPaid()).sql).toContain(`p."bill_id" = "bills"."id" and p."deleted_at" is null`);
+  expect(render(billPaid()).params).toEqual([]);
+  expect(render(billPaid("reservation")).params).toEqual(["reservation"]);
+  expect(render(billTotal).sql).toBe(
+    `("bills"."unit_price" - "bills"."reservation_discount" + "bills"."miscellaneous_fee")`,
+  );
 });

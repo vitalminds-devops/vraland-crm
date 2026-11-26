@@ -42,7 +42,7 @@ import { missingOpportunityDetails } from "../lib/opportunity-requirements";
 import { InventoryUnavailable, syncDealInventory } from "../lib/deal-inventory";
 import {
   canMoveStage,
-  paymentMessageForUser,
+  missingPaymentMessage,
   closeDateFor,
   dealStatusForStage,
   canStartDealInStage,
@@ -513,7 +513,10 @@ async function applyStageChange(
       if (!moveCheck.allowed)
         return {
           kind: "invalid" as const,
-          message: paymentMessageForUser(moveCheck.message, canManageBilling(context)),
+          message: moveCheck.payment
+            ? missingPaymentMessage(moveCheck.payment, canManageBilling(context))
+            : moveCheck.message,
+          payment: moveCheck.payment,
         };
       if ((fromStage.slug === "leads" || fromStage.isLostStage) && toStage.slug === "opportunity") {
         const missing = await missingOpportunityDetails(tx, dealId);
@@ -847,7 +850,12 @@ async function applyStageChange(
 
     if (outcome.kind === "missing") return notFoundFailure("Opportunity");
     if (outcome.kind === "invalid")
-      return failureFrom(ActionErrorCode.INVALID_INPUT, outcome.message);
+      return failureFrom(
+        ActionErrorCode.INVALID_INPUT,
+        outcome.message,
+        // Callers such as Billing read which payment is missing from here, not from the text.
+        "payment" in outcome && outcome.payment ? { payment: outcome.payment } : undefined,
+      );
     if (outcome.kind === "noop") return success({ id: dealId });
     if (outcome.kind === "pending") {
       revalidatePath("/pipeline");

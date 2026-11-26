@@ -4,7 +4,8 @@ import {
   MOVE_BACK_MESSAGE,
   NO_FIRST_MONTH_MESSAGE,
   NO_RESERVATION_MESSAGE,
-  paymentMessageForUser,
+  missingPaymentMessage,
+  missingPaymentOf,
   resolveMoveRole,
   canMoveStage,
   canStartDealInStage,
@@ -47,20 +48,26 @@ const move = (
 describe("payment guidance", () => {
   it.each([
     [
+      "reservation" as const,
       NO_RESERVATION_MESSAGE,
       "Ask the billing team to record the full reservation fee. This opportunity will then move to Reservation automatically.",
     ],
     [
+      "first-month" as const,
       NO_FIRST_MONTH_MESSAGE,
       "Ask the billing team to record the full first monthly payment. Then try moving this opportunity to Won again.",
     ],
-  ])("gives users without Billing access a next step for %s", (message, expected) => {
-    expect(paymentMessageForUser(message, false)).toBe(expected);
-    expect(paymentMessageForUser(message, true)).toBe(message);
+  ])("tells Billing users and others what to do for %s", (missing, billing, others) => {
+    expect(missingPaymentMessage(missing, true)).toBe(billing);
+    expect(missingPaymentMessage(missing, false)).toBe(others);
   });
 
-  it("preserves other stage errors", () => {
-    expect(paymentMessageForUser(MOVE_BACK_MESSAGE, false)).toBe(MOVE_BACK_MESSAGE);
+  it("reads the missing payment from a refusal's details, never its text", () => {
+    expect(missingPaymentOf({ payment: "reservation" })).toBe("reservation");
+    expect(missingPaymentOf({ payment: "first-month" })).toBe("first-month");
+    expect(missingPaymentOf({ payment: "other" })).toBeNull();
+    expect(missingPaymentOf(undefined)).toBeNull();
+    expect(missingPaymentOf(MOVE_BACK_MESSAGE)).toBeNull();
   });
 });
 
@@ -73,6 +80,7 @@ describe("payment gates", () => {
     expect(move("broker", { reservationPaid: false })).toEqual({
       allowed: false,
       message: NO_RESERVATION_MESSAGE,
+      payment: "reservation",
     });
     expect(move("agent", { reservationPaid: false }).allowed).toBe(false);
   });
@@ -86,6 +94,7 @@ describe("payment gates", () => {
     expect(move("broker", { ...paid, firstMonthPaid: false }, reservation, won)).toEqual({
       allowed: false,
       message: NO_FIRST_MONTH_MESSAGE,
+      payment: "first-month",
     });
     expect(move("broker", { ...paid, firstMonthPaid: true }, reservation, won).allowed).toBe(true);
   });
@@ -94,10 +103,12 @@ describe("payment gates", () => {
     expect(move("admin", { reservationPaid: false })).toEqual({
       allowed: false,
       message: NO_RESERVATION_MESSAGE,
+      payment: "reservation",
     });
     expect(move("admin", { firstMonthPaid: false }, reservation, won)).toEqual({
       allowed: false,
       message: NO_FIRST_MONTH_MESSAGE,
+      payment: "first-month",
     });
     expect(move("admin", { firstMonthPaid: true }, reservation, won).allowed).toBe(true);
   });

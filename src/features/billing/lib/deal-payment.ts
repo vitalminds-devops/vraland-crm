@@ -1,28 +1,30 @@
 import { sql, type SQL } from "drizzle-orm";
 
 /**
+ * A bill's total: unit prices less the reservation discount, plus miscellaneous fees. Reads the
+ * `bills` row in scope, so the outer query must select from `bills` (not an alias).
+ */
+export const billTotal = sql<string>`("bills"."unit_price" - "bills"."reservation_discount" + "bills"."miscellaneous_fee")`;
+
+/** What the `bills` row in scope has been paid with live payments, optionally of one classification. */
+export const billPaid = (classification?: string) =>
+  sql<string>`coalesce((select sum(p."amount") from "payments" p
+    where p."bill_id" = "bills"."id" and p."deleted_at" is null${
+      classification ? sql` and p."classification" = ${classification}` : sql``
+    }), 0)`;
+
+/**
  * Whether the opportunity's bill has live payments of this classification adding up to `due`
  * (at least one centavo), a full payment, or is paid in full: a settled bill takes no more
  * payments, so it must not leave the lead stuck behind a gate.
  * Written with explicit table names: drizzle drops them in single-table selects, which made `id` ambiguous.
  */
 const dealPaidAs = (classification: string, due: SQL) => sql<boolean>`exists (
-  select 1 from "bills" b
-  where b."deal_id" = "deals"."id" and (
-    exists (
-      select 1 from "payments" p
-      where p."bill_id" = b."id" and p."deleted_at" is null
-        and p."classification" = 'full_payment'
-    )
-    or (
-      select coalesce(sum(p."amount"), 0) from "payments" p
-      where p."bill_id" = b."id" and p."deleted_at" is null
-        and p."classification" = ${classification}
-    ) >= greatest(${due}, 0.01)
-    or (
-      select coalesce(sum(p."amount"), 0) from "payments" p
-      where p."bill_id" = b."id" and p."deleted_at" is null
-    ) >= b."unit_price" - b."reservation_discount" + b."miscellaneous_fee"
+  select 1 from "bills"
+  where "bills"."deal_id" = "deals"."id" and (
+    ${billPaid("full_payment")} > 0
+    or ${billPaid(classification)} >= greatest(${due}, 0.01)
+    or ${billPaid()} >= ${billTotal}
   )
 )`;
 

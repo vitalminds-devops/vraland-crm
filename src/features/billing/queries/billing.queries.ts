@@ -31,6 +31,8 @@ import { isContactsFirstDeal } from "@/features/deals/lib/first-deal";
 import { billApplicantSchema } from "../schemas/bill-applicant.schema";
 import { suggestedParkingPrices, suggestedUnitPrices } from "../lib/suggested-prices";
 import {
+  billPaid,
+  billTotal,
   dealMonthlyAmortization,
   dealReservationFee,
   parkingReservationFee,
@@ -41,9 +43,8 @@ export type BillStatus = (typeof billStatuses)[number];
 
 const brokerUser = alias(users, "broker_user");
 
-const total = sql<string>`(${bills.unitPrice} - ${bills.reservationDiscount} + ${bills.miscellaneousFee})`;
-const paid = sql<string>`coalesce((select sum(${payments.amount}) from ${payments}
-  where ${payments.billId} = ${bills.id} and ${payments.deletedAt} is null), 0)`;
+const total = billTotal;
+const paid = billPaid();
 
 const statusCondition: Record<BillStatus, SQL> = {
   unbilled: sql`${bills.id} is null`,
@@ -650,8 +651,7 @@ export async function listOpenBills() {
       // What Record payment fills in: the fees quoted, and reservation payments made so far.
       reservationFee: dealReservationFee,
       monthlyAmortization: dealMonthlyAmortization,
-      reservationPaid: sql<string>`coalesce((select sum(p.amount) from payments p
-        where p.bill_id = ${bills.id} and p.deleted_at is null and p.classification = 'reservation'), 0)`,
+      reservationPaid: billPaid("reservation"),
     })
     .from(bills)
     .innerJoin(deals, eq(bills.dealId, deals.id))

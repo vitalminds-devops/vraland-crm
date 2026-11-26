@@ -5,7 +5,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-11-26
+
 ### Fixed
+- Billing totals and payment checks use the same bill-scoped payment sums, keeping payment IDs from being mistaken for bill IDs.
+- Missing reservation and first monthly payments are identified by a code instead of message wording, keeping pipeline hints and payment-recording guidance consistent when messages change.
 - Property links on the calendar, viewings, tasks and document pages opened a missing page; they now open the property.
 - The properties CSV export shows unit status as Reserved and Sold out, as the app does, instead of "Deposit paid" and "Sold".
 - The opportunities CSV export and the opportunity list show status and type as words (Open, Won, Sale) instead of raw values.
