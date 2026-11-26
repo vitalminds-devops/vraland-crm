@@ -1,13 +1,14 @@
 "use server";
 
 import { createHash, randomUUID } from "node:crypto";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import {
   auditLogs,
   billItems,
   bills,
+  dealStageChangeRequests,
   deals,
   documents,
   payments,
@@ -31,6 +32,7 @@ import {
   dealMonthlyAmortization,
   dealReservationFee,
   dealReservationPaid,
+  dealReservationReceived,
 } from "../lib/deal-payment";
 import { stagesAfterPayment } from "../lib/payment-stage";
 import { changeDealStage } from "@/features/deals/actions/deal.actions";
@@ -172,10 +174,16 @@ export async function saveBill(input: unknown): Promise<ActionResult<{ id: strin
             })
             .returning({ id: bills.id });
       await tx.delete(billItems).where(eq(billItems.billId, saved.id));
+      // A line keeps its unit or slot only when it is still this opportunity's.
+      const dealUnits = new Set([deal.unitId, ...(deal.unitIds ?? [])]);
+      const dealSlots = new Set(deal.parkingSlotIds ?? []);
       await tx.insert(billItems).values(
         value.items.map((item, position) => ({
           billId: saved.id,
           position,
+          unitId: item.unitId && dealUnits.has(item.unitId) ? item.unitId : null,
+          parkingSlotId:
+            item.parkingSlotId && dealSlots.has(item.parkingSlotId) ? item.parkingSlotId : null,
           unitLabel: item.unitLabel,
           unitPrice: money(item.unitPrice),
           miscellaneousFee: money(item.miscellaneousFee),
@@ -497,17 +505,22 @@ export async function removePayment(input: unknown): Promise<ActionResult<{ id: 
         .where(and(eq(bills.id, target.billId), eq(bills.organizationId, context.organizationId)))
         .for("update");
       if (!bill) return null;
-      // The stage the deal sits in was reached on its payments; voiding the one it stands on would strand it.
-      const gate = deal.isWonStage
-        ? dealFirstMonthPaid
+      // The stage the deal sits in was reached on its payments; voiding one it stands on would strand
+      // it. Won stands on both gates, and a reserved or won deal always keeps some reservation money.
+      const gates = deal.isWonStage
+        ? [dealFirstMonthPaid, dealReservationPaid, dealReservationReceived]
         : deal.slug === "reservation"
-          ? dealReservationPaid
-          : null;
-      const gatePaid = async () =>
-        gate
-          ? (await tx.select({ paid: gate }).from(deals).where(eq(deals.id, deal.id)))[0]?.paid
-          : undefined;
-      const gateWasMet = await gatePaid();
+          ? [dealReservationPaid, dealReservationReceived]
+          : [];
+      const gatesMet = async () =>
+        Promise.all(
+          gates.map(
+            async (gate) =>
+              (await tx.select({ met: gate }).from(deals).where(eq(deals.id, deal.id)))[0]?.met ===
+              true,
+          ),
+        );
+      const metBefore = await gatesMet();
       const [removed] = await tx
         .update(payments)
         .set({ deletedAt: new Date() })
@@ -524,8 +537,9 @@ export async function removePayment(input: unknown): Promise<ActionResult<{ id: 
           amount: payments.amount,
         });
       if (!removed) return null;
-      // Only this void can be refused for it: a gate already unmet (e.g. an older deal) never blocks one.
-      if (gateWasMet && (await gatePaid()) === false) throw new StageNeedsPayment();
+      // Only what this void breaks is refused: a gate already unmet (e.g. an older deal) never blocks.
+      const metAfter = await gatesMet();
+      if (metBefore.some((met, index) => met && !metAfter[index])) throw new StageNeedsPayment();
       await tx.insert(auditLogs).values({
         organizationId: context.organizationId,
         actorUserId: context.userId,
@@ -534,6 +548,40 @@ export async function removePayment(input: unknown): Promise<ActionResult<{ id: 
         entityId: removed.id,
         oldValues: { billId: removed.billId, amount: removed.amount },
       });
+      // A move waiting for approval on the payment just removed can no longer go through.
+      const met = async (gate: typeof dealFirstMonthPaid) =>
+        (await tx.select({ met: gate }).from(deals).where(eq(deals.id, deal.id)))[0]?.met === true;
+      const waiting = await tx
+        .select({
+          id: dealStageChangeRequests.id,
+          toWon: pipelineStages.isWonStage,
+          toSlug: pipelineStages.slug,
+        })
+        .from(dealStageChangeRequests)
+        .innerJoin(pipelineStages, eq(pipelineStages.id, dealStageChangeRequests.toStageId))
+        .where(
+          and(
+            eq(dealStageChangeRequests.dealId, deal.id),
+            eq(dealStageChangeRequests.status, "pending"),
+          ),
+        );
+      const stale: string[] = [];
+      for (const request of waiting)
+        if (
+          (request.toWon && !(await met(dealFirstMonthPaid))) ||
+          (request.toSlug === "reservation" && !(await met(dealReservationPaid)))
+        )
+          stale.push(request.id);
+      if (stale.length)
+        await tx
+          .update(dealStageChangeRequests)
+          .set({
+            status: "cancelled",
+            decidedBy: context.userId,
+            decidedAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(inArray(dealStageChangeRequests.id, stale));
       const propertyIds = await syncBillingInventory(tx, context, deal);
       return { id: removed.id, dealId: deal.id, propertyIds };
     });

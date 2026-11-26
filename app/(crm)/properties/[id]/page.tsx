@@ -19,6 +19,7 @@ import { PropertyActionsMenu } from "@/features/properties/components/property-a
 import { NO_FLOOR } from "@/features/properties/lib/parking-codes";
 import { listParkingSlots } from "@/features/properties/queries/parking.queries";
 import { getPropertyInventory } from "@/features/properties/queries/property-floor-unit.queries";
+import { getBilledUnitPrices } from "@/features/properties/queries/billed-prices.queries";
 import { getProperty } from "@/features/properties/queries/property.queries";
 import { accessPageMode } from "@/features/properties/lib/access-page-mode";
 import { propertyPageActions } from "@/features/properties/lib/property-page-actions";
@@ -35,11 +36,12 @@ export default async function PropertyDetailPage({
   const context = await requirePagePermission("properties.view");
   const { id } = await params;
   const presenting = (await searchParams).presentation === "true";
-  const [data, inventory, parking, canWrite] = await Promise.all([
+  const [data, inventory, parking, canWrite, billedPrices] = await Promise.all([
     getProperty(id),
     getPropertyInventory(context, id),
     listParkingSlots(context, id),
     canWriteProperty(context, id),
+    getBilledUnitPrices(context, id),
   ]);
   if (!data || !inventory.property) notFound();
   const p = data.record;
@@ -180,6 +182,7 @@ export default async function PropertyDetailPage({
               overlayActions={floorActions}
               propertyId={id}
               canManagePrices={!presenting && actions.canManagePrices}
+              billedPrices={presenting ? {} : billedPrices}
               canManageUnits={!presenting && actions.canManageUnits}
               canManageUnitPictures={!presenting && actions.canManageUnitPictures}
               floors={inventory.floors}

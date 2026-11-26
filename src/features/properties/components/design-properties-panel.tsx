@@ -21,6 +21,7 @@ export function DesignPropertiesPanel({
   unitTypes,
   parkingTypes,
   size,
+  minSize,
   onResizeFloor,
   onChange,
   onDuplicate,
@@ -33,6 +34,8 @@ export function DesignPropertiesPanel({
   unitTypes: UnitTypeFacts[];
   parkingTypes: ParkingType[];
   size: { width: number; depth: number };
+  /** The floor can't be made smaller than what's drawn on it. */
+  minSize: { width: number; depth: number };
   onResizeFloor: (key: "width" | "depth", metres: number) => void;
   onChange: (piece: Piece) => void;
   onDuplicate: () => void;
@@ -51,7 +54,7 @@ export function DesignPropertiesPanel({
               label="W"
               name="Floor width, in metres"
               value={size.width}
-              min={4}
+              min={minSize.width}
               max={200}
               onCommit={(metres) => onResizeFloor("width", metres)}
             />
@@ -59,7 +62,7 @@ export function DesignPropertiesPanel({
               label="H"
               name="Floor depth, in metres"
               value={size.depth}
-              min={4}
+              min={minSize.depth}
               max={200}
               onCommit={(metres) => onResizeFloor("depth", metres)}
             />

@@ -97,7 +97,7 @@ export function stageMoveBlockedMessage(
     return "The current stage is no longer available. Refresh the pipeline and try again.";
   if (fromStage.id === toStage.id) return "This opportunity is already in that stage.";
   if (reopensLostPastGate(fromStage, toStage))
-    return "Reopen this lost opportunity in Leads or Opportunity first.";
+    return "Reopen this opportunity in Leads or Opportunity first.";
 
   if (toStage.position < fromStage.position) {
     if (!canMoveBack) return "You cannot move opportunities back. Ask your administrator for help.";

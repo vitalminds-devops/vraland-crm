@@ -1,6 +1,7 @@
 ﻿"use server";
 
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, ne, sql } from "drizzle-orm";
+import type { AnyPgColumn } from "drizzle-orm/pg-core";
 import { nextRecordCode } from "@/lib/record-codes";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
@@ -24,6 +25,8 @@ import {
   developments,
   lostReasons,
   pipelineStages,
+  propertyParkingSlots,
+  units,
   users,
 } from "@/db/schema";
 import { canAccessResource, requirePermission } from "@/lib/permissions/authorization";
@@ -294,16 +297,19 @@ export async function saveDealForContact(
           expectedCommission: deals.expectedCommission,
           expectedCloseDate: deals.expectedCloseDate,
           status: deals.status,
+          earned: sql<boolean>`exists (select 1 from "deal_commissions" dc where dc."deal_id" = ${existing.id})`,
         })
         .from(deals)
         .where(and(eq(deals.id, existing.id), eq(deals.organizationId, context.organizationId)))
         .limit(1)
         .for("update");
       if (!before) throw new Error("Opportunity not found");
-      // A won sale's amount and commission were settled when it was won; the contact form can't change them.
+      // A won sale's amount and commission were settled when it was won; the contact form can't
+      // change them. The commission stays settled while a won deal is reopened.
       const won = before.status === "won";
       const amount = won ? before.amount : money(v.amount);
-      const expectedCommission = won ? before.expectedCommission : money(v.expectedCommission);
+      const expectedCommission =
+        won || before.earned ? before.expectedCommission : money(v.expectedCommission);
       await tx
         .update(deals)
         .set({
@@ -388,12 +394,10 @@ class RequestAlreadyDecided extends Error {
   }
 }
 
-export async function changeDealStage(
-  input: unknown,
-  options: { allowTerminalOutcome?: boolean } = {},
-): Promise<DealActionResult> {
+/** Any move but Lost, which goes through `markDealLost` so a loss reason is always recorded. */
+export async function changeDealStage(input: unknown): Promise<DealActionResult> {
   const context = await requirePermission("deals.change_stage");
-  return applyStageChange(context, input, options);
+  return applyStageChange(context, input);
 }
 
 async function applyStageChange(
@@ -513,18 +517,78 @@ async function applyStageChange(
         };
       if ((fromStage.slug === "leads" || fromStage.isLostStage) && toStage.slug === "opportunity") {
         const missing = await missingOpportunityDetails(tx, dealId);
-        if (missing) return { kind: "invalid" as const, message: missing };
+        // Lost while still a lead, it never had its Opportunity details: go through Leads.
+        if (missing)
+          return {
+            kind: "invalid" as const,
+            message: fromStage.isLostStage
+              ? "This was lost while still a lead. Reopen it to Leads, then use Move to Opportunity."
+              : missing,
+          };
+        // Units and parking stay open to others until Reservation, but one another opportunity
+        // has reserved since (say, while this move waited for approval) can't be this one's too.
+        const pickedUnits = before.unitIds.length
+          ? before.unitIds
+          : before.unitId
+            ? [before.unitId]
+            : [];
+        const takenElsewhere = (reservedDealId: AnyPgColumn) =>
+          and(isNotNull(reservedDealId), ne(reservedDealId, dealId));
+        const taken = [
+          ...(pickedUnits.length
+            ? await tx
+                .select({ code: units.code })
+                .from(units)
+                .where(and(inArray(units.id, pickedUnits), takenElsewhere(units.reservedDealId)))
+            : []
+          ).map((unit) => `Unit ${unit.code}`),
+          ...(before.parkingSlotIds.length
+            ? await tx
+                .select({ code: propertyParkingSlots.code })
+                .from(propertyParkingSlots)
+                .where(
+                  and(
+                    inArray(propertyParkingSlots.id, before.parkingSlotIds),
+                    takenElsewhere(propertyParkingSlots.reservedDealId),
+                  ),
+                )
+            : []
+          ).map((slot) => `Parking ${slot.code}`),
+        ];
+        if (taken.length)
+          return {
+            kind: "invalid" as const,
+            message: `${taken.join(", ")} ${taken.length === 1 ? "is" : "are"} already reserved by another opportunity. ${
+              fromStage.isLostStage
+                ? "Reopen it to Leads and pick again."
+                : "Pick again with Move to Opportunity."
+            }`,
+          };
       }
-      // shortcut: no refund record, so a sold deal stays sold; add refunds before allowing this.
+      // Back in Leads an opportunity lets go of its units, so it can't while money is recorded on
+      // them: the units would stay held by an opportunity that no longer lists them.
       if (
-        (toStage.isLostStage || toStage.isCancelledStage) &&
-        isFullyPaid(await readDealPayments(tx, dealId))
+        toStage.slug === "leads" &&
+        fromStage.slug !== "leads" &&
+        (await readDealPayments(tx, dealId)).paid > 0
       )
         return {
           kind: "invalid" as const,
           message:
-            "This opportunity is fully paid. To close it, move it back to Opportunity, remove its payments in Billing, then close it.",
+            "This opportunity has payments. Remove its payments in Billing before moving it back to Leads.",
         };
+      // shortcut: no refund record. Closing would put paid-for units back on sale while the money
+      // is still recorded, so any payment has to be removed first; add refunds before allowing this.
+      if (toStage.isLostStage || toStage.isCancelledStage) {
+        const payments = await readDealPayments(tx, dealId);
+        if (payments.paid > 0)
+          return {
+            kind: "invalid" as const,
+            message: isFullyPaid(payments)
+              ? "This opportunity is fully paid. To close it, move it back to Opportunity, remove its payments in Billing, then close it."
+              : "This opportunity has payments. Remove its payments in Billing before closing it.",
+          };
+      }
 
       if (
         requiresReason({
@@ -616,6 +680,15 @@ async function applyStageChange(
 
       const status = dealStatusForStage(stage);
       const actualCloseDate = closeDateFor(status, before, manilaToday());
+      // Back in Leads the units and parking go back on sale, so the opportunity lets go of them and
+      // of the fees quoted for them; Move to Opportunity then starts from a clean pick.
+      const heldUnitIds = before.unitIds.length
+        ? before.unitIds
+        : before.unitId
+          ? [before.unitId]
+          : [];
+      const releasing =
+        stage.slug === "leads" && (heldUnitIds.length > 0 || before.parkingSlotIds.length > 0);
       const inventoryProperties = await syncDealInventory(tx, {
         organizationId: context.organizationId,
         actorUserId: context.userId,
@@ -637,10 +710,47 @@ async function applyStageChange(
           probability: stage.defaultProbability,
           actualCloseDate,
           cancellationReason: stage.isCancelledStage ? note || null : null,
+          // Reopened, it is no longer lost: its old loss reason would only mislead.
+          ...(status !== "lost" && { lostReasonId: null, lostNotes: null }),
+          ...(releasing && {
+            unitId: null,
+            unitIds: [],
+            parkingSlots: 0,
+            parkingSlotIds: [],
+            parkingAmount: null,
+            // The old price would keep showing on the lead's card and in pipeline totals.
+            amount: null,
+            reservationFee: null,
+            parkingReservationFee: null,
+            monthlyAmortization: null,
+          }),
           updatedBy: context.userId,
           updatedAt: new Date(),
         })
         .where(eq(deals.id, dealId));
+      if (releasing) {
+        const released = heldUnitIds.length
+          ? await tx.select({ code: units.code }).from(units).where(inArray(units.id, heldUnitIds))
+          : [];
+        const names = [
+          ...released.map((unit) => `Unit ${unit.code}`),
+          ...(before.parkingSlotIds.length
+            ? [
+                `${before.parkingSlotIds.length} parking ${
+                  before.parkingSlotIds.length === 1 ? "slot" : "slots"
+                }`,
+              ]
+            : []),
+        ];
+        await tx.insert(activities).values({
+          organizationId: context.organizationId,
+          actorUserId: context.userId,
+          activityType: "deal.units_released",
+          summary: `${before.title} let go of ${names.join(", ")} on moving back to Leads.`,
+          dealId,
+          metadata: { unitIds: heldUnitIds, parkingSlotIds: before.parkingSlotIds },
+        });
+      }
       await tx.insert(dealStageHistory).values({
         dealId,
         fromStageId: before.stageId,
@@ -694,15 +804,27 @@ async function applyStageChange(
           },
         });
       }
-      if (status === "won" && before.status !== "won")
-        await recordDealCommissions(tx, {
-          organizationId: context.organizationId,
-          dealId,
-          amount: before.amount,
-          sellerUserId: before.primaryAgentUserId,
-          brokerUserId: before.brokerUserId,
-        });
-      else if (before.status === "won" && status !== "won")
+      // The commission is set by the first win and kept through a reopen, so a price changed in
+      // Billing meanwhile never changes it; only a deal that ends lost or cancelled drops it.
+      if (status === "won" && before.status !== "won") {
+        const [earned] = await tx
+          .select({ total: sql<string | null>`sum(${dealCommissions.amount})` })
+          .from(dealCommissions)
+          .where(eq(dealCommissions.dealId, dealId));
+        if (earned?.total === null || earned?.total === undefined)
+          await recordDealCommissions(tx, {
+            organizationId: context.organizationId,
+            dealId,
+            amount: before.amount,
+            sellerUserId: before.primaryAgentUserId,
+            brokerUserId: before.brokerUserId,
+          });
+        else
+          await tx
+            .update(deals)
+            .set({ expectedCommission: earned.total })
+            .where(eq(deals.id, dealId));
+      } else if (status === "lost" || status === "cancelled")
         await tx.delete(dealCommissions).where(eq(dealCommissions.dealId, dealId));
       await options.afterMove?.(tx);
       // A request left open by this move is out of date; close it so the card stops showing it.

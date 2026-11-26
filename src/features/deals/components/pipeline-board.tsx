@@ -60,6 +60,7 @@ import { Button } from "@/components/ui/button";
 import { InitialsAvatar } from "@/components/ui/initials-avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { useRouter } from "next/navigation";
+import { LostDialog, type LostReason } from "./lost-dialog";
 import { OpportunityDialog } from "./opportunity-dialog";
 import { isCloseDateOverdue } from "../lib/close-date";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -117,7 +118,6 @@ type ReasonRequest = {
   dealTitle: string;
   fromStageName: string | null;
   stageName: string;
-  allowTerminalOutcome: boolean;
   expectPending: boolean;
   prompt: ReasonPrompt;
 };
@@ -141,9 +141,12 @@ export function PipelineBoard({
   canMoveBack,
   userRole,
   resumeOpportunityId,
+  lostReasons = [],
 }: {
   stages: Stage[];
   deals: Deal[];
+  /** Picked when a card moves to Lost. */
+  lostReasons?: LostReason[];
   canChangeStage: boolean;
   canApproveStageChange?: boolean;
   canManageBilling?: boolean;
@@ -157,6 +160,9 @@ export function PipelineBoard({
   const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [reasonRequest, setReasonRequest] = useState<ReasonRequest | null>(null);
+  const [lostRequest, setLostRequest] = useState<{ dealId: string; dealTitle: string } | null>(
+    null,
+  );
   const [opportunityRequest, setOpportunityRequest] = useState<{
     dealId: string;
     stageId: string;
@@ -218,7 +224,7 @@ export function PipelineBoard({
     dealId: string,
     stageId: string,
     note: string,
-    options: { allowTerminalOutcome?: boolean; expectPending?: boolean } = {},
+    options: { expectPending?: boolean } = {},
   ) {
     const before = items.find((d) => d.id === dealId);
     const toStage = sortedStages.find((s) => s.id === stageId);
@@ -235,7 +241,7 @@ export function PipelineBoard({
     }
 
     startTransition(async () => {
-      const result = await changeDealStage({ dealId, stageId, note }, options);
+      const result = await changeDealStage({ dealId, stageId, note });
       if (!result.success) {
         if (!options.expectPending) rollback();
         notify(`Couldn't move to ${toStage.name}`, "error", {
@@ -284,13 +290,18 @@ export function PipelineBoard({
     }
 
     const fromStage = sortedStages.find((s) => s.id === before.stageId);
-    if ((fromStage?.slug === "leads" || fromStage?.isLostStage) && toStage.slug === "opportunity") {
+    // Only a lead needs the Move to Opportunity form; a lost opportunity is reopened with a reason.
+    if (fromStage?.slug === "leads" && toStage.slug === "opportunity") {
       setOpportunityRequest({ dealId, stageId, dealTitle: owner(before) });
+      return;
+    }
+    // Lost always records a loss reason.
+    if (toStage.isLostStage) {
+      setLostRequest({ dealId, dealTitle: dealLabel(before) });
       return;
     }
     const canApprove = Boolean(canApproveStageChange);
     const promptFor = reasonPromptFor(fromStage, toStage, canApprove);
-    const allowTerminalOutcome = toStage.isLostStage;
     const expectPending = !canApprove && toStage.requiresApproval;
 
     if (promptFor) {
@@ -300,17 +311,13 @@ export function PipelineBoard({
         dealTitle: dealLabel(before),
         fromStageName: fromStage?.name ?? null,
         stageName: toStage.name,
-        allowTerminalOutcome,
         expectPending,
         prompt: promptFor,
       });
       return;
     }
 
-    handleStageChange(dealId, stageId, "", {
-      allowTerminalOutcome,
-      expectPending,
-    });
+    handleStageChange(dealId, stageId, "", { expectPending });
   }
 
   // The dialog confirmed a reason: now send the move that was waiting on it.
@@ -319,7 +326,6 @@ export function PipelineBoard({
     if (!request) return;
     setReasonRequest(null);
     handleStageChange(request.dealId, request.stageId, reason, {
-      allowTerminalOutcome: request.allowTerminalOutcome,
       expectPending: request.expectPending,
     });
   }
@@ -377,6 +383,29 @@ export function PipelineBoard({
             request={reasonRequest}
             onCancel={() => setReasonRequest(null)}
             onConfirm={submitReason}
+          />
+        )}
+        {lostRequest && (
+          <LostDialog
+            dealId={lostRequest.dealId}
+            dealTitle={lostRequest.dealTitle}
+            reasons={lostReasons}
+            onClose={() => setLostRequest(null)}
+            onDone={(result) => {
+              const { dealId } = lostRequest;
+              setLostRequest(null);
+              const lost = sortedStages.find((stage) => stage.isLostStage);
+              if (result.success && result.data.approvalRequested)
+                notify("Move sent for approval", "success", {
+                  description: "A manager must approve marking this opportunity lost.",
+                });
+              else if (lost) {
+                setItems((current) =>
+                  current.map((d) => (d.id === dealId ? { ...d, stageId: lost.id } : d)),
+                );
+                notify("Marked lost", "success");
+              }
+            }}
           />
         )}
         {opportunityRequest && (

@@ -148,6 +148,9 @@ export async function deleteDeal(input: unknown): Promise<ActionResult<{ id: str
     revalidatePath("/pipeline");
     revalidatePath("/pipeline/list");
     revalidatePath(`/deals/${dealId}`);
+    // Its stage counts and any bill leave the dashboard and Billing too.
+    revalidatePath("/dashboard");
+    revalidatePath("/billing");
     if (outcome.contactId) revalidatePath(`/contacts/${outcome.contactId}`);
     return success({ id: dealId });
   } catch (error) {

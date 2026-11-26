@@ -110,14 +110,16 @@ export type TransitionCheck =
   | { allowed: false; reason: "lost-terminal" | "lost-reopen" };
 
 /**
- * Lost sits after Won, so leaving it counts as a backward move and skips every payment gate.
- * A lost deal therefore reopens only to the lanes before the first gate.
+ * Lost and Cancelled sit after Won, so leaving them counts as a backward move and skips every
+ * payment gate. A lost or cancelled deal therefore reopens only to the lanes before the first gate.
  */
 export function reopensLostPastGate(
-  from: Pick<StagePosition, "isLostStage">,
+  from: Pick<StagePosition, "isLostStage" | "isCancelledStage">,
   to: Pick<StagePosition, "slug">,
 ): boolean {
-  return from.isLostStage && to.slug !== "leads" && to.slug !== "opportunity";
+  return (
+    (from.isLostStage || from.isCancelledStage) && to.slug !== "leads" && to.slug !== "opportunity"
+  );
 }
 
 export function checkStageTransition(
@@ -256,7 +258,7 @@ export function transitionMessage(
 ): string {
   switch (reason) {
     case "lost-reopen":
-      return "Reopen a lost opportunity to Leads or Opportunity.";
+      return "Reopen a lost or cancelled opportunity to Leads or Opportunity.";
     case "unknown-stage":
       return "That pipeline stage is no longer available.";
     case "same-stage":

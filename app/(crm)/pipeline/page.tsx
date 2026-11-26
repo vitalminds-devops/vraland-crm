@@ -26,6 +26,7 @@ export default async function PipelinePage({
             canManageBilling={data.canManageBilling}
             canMoveBack={data.canMoveBack}
             userRole={data.userRole}
+            lostReasons={data.lostReasons}
           />
         ) : (
           <div className="grid min-h-64 place-items-center rounded-xl border bg-card text-sm text-muted-foreground">

@@ -23,6 +23,7 @@ import {
   userRoles,
   users,
 } from "../schema";
+import { defaultLostReasons } from "./lost-reasons";
 import { floorLevelSequence } from "../../features/properties/lib/floor-levels";
 import { floorLabel, unitCode } from "../../features/properties/lib/unit-codes";
 import { roleLabels, rolePermissionDefaults, type RoleSlug } from "../../lib/permissions/catalog";
@@ -246,57 +247,7 @@ await db.transaction(async (tx) => {
       });
   }
   await seedPipelineStages(tx, organization.id);
-  const lostReasonSeeds = [
-    {
-      name: "Price too high",
-      description: "The client considered the property or offer outside their budget.",
-    },
-    {
-      name: "Financing declined",
-      description: "The buyer or tenant could not secure the required financing.",
-    },
-    {
-      name: "Chose another property",
-      description: "The client selected a competing property.",
-    },
-    {
-      name: "Chose another agent",
-      description: "The client continued the transaction with another agent or brokerage.",
-    },
-    {
-      name: "Property unavailable",
-      description: "The property was sold, rented, withdrawn, or otherwise became unavailable.",
-    },
-    {
-      name: "Terms not accepted",
-      description: "The parties could not agree on price, contingencies, or other terms.",
-    },
-    {
-      name: "Client unresponsive",
-      description: "The client stopped responding after reasonable follow-up attempts.",
-    },
-    {
-      name: "Timeline changed",
-      description: "The client postponed or cancelled their real-estate plans.",
-    },
-    {
-      name: "Location mismatch",
-      description: "The available property location did not meet the client's requirements.",
-    },
-    {
-      name: "Property condition",
-      description: "The property condition did not meet the client's expectations.",
-    },
-    {
-      name: "Duplicate or invalid lead",
-      description: "The opportunity originated from a duplicate or invalid lead.",
-    },
-    {
-      name: "Other",
-      description:
-        "A reason not represented by the standard options; explain it in the loss notes.",
-    },
-  ];
+  const lostReasonSeeds = defaultLostReasons;
   await tx
     .insert(lostReasons)
     .values(

@@ -2,7 +2,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { revalidatePath } from "next/cache";
 import { InventoryUnavailable } from "@/features/deals/lib/deal-inventory";
 import { syncBillingInventory } from "../lib/billing-inventory";
-import { bills, documents, payments } from "@/db/schema";
+import { billItems, bills, dealStageChangeRequests, documents, payments } from "@/db/schema";
 import { changeDealStage } from "@/features/deals/actions/deal.actions";
 import {
   NO_FIRST_MONTH_MESSAGE,
@@ -55,6 +55,9 @@ vi.mock("../lib/billing-inventory", () => ({
       isCancelledStage: false,
       isWonStage: mock.won,
       slug: mock.slug,
+      unitId: null,
+      unitIds: ["0b6f1d4e-2c41-4a8e-9b11-5d3e2f7a9c10"],
+      parkingSlotIds: [],
     };
   },
   inventoryHeldElsewhere: async () => mock.held,
@@ -279,8 +282,11 @@ it("refuses to void the payment a Reservation deal stands on", async () => {
   mock.reads = [
     [{ billId: "bill", dealId: input.dealId }],
     [{ id: "bill" }],
-    [{ paid: true }],
-    [{ paid: false }],
+    // Before: fee paid, money held. After: fee no longer paid.
+    [{ met: true }],
+    [{ met: true }],
+    [{ met: false }],
+    [{ met: true }],
   ];
   expect(await removePayment({ id: input.dealId })).toMatchObject({
     success: false,
@@ -296,10 +302,46 @@ it("voids a payment when the stage's gate was already unmet", async () => {
   mock.reads = [
     [{ billId: "bill", dealId: input.dealId }],
     [{ id: "bill" }],
-    [{ paid: false }],
-    [{ paid: false }],
+    // An older Won deal that never met its gates: nothing this void breaks.
+    [{ met: false }],
+    [{ met: false }],
+    [{ met: false }],
+    [{ met: false }],
+    [{ met: false }],
+    [{ met: false }],
   ];
   expect((await removePayment({ id: input.dealId })).success).toBe(true);
+});
+
+it("refuses to void the reservation payment of a Won deal", async () => {
+  mock.won = true;
+  mock.reads = [
+    [{ billId: "bill", dealId: input.dealId }],
+    [{ id: "bill" }],
+    // Before: first month, reservation fee and money all there. After: the reservation is gone.
+    [{ met: true }],
+    [{ met: true }],
+    [{ met: true }],
+    [{ met: true }],
+    [{ met: false }],
+    [{ met: false }],
+  ];
+  expect((await removePayment({ id: input.dealId })).success).toBe(false);
+  expect(mock.writes).toEqual([]);
+});
+
+it("refuses to void a Reservation deal's last reservation money, even below the fee", async () => {
+  mock.slug = "reservation";
+  mock.reads = [
+    [{ billId: "bill", dealId: input.dealId }],
+    [{ id: "bill" }],
+    // The fee rose since, so the gate was already unmet; the money is still the last held.
+    [{ met: false }],
+    [{ met: true }],
+    [{ met: false }],
+    [{ met: false }],
+  ];
+  expect((await removePayment({ id: input.dealId })).success).toBe(false);
 });
 
 const stages = [
@@ -567,4 +609,42 @@ it("keeps the saved payment and slip if refreshing the page fails after commit",
   });
   expect(mock.writes.some((write) => write.table === payments)).toBe(true);
   expect(mock.remove).not.toHaveBeenCalled();
+});
+
+it("cancels a move to Won waiting on the monthly payment just removed", async () => {
+  mock.slug = "reservation";
+  mock.reads = [
+    [{ billId: "bill", dealId: input.dealId }],
+    [{ id: "bill" }],
+    // Reservation gates hold before and after: this was a monthly payment.
+    [{ met: true }],
+    [{ met: true }],
+    [{ met: true }],
+    [{ met: true }],
+    // A move to Won waits for approval, and the first month is no longer paid.
+    [{ id: "request", toWon: true, toSlug: "closed-won" }],
+    [{ met: false }],
+  ];
+  expect((await removePayment({ id: input.dealId })).success).toBe(true);
+  expect(mock.writes).toContainEqual({
+    table: dealStageChangeRequests,
+    values: expect.objectContaining({ status: "cancelled" }),
+  });
+});
+
+it("keeps a line's unit only when the unit is this opportunity's", async () => {
+  const own = "0b6f1d4e-2c41-4a8e-9b11-5d3e2f7a9c10";
+  const other = "7d2a9e51-8c3b-4f60-a1d2-3e4b5c6d7e8f";
+  const result = await saveBill({
+    ...input,
+    items: [
+      { unitId: own, unitLabel: "1A", unitPrice: 1000, miscellaneousFee: 0 },
+      { unitId: other, unitLabel: "9Z", unitPrice: 1000, miscellaneousFee: 0 },
+    ],
+  });
+  expect(result.success).toBe(true);
+  expect(mock.writes.find((write) => write.table === billItems)?.values).toMatchObject([
+    { unitId: own, parkingSlotId: null },
+    { unitId: null, parkingSlotId: null },
+  ]);
 });

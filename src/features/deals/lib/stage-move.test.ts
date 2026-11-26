@@ -100,7 +100,7 @@ it("explains backward moves and lost or closed opportunities", () => {
     "This opportunity is closed",
   );
   expect(stageMoveBlockedMessage({ stageId: "lost" }, won, all, true, "agent", true)).toBe(
-    "Reopen this lost opportunity in Leads or Opportunity first.",
+    "Reopen this opportunity in Leads or Opportunity first.",
   );
 });
 

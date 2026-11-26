@@ -105,16 +105,16 @@ export async function getDashboardData() {
     : dataScopeCondition(context, {
         organizationId: properties.organizationId,
       });
-  const dealScope = and(
-    organizationWide
-      ? undefined
-      : dataScopeCondition(context, {
-          organizationId: deals.organizationId,
-          ownerUserId: deals.primaryAgentUserId,
-          brokerUserId: deals.brokerUserId,
-        }),
-    leadNotArchived,
-  );
+  const dealAccess = organizationWide
+    ? undefined
+    : dataScopeCondition(context, {
+        organizationId: deals.organizationId,
+        ownerUserId: deals.primaryAgentUserId,
+        brokerUserId: deals.brokerUserId,
+      });
+  const dealScope = and(dealAccess, leadNotArchived);
+  // Closed outcomes count whatever became of the contact: lead expiry archives it, and archiving
+  // must not rewrite how many were won or lost in a past month.
   const taskScope = organizationWide ? undefined : eq(tasks.assignedUserId, context.userId);
   // Every contact created, whatever became of it: converting must not shrink a past month.
   const newContactCondition = and(
@@ -410,7 +410,7 @@ export async function getDashboardData() {
           gte(deals.actualCloseDate, manilaDate(monthStart)),
           lte(deals.actualCloseDate, monthEndDate),
           isNull(deals.deletedAt),
-          dealScope,
+          dealAccess,
         ),
       ),
     db
@@ -423,7 +423,7 @@ export async function getDashboardData() {
           gte(deals.actualCloseDate, manilaDate(monthStart)),
           lte(deals.actualCloseDate, monthEndDate),
           isNull(deals.deletedAt),
-          dealScope,
+          dealAccess,
         ),
       ),
     db

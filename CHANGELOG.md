@@ -5,6 +5,38 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+- A unit's Price & type dialog shows "Billed at ₱X" when an open opportunity's bill holds a different price for it (for users who can see Billing).
+
+### Changed
+- A reserved or sold unit or parking slot keeps the price on its bill: its price field in Properties is greyed out with "Price is on the bill.", and the price can only be changed in Billing.
+- A won opportunity's commission is set once, at the price it was sold for: reopening it, changing the price in Billing and winning it again keeps the same commission. It is dropped only if the opportunity ends Lost or Cancelled, and saving the contact meanwhile can't change it. While reopened, the opportunity page still lists it, marked "From the first win".
+- Marking an opportunity Lost, from the pipeline board or the opportunity page, asks for a loss reason (and optional notes), so Lost analysis groups by real reasons. Every organization without loss reasons gets a starter list (migration 0078), and new organizations start with it.
+- On Settings → Roles and a user's Permissions, a dashboard panel can only be ticked when the role can open the module it shows: without it, the panel is greyed out with "Needs View sales pipeline" (or similar), and unticking a module unticks its panels.
+
+### Fixed
+- Changing a unit type's price, or giving a reserved or sold unit another type (in unit details or on the Design page), no longer changes that unit's price; it keeps the price it was sold at.
+- Changing an opportunity's units no longer reprices a unit already on its bill after the unit is renamed or its bill line is relabelled.
+- A stale tab can no longer move a lead whose contact was archived meanwhile, or change units on an opportunity that went back to Leads; both now say what happened.
+- Moving to Opportunity (including an approved request or reopening a Lost one) refuses units or parking another opportunity has reserved since, naming them, instead of landing on a unit already held elsewhere. Going back to Leads also clears the old amount, so the lead's card and pipeline totals stop showing the released units' price.
+- Deleting an opportunity updates the dashboard and Billing right away.
+- A Cancelled opportunity reopens only to Leads or Opportunity, like a Lost one, so it can't skip the payment gates straight to Reservation or Won. Deleted opportunities no longer keep a retired Cancelled stage active.
+- Move to Opportunity checks that you're allowed to move the lead (for example, a broker who isn't its broker) before saving anything, instead of saving the details, documents and units and then refusing the move.
+- Reopening a Lost opportunity clears its loss reason and notes, so an open or Won opportunity no longer shows why it was once lost.
+- Removing a payment cancels a move to Won or Reservation that was waiting for approval on it, instead of leaving a request that can no longer be approved.
+- Won and lost counts on the dashboard (this month and the win rate) and Lost analysis include opportunities whose contact is archived, so expired leads count as lost and archiving a contact no longer rewrites past months.
+- Lead expiry skips leads with a move waiting for approval, so a later approval can't reopen an expired lead. An expired lead now shows in the opportunity's activity and is filed under the loss reason "Client unresponsive" when the organization has it.
+- Reassigning an opportunity's agent also moves it to the new agent's broker, so that broker can see and move it and earns on it. On a Won opportunity the commission shares move to the new agent and broker as they were won, instead of being recomputed at today's rates.
+- Changing an opportunity's units keeps the billed price of units and parking it already holds, even if their list price changed since; only new picks take today's price. Saving Change units without changing anything no longer re-quotes the reservation fee and amortization at today's amounts.
+- Removing a payment can no longer strand an opportunity: in Won, neither the reservation nor the first monthly payment it stands on can be removed, and a Reserved or Won opportunity always keeps some reservation money. Move it back a stage first.
+- A lead that goes back to Opportunity with different units gets its bill rebuilt for the new pick, the same as Change units, instead of keeping the old units and price.
+- Reopening a Lost opportunity to Opportunity works again: it asks for a reason like other moves back, instead of opening the Move to Opportunity form, which always refused it. A lead lost before reaching Opportunity is told to reopen to Leads first.
+- An opportunity with any payment can't be marked Lost (or Cancelled) until its payments are removed in Billing, so paid-for units are never put back on sale while the money is still recorded. This includes Won opportunities that aren't fully paid.
+- Moving an opportunity back to Leads lets go of its units, parking and quoted fees (they go back on sale), and its history says which. An opportunity with payments can't move back to Leads until they're removed in Billing, so paid-for units are never left held by an opportunity that no longer lists them. Move to Opportunity then starts from a clean pick: earlier picks that were taken since (from the opportunity, the contact's preferences or this browser's draft) are removed with a short note, instead of blocking the move.
+- Move to Opportunity no longer hides why it can't continue: the unit count says how many picks aren't on the floor shown ("5 units selected · 3 not on this floor"), the message says how many are no longer available or shared with you, and Remove them drops just those, keeping the rest.
+- The dashboard's money strip no longer leaves an empty grey block when a role sees only one or four figures; the figures fill the row.
+- A floor's or unit's size can no longer be set smaller than what's drawn on it, so a mistyped number (such as 6 on the way to 66) no longer squashes the whole design. Growing it is unchanged.
+
 ## [0.6.0] - 2026-11-25
 
 ### Added

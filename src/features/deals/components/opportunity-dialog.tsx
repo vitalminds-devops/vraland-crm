@@ -221,6 +221,10 @@ export function OpportunityDialog({
   }, [address]);
   /** Fields typed or picked by hand; an ID never overwrites them. */
   const editedFields = useRef(new Set<IdAddressField>());
+  // Picks restored from before (the opportunity, the contact's preferences or this browser's draft)
+  // may have been taken since. Until the agent changes the selection, those are dropped on sight.
+  const restoredPicks = useRef(true);
+  const [droppedPicks, setDroppedPicks] = useState(0);
   const [idHints, setIdHints] = useState(noIdAddressHints);
   const editAddress = (next: OpportunityAddress, field: IdAddressField) => {
     editedFields.current.add(field);
@@ -479,7 +483,21 @@ export function OpportunityDialog({
     let live = true;
     getOpportunityEstimate({ developmentId, buildingId, unitIds, parkingSlotIds }, dealId)
       .then((result) => {
-        if (live) setEstimate({ key: selectionKey, result });
+        if (!live) return;
+        const staleUnits = "unavailableUnitIds" in result ? (result.unavailableUnitIds ?? []) : [];
+        const staleSlots =
+          "unavailableParkingSlotIds" in result ? (result.unavailableParkingSlotIds ?? []) : [];
+        if (restoredPicks.current && staleUnits.length + staleSlots.length > 0) {
+          setDroppedPicks((count) => count + staleUnits.length + staleSlots.length);
+          if (staleUnits.length) setUnitIds(unitIds.filter((id) => !staleUnits.includes(id)));
+          if (staleSlots.length)
+            setParkingSelection({
+              buildingId,
+              ids: parkingSlotIds.filter((id) => !staleSlots.includes(id)),
+            });
+          return;
+        }
+        setEstimate({ key: selectionKey, result });
       })
       .catch(() => {
         if (live)
@@ -952,7 +970,10 @@ export function OpportunityDialog({
                         }
                         unitIds={unitIds}
                         onBuildingChange={changeBuilding}
-                        onUnitsChange={setUnitIds}
+                        onUnitsChange={(ids) => {
+                          restoredPicks.current = false;
+                          setUnitIds(ids);
+                        }}
                         selectClassName={cn(fieldClass, "pr-9")}
                         disabled={pending}
                         floorExtras={(floorId) =>
@@ -964,7 +985,10 @@ export function OpportunityDialog({
                               floorId={floorId}
                               selectedIds={parkingSlotIds}
                               dealId={dealId}
-                              onChange={(ids) => setParkingSelection({ buildingId, ids })}
+                              onChange={(ids) => {
+                                restoredPicks.current = false;
+                                setParkingSelection({ buildingId, ids });
+                              }}
                               disabled={pending}
                             />
                           )
@@ -1089,11 +1113,37 @@ export function OpportunityDialog({
                           currentEstimate ? "text-destructive" : "text-muted-foreground",
                         )}
                       >
-                        {currentEstimate && !currentEstimate.success
-                          ? currentEstimate.message
-                          : buildingId && unitIds.length
-                            ? "Calculating…"
-                            : "Select a property and unit to see the total."}
+                        {currentEstimate && !currentEstimate.success ? (
+                          <>
+                            {currentEstimate.message}{" "}
+                            {"unavailableUnitIds" in currentEstimate &&
+                              currentEstimate.unavailableUnitIds && (
+                                <button
+                                  type="button"
+                                  className="font-medium underline underline-offset-2"
+                                  onClick={() =>
+                                    setUnitIds(
+                                      unitIds.filter(
+                                        (id) => !currentEstimate.unavailableUnitIds?.includes(id),
+                                      ),
+                                    )
+                                  }
+                                >
+                                  Remove them
+                                </button>
+                              )}
+                          </>
+                        ) : buildingId && unitIds.length ? (
+                          "Calculating…"
+                        ) : (
+                          "Select a property and unit to see the total."
+                        )}
+                      </p>
+                    )}
+                    {droppedPicks > 0 && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {droppedPicks} earlier {droppedPicks === 1 ? "pick was" : "picks were"} no
+                        longer available and {droppedPicks === 1 ? "was" : "were"} removed.
                       </p>
                     )}
                     <p className="mt-3 text-xs text-muted-foreground">

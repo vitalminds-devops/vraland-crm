@@ -21,6 +21,7 @@ import {
   freeSpot,
   placeWithin,
   resolvePlacements,
+  smallestCanvas,
   spaceKinds,
   spaceSizes,
 } from "../lib/floor-layout";
@@ -181,11 +182,11 @@ export function FloorDesigner({
     setPieces([...pieces, placeWithin(piece, size.width, size.depth)]);
     setSelectedIds([piece.id]);
   };
-  const resize = (key: "width" | "depth", metres: number) => {
-    const next = { ...size, [key]: Math.min(200, Math.max(4, metres)) };
-    setSize(next);
-    setPieces(pieces.map((piece) => placeWithin(piece, next.width, next.depth)));
-  };
+  // The floor can't shrink through what's drawn on it, so a stray number never moves a piece.
+  const smallest = smallestCanvas(pieces);
+  const minSize = { width: Math.max(4, smallest.width), depth: Math.max(4, smallest.depth) };
+  const resize = (key: "width" | "depth", metres: number) =>
+    setSize({ ...size, [key]: Math.min(200, Math.max(minSize[key], metres)) });
   // A new numbering renames this floor's units on the plan, in their current order, and its
   // parking too when parking goes by floor.
   const renumber = (next: UnitNumbering) => {
@@ -410,6 +411,7 @@ export function FloorDesigner({
                     unitTypes={types}
                     parkingTypes={parkingTypes}
                     size={size}
+                    minSize={minSize}
                     onResizeFloor={resize}
                     onChange={change}
                     onDuplicate={() => {

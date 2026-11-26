@@ -32,6 +32,8 @@ const optionalText = (max: number) =>
     .transform((value) => value || null);
 
 export const billItemSchema = z.object({
+  unitId: z.uuid().nullish(),
+  parkingSlotId: z.uuid().nullish(),
   unitLabel: z.string().trim().min(1, "Enter the unit, e.g. Unit 205 Tower 1.").max(220),
   unitPrice: z.coerce
     .number({ error: "Enter the unit price." })

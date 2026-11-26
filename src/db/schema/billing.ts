@@ -15,6 +15,7 @@ import {
 import { deals } from "./deals";
 import { documents } from "./documents";
 import { organizations, users } from "./organization";
+import { propertyParkingSlots, units } from "./properties";
 import { createdAt, updatedAt } from "./shared";
 
 /**
@@ -75,9 +76,18 @@ export const billItems = pgTable(
     miscellaneousFee: numeric("miscellaneous_fee", { precision: 18, scale: 2 })
       .default("0")
       .notNull(),
+    /** The unit or slot this line bills; it keeps its billed price when the pick changes. */
+    unitId: uuid("unit_id").references(() => units.id, { onDelete: "set null" }),
+    parkingSlotId: uuid("parking_slot_id").references(() => propertyParkingSlots.id, {
+      onDelete: "set null",
+    }),
     createdAt,
   },
-  (t) => [index("bill_items_bill_id_idx").on(t.billId, t.position)],
+  (t) => [
+    index("bill_items_bill_id_idx").on(t.billId, t.position),
+    index("bill_items_unit_id_idx").on(t.unitId),
+    index("bill_items_parking_slot_id_idx").on(t.parkingSlotId),
+  ],
 );
 
 export const payments = pgTable(

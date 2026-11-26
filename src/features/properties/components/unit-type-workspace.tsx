@@ -24,6 +24,7 @@ import {
   roomLabels,
   roomMargin,
   roomSizes,
+  smallestCanvas,
 } from "../lib/floor-layout";
 import { GeometryFields, MetreField, PanelSection, PieceActions } from "./geometry-fields";
 import { RoomArt } from "./layout-art";
@@ -98,16 +99,11 @@ export function UnitTypeWorkspace({
     setRooms([...design.rooms, room]);
     setSelectedIds([room.id]);
   };
-  // Shrinking the unit pulls its rooms back inside.
-  const resize = (key: "width" | "depth", value: number) => {
-    const next = { ...design, [key]: value };
-    setDesign({
-      ...next,
-      rooms: next.rooms.map((room) =>
-        placeWithin(room, next.width, next.depth, roomMargin(room.kind)),
-      ),
-    });
-  };
+  // The unit can't shrink through its rooms (balconies may still stick out), so nothing moves.
+  const smallest = smallestCanvas(design.rooms, (room) => roomMargin((room as UnitRoom).kind));
+  const minSize = { width: Math.max(2, smallest.width), depth: Math.max(2, smallest.depth) };
+  const resize = (key: "width" | "depth", value: number) =>
+    setDesign({ ...design, [key]: Math.min(60, Math.max(minSize[key], value)) });
   const back = () => {
     if (history.canUndo && !window.confirm(`Leave ${title} without saving?`)) return;
     onBack();
@@ -270,7 +266,7 @@ export function UnitTypeWorkspace({
                   label="W"
                   name="Unit width, in metres"
                   value={design.width}
-                  min={2}
+                  min={minSize.width}
                   max={60}
                   onCommit={(value) => resize("width", value)}
                 />
@@ -278,7 +274,7 @@ export function UnitTypeWorkspace({
                   label="H"
                   name="Unit depth, in metres"
                   value={design.depth}
-                  min={2}
+                  min={minSize.depth}
                   max={60}
                   onCommit={(value) => resize("depth", value)}
                 />

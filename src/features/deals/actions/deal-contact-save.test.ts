@@ -2,7 +2,11 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { saveDealForContact } from "./deal.actions";
 
 const stageId = "12345678-1234-4234-8234-123456789abc";
-const fixture = vi.hoisted(() => ({ status: "open", updates: [] as Record<string, unknown>[] }));
+const fixture = vi.hoisted(() => ({
+  status: "open",
+  earned: false,
+  updates: [] as Record<string, unknown>[],
+}));
 
 // Selects in call order: the contact's deal, the contact, then the locked deal inside the transaction.
 function selects() {
@@ -18,6 +22,7 @@ function selects() {
         expectedCommission: "150000.00",
         expectedCloseDate: null,
         status: fixture.status,
+        earned: fixture.earned,
       },
     ],
   ];
@@ -70,6 +75,7 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
 beforeEach(async () => {
   fixture.updates = [];
+  fixture.earned = false;
   const { db } = (await import("@/db")) as unknown as { db: { reset: () => void } };
   db.reset();
 });
@@ -95,4 +101,11 @@ it("keeps a won deal's settled amount and commission", async () => {
     amount: "5000000.00",
     expectedCommission: "150000.00",
   });
+});
+
+it("keeps the commission from the first win while a won deal is reopened", async () => {
+  fixture.status = "open";
+  fixture.earned = true;
+  expect((await saveDealForContact("contact", null, input)).success).toBe(true);
+  expect(fixture.updates[0]).toMatchObject({ amount: "6000000", expectedCommission: "150000.00" });
 });

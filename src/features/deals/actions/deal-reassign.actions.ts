@@ -4,7 +4,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
-import { activities, auditLogs, dealAgents, deals, users } from "@/db/schema";
+import { activities, auditLogs, dealAgents, dealCommissions, deals, users } from "@/db/schema";
 import { eligibleAgent } from "@/features/contacts/lib/assignment";
 import { ActionErrorCode, outOfScope } from "@/lib/errors";
 import { logError } from "@/lib/logger";
@@ -21,7 +21,6 @@ import {
   validationFailureFromZod,
   type ActionResult,
 } from "@/lib/types/action-result";
-import { recordDealCommissions } from "../lib/record-commissions";
 
 const reassignSchema = z.object({
   dealId: z.uuid(),
@@ -39,7 +38,12 @@ export async function reassignDealAgent(input: unknown): Promise<ActionResult<{ 
     return notFoundFailure("Opportunity");
   // Same rule as picking the agent when the opportunity is created.
   const [agent] = await db
-    .select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+    .select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      brokerId: users.brokerId,
+    })
     .from(users)
     .where(
       and(
@@ -75,9 +79,17 @@ export async function reassignDealAgent(input: unknown): Promise<ActionResult<{ 
       if (deal.primaryAgentUserId === agentUserId) return "same" as const;
       await lockActiveAssignees(tx, context.organizationId, [agentUserId]);
 
+      // The opportunity follows the new agent's broker (or the agent, with none), as handover does,
+      // so the right broker sees it, can move it and earns on it.
+      const brokerUserId = agent.brokerId ?? agentUserId;
       await tx
         .update(deals)
-        .set({ primaryAgentUserId: agentUserId, updatedBy: context.userId, updatedAt: new Date() })
+        .set({
+          primaryAgentUserId: agentUserId,
+          brokerUserId,
+          updatedBy: context.userId,
+          updatedAt: new Date(),
+        })
         .where(and(eq(deals.id, dealId), eq(deals.organizationId, context.organizationId)));
       await tx
         .delete(dealAgents)
@@ -86,15 +98,31 @@ export async function reassignDealAgent(input: unknown): Promise<ActionResult<{ 
         .insert(dealAgents)
         .values({ dealId, userId: agentUserId, role: "primary" })
         .onConflictDoNothing();
-      // A won sale's commission follows the seller; recompute it the way winning did.
-      if (deal.status === "won")
-        await recordDealCommissions(tx, {
-          organizationId: context.organizationId,
-          dealId,
-          amount: deal.amount,
-          sellerUserId: agentUserId,
-          brokerUserId: deal.brokerUserId,
-        });
+      // A won sale's commission (kept while it is reopened) keeps the rates it was won at: the
+      // seller's share moves to the new agent and the broker's to the new broker (dropped when the
+      // agent is their own broker). A deal never won has no rows, so nothing changes.
+      const oldBroker =
+        deal.brokerUserId && deal.brokerUserId !== deal.primaryAgentUserId
+          ? deal.brokerUserId
+          : null;
+      if (oldBroker) {
+        const brokerShares = and(
+          eq(dealCommissions.dealId, dealId),
+          eq(dealCommissions.userId, oldBroker),
+        );
+        if (brokerUserId === agentUserId) await tx.delete(dealCommissions).where(brokerShares);
+        else await tx.update(dealCommissions).set({ userId: brokerUserId }).where(brokerShares);
+      }
+      if (deal.primaryAgentUserId)
+        await tx
+          .update(dealCommissions)
+          .set({ userId: agentUserId })
+          .where(
+            and(
+              eq(dealCommissions.dealId, dealId),
+              eq(dealCommissions.userId, deal.primaryAgentUserId),
+            ),
+          );
       const name = `${agent.firstName ?? ""} ${agent.lastName ?? ""}`.trim();
       await tx.insert(activities).values({
         organizationId: context.organizationId,
@@ -110,8 +138,8 @@ export async function reassignDealAgent(input: unknown): Promise<ActionResult<{ 
         action: "update",
         entityType: "deal",
         entityId: dealId,
-        oldValues: { primaryAgentUserId: deal.primaryAgentUserId },
-        newValues: { primaryAgentUserId: agentUserId, reason },
+        oldValues: { primaryAgentUserId: deal.primaryAgentUserId, brokerUserId: deal.brokerUserId },
+        newValues: { primaryAgentUserId: agentUserId, brokerUserId, reason },
       });
       return "moved" as const;
     });

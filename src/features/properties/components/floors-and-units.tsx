@@ -59,6 +59,7 @@ export function FloorsAndUnits({
   propertyId,
   canManageUnits = false,
   canManagePrices = false,
+  billedPrices = {},
   canManageUnitPictures = false,
   floors,
   units,
@@ -78,6 +79,8 @@ export function FloorsAndUnits({
   canManageUnits?: boolean;
   /** Prices and fees: without it, they show but can't be changed. */
   canManagePrices?: boolean;
+  /** Prices each unit is billed at on open opportunities, for those who can see Billing. */
+  billedPrices?: Record<string, string[]>;
   canManageUnitPictures?: boolean;
   floors: {
     id: string;
@@ -212,6 +215,7 @@ export function FloorsAndUnits({
       )}
       imageUrl={unitImageUrl(selectedUnit)}
       unitTypes={unitTypes}
+      billedPrices={billedPrices[selectedUnit.id] ?? []}
       canManageUnits={canManageUnits}
       canManagePrices={canManagePrices}
       canManageUnitPictures={canManageUnitPictures}

@@ -1,7 +1,8 @@
 import { eq } from "drizzle-orm";
 
 import { db } from "../client";
-import { organizations, permissions, rolePermissions, roles } from "../schema";
+import { lostReasons, organizations, permissions, rolePermissions, roles } from "../schema";
+import { defaultLostReasons } from "./lost-reasons";
 import {
   permissionKeys,
   permissionMetadata,
@@ -89,6 +90,12 @@ export async function seedReferenceData(
 
     rolesBySlug[slug] = { id: role.id };
   }
+
+  // Marking an opportunity Lost needs a reason, so every organization starts with these.
+  await tx
+    .insert(lostReasons)
+    .values(defaultLostReasons.map((reason) => ({ organizationId: organization.id, ...reason })))
+    .onConflictDoNothing({ target: [lostReasons.organizationId, lostReasons.name] });
 
   return { organization, rolesBySlug };
 }

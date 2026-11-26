@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, notInArray, sql } from "drizzle-orm";
 import { revalidateProperty } from "../lib/revalidate-property";
 import { db } from "@/db";
 import {
@@ -27,6 +27,7 @@ import {
 import { canWriteProperty } from "../queries/property-scope.queries";
 import {
   copiedCode,
+  REPRICED_STATUSES,
   resolvePlacements,
   slotsByPosition,
   type FloorLayout,
@@ -221,11 +222,27 @@ export async function saveFloorLayout(
             const typeId = typeOf.get(entry.placementId)!;
             byType.set(typeId, [...(byType.get(typeId) ?? []), entry.unitId]);
           }
-        for (const [typeId, ids] of byType)
+        for (const [typeId, ids] of byType) {
+          // A reserved or sold unit that follows its type's price keeps the price it was sold at
+          // when it is placed as another type. Table names are explicit for the correlated read.
+          await tx
+            .update(units)
+            .set({
+              price: sql`(select t."price" from "unit_types" t where t."id" = "units"."unit_type_id")`,
+            })
+            .where(
+              and(
+                inArray(units.id, ids),
+                isNull(units.price),
+                notInArray(units.status, [...REPRICED_STATUSES]),
+                sql`${units.unitTypeId} is distinct from ${typeId}`,
+              ),
+            );
           await tx
             .update(units)
             .set({ unitTypeId: typeId, updatedAt: new Date() })
             .where(inArray(units.id, ids));
+        }
 
         // Parking slots on the plan, resolved like units but numbered across the property.
         const propertySlots = await tx

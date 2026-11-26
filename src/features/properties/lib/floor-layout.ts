@@ -527,3 +527,22 @@ export function groupBox(pieces: readonly LayoutItem[]) {
     y1: Math.max(...boxes.map((box) => box.y1)),
   };
 }
+
+/**
+ * The smallest canvas that still holds every piece where it is, on the grid: a floor or unit can't
+ * be shrunk through its design. A piece allowed past the edge (a balcony) counts without that part.
+ */
+export function smallestCanvas(
+  pieces: readonly LayoutItem[],
+  marginOf: (piece: LayoutItem) => number = () => 0,
+): { width: number; depth: number } {
+  let [width, depth] = [0, 0];
+  for (const piece of pieces) {
+    const [fw, fh] = footprint(piece);
+    const margin = marginOf(piece);
+    width = Math.max(width, piece.x + fw - margin);
+    depth = Math.max(depth, piece.y + fh - margin);
+  }
+  const up = (value: number) => Math.ceil(value / GRID - 1e-9) * GRID || 0;
+  return { width: up(width), depth: up(depth) };
+}

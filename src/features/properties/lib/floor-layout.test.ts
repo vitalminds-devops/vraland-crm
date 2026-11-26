@@ -12,6 +12,7 @@ import {
   REPRICED_STATUSES,
   copyGroupBeside,
   slotsByPosition,
+  smallestCanvas,
   moveGroup,
   resolvePlacements,
   rotate,
@@ -304,4 +305,17 @@ it("pairs copied parking with the floor's own slots in plan order", () => {
     ["a", "slot-1"],
     ["b", "slot-2"],
   ]);
+});
+
+it("keeps a floor or unit from shrinking through its pieces", () => {
+  expect(smallestCanvas([piece("a", 0, 0, 8, 6), piece("b", 30, 2, 7.2, 6)])).toEqual({
+    width: 37.5,
+    depth: 8,
+  });
+  // A balcony may stick out 2.5 m, so it doesn't hold the walls out.
+  expect(smallestCanvas([piece("balcony", 0, 6, 3, 3.5)], () => 2.5)).toEqual({
+    width: 0.5,
+    depth: 7,
+  });
+  expect(smallestCanvas([])).toEqual({ width: 0, depth: 0 });
 });

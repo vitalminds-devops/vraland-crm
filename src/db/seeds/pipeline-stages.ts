@@ -1,4 +1,4 @@
-import { and, asc, count, eq, lt, sql } from "drizzle-orm";
+import { and, asc, count, eq, isNull, lt, sql } from "drizzle-orm";
 import {
   bills,
   dealStageChangeRequests,
@@ -166,7 +166,7 @@ async function retireMergedStages(tx: DbTransaction, organizationId: string): Pr
     const [held] = await tx
       .select({ value: count() })
       .from(deals)
-      .where(eq(deals.stageId, cancelled.id));
+      .where(and(eq(deals.stageId, cancelled.id), isNull(deals.deletedAt)));
     // Hiding the stage would hide these deals from every list and report.
     if (held.value > 0) {
       notes.push(

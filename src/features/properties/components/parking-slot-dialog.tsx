@@ -163,9 +163,10 @@ export function ParkingSlotDialog({
                 value={own.price}
                 onValueChange={(next) => setOwn((current) => ({ ...current, price: next || null }))}
                 placeholder="0.00"
-                disabled={pending}
+                disabled={pending || taken}
                 className="h-9"
               />
+              {taken && <span>Price is on the bill.</span>}
             </label>
             <label className="grid gap-1 text-xs text-muted-foreground">
               Reservation fee

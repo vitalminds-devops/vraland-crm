@@ -28,6 +28,11 @@ import {
   type PermissionKey,
 } from "@/lib/permissions/catalog";
 import { permissionDetails, type PermissionDetail } from "@/lib/permissions/permission-details";
+import {
+  dashboardPanelNeeds,
+  panelUsable,
+  withoutUnusablePanels,
+} from "@/lib/permissions/view-access";
 import type { ActionResult } from "@/lib/types/action-result";
 import { fieldErrorsOf } from "@/lib/types/action-result.client";
 import { PermissionDetailTooltip } from "./permission-detail-tooltip";
@@ -531,11 +536,12 @@ export function RolePermissionsPicker({
         .filter((group) => group.rows.length > 0)
     : groups;
 
+  // Unticking a module also unticks the dashboard panels that would have nothing to show.
   function toggle(key: string) {
     const next = new Set(checked);
     if (next.has(key)) next.delete(key);
     else next.add(key);
-    onChange(next);
+    onChange(withoutUnusablePanels(next));
   }
 
   function setGroup(keys: string[], on: boolean) {
@@ -544,8 +550,9 @@ export function RolePermissionsPicker({
       if (on) next.add(key);
       else next.delete(key);
     }
-    onChange(next);
+    onChange(withoutUnusablePanels(next));
   }
+  const holds = (key: string) => checked.has(key);
 
   return (
     <div>
@@ -605,6 +612,9 @@ export function RolePermissionsPicker({
                     const id = `perm-${roleId}-${row.key}`;
                     // Everyone sees their own records, so this one can't be turned off.
                     const implied = row.key === "records.view_own";
+                    // A dashboard panel waits for a module it can show.
+                    const blocked = !panelUsable(row.key, holds);
+                    const needs = dashboardPanelNeeds[row.key as PermissionKey];
                     return (
                       <li
                         key={row.key}
@@ -616,8 +626,8 @@ export function RolePermissionsPicker({
                         >
                           <Checkbox
                             id={id}
-                            checked={implied || checked.has(row.key)}
-                            disabled={disabled || implied}
+                            checked={implied || (!blocked && checked.has(row.key))}
+                            disabled={disabled || implied || blocked}
                             onCheckedChange={() => toggle(row.key)}
                             className="mt-0.5 size-4 shrink-0 accent-primary"
                           />
@@ -625,6 +635,11 @@ export function RolePermissionsPicker({
                             <span className="text-[13px] font-medium text-foreground">
                               {copy.label}
                             </span>
+                            {blocked && needs && (
+                              <span className="text-[11px] text-muted-foreground">
+                                Needs {needs.map((key) => permissionCopy(key).label).join(" or ")}
+                              </span>
+                            )}
                             {detail?.unused && (
                               <span className="text-[11px] text-muted-foreground">
                                 Not used yet

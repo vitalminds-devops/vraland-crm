@@ -57,7 +57,7 @@ import {
 } from "../lib/opportunity-pricing";
 import { dealTitleFor } from "../lib/deal-label";
 import { isContactsFirstDeal } from "../lib/first-deal";
-import { rebuildBill } from "../lib/rebill";
+import { rebuildBill, selectionChanged } from "../lib/rebill";
 import { openDealForApprovedContact } from "../lib/open-deal";
 import { InventoryUnavailable } from "../lib/deal-inventory";
 import {
@@ -67,6 +67,7 @@ import {
 } from "@/features/billing/lib/billing-inventory";
 import { APPOINTMENT_TYPE, VALID_ID_TYPE, documentsOnFile } from "../lib/opportunity-requirements";
 import { changeDealStage, type DealActionResult } from "./deal.actions";
+import { canMoveStage, resolveMoveRole } from "../lib/stage-transitions";
 
 // 2 required + 3 extra files at 15 MB stay under the 80 MB server action body limit.
 const MAX_EXTRA_FILES = 3;
@@ -118,6 +119,131 @@ async function loadDeal(dealId: string) {
     .leftJoin(pipelineStages, eq(deals.stageId, pipelineStages.id))
     .where(and(eq(deals.id, dealId), eq(deals.organizationId, context.organizationId)));
   return row ? { context, row } : null;
+}
+
+type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+type Selection = { buildingId: string; unitIds: string[]; parkingSlotIds: string[] };
+
+/**
+ * Rebuilds the opportunity's bill for a new pick, keeping its miscellaneous fee rate and payments.
+ * A bill is left alone when there is none, or the pick is the same (so prices set by hand stay).
+ * Returns the refusal when the new bill would be below what is already paid.
+ */
+async function rebillForSelection(
+  tx: Transaction,
+  input: {
+    dealId: string;
+    userId: string;
+    estimate: Extract<Awaited<ReturnType<typeof estimateSelection>>, { success: true }>;
+    developmentName: string;
+    before: {
+      propertyId: string | null;
+      unitId: string | null;
+      unitIds: string[];
+      parkingSlotIds: string[];
+    };
+    after: Selection;
+  },
+): Promise<{ error: "discount" | "below-paid"; paid: number } | null> {
+  const [bill] = await tx
+    .select({
+      id: bills.id,
+      unitPrice: bills.unitPrice,
+      miscellaneousFee: bills.miscellaneousFee,
+      reservationDiscount: bills.reservationDiscount,
+    })
+    .from(bills)
+    .where(eq(bills.dealId, input.dealId))
+    .for("update");
+  if (!bill || !selectionChanged(input.before, input.after)) return null;
+  const keep = await tx
+    .select({
+      unitLabel: billItems.unitLabel,
+      unitPrice: billItems.unitPrice,
+      miscellaneousFee: billItems.miscellaneousFee,
+      unitId: billItems.unitId,
+      parkingSlotId: billItems.parkingSlotId,
+    })
+    .from(billItems)
+    .where(eq(billItems.billId, bill.id));
+  const { paid } = await readDealPayments(tx, input.dealId);
+  const { estimate } = input;
+  const rebuilt = rebuildBill({
+    units: estimate.selectedUnits,
+    place: [estimate.buildingTitle, input.developmentName].filter(Boolean).join(" · "),
+    buildingTitle: estimate.buildingTitle,
+    slots: estimate.selectedSlots.map((slot) => ({ ...slot, price: slot.price ?? "0" })),
+    previous: bill,
+    keep,
+    paid,
+  });
+  if ("error" in rebuilt && rebuilt.error) return { error: rebuilt.error, paid };
+  await tx
+    .update(bills)
+    .set({
+      unitLabel: rebuilt.unitLabel,
+      unitPrice: rebuilt.unitPrice,
+      miscellaneousFee: rebuilt.miscellaneousFee,
+      updatedBy: input.userId,
+      updatedAt: new Date(),
+    })
+    .where(eq(bills.id, bill.id));
+  await tx.delete(billItems).where(eq(billItems.billId, bill.id));
+  await tx
+    .insert(billItems)
+    .values(rebuilt.lines.map((line, position) => ({ billId: bill.id, position, ...line })));
+  return null;
+}
+
+/**
+ * Why this user's role rules (own opportunities, moving back, viewers) would refuse the move, or
+ * null. Checked before Move to Opportunity saves anything; the move itself checks again. A move
+ * that only waits for approval is not refused: the details are saved for the approver.
+ */
+async function moveRefusal(
+  context: AuthorizationContext,
+  dealId: string,
+  stageId: string,
+): Promise<string | null> {
+  const [deal] = await db
+    .select({
+      stageId: deals.stageId,
+      primaryAgentUserId: deals.primaryAgentUserId,
+      brokerUserId: deals.brokerUserId,
+    })
+    .from(deals)
+    .where(and(eq(deals.id, dealId), eq(deals.organizationId, context.organizationId)))
+    .limit(1);
+  if (!deal) return null;
+  const stages = await db
+    .select({
+      id: pipelineStages.id,
+      position: pipelineStages.position,
+      isWonStage: pipelineStages.isWonStage,
+      isLostStage: pipelineStages.isLostStage,
+      isCancelledStage: pipelineStages.isCancelledStage,
+      slug: pipelineStages.slug,
+    })
+    .from(pipelineStages)
+    .where(
+      and(
+        eq(pipelineStages.organizationId, context.organizationId),
+        inArray(pipelineStages.id, [deal.stageId, stageId]),
+      ),
+    );
+  const fromStage = stages.find((stage) => stage.id === deal.stageId);
+  const toStage = stages.find((stage) => stage.id === stageId);
+  if (!fromStage || !toStage) return null;
+  const check = canMoveStage({
+    userId: context.userId,
+    role: resolveMoveRole(context),
+    deal,
+    fromStage,
+    toStage,
+    canMoveBack: context.permissions.has("deals.move_back"),
+    payments: {},
+  });
+  return check.allowed ? null : check.message;
 }
 
 export type OpportunityDraft = NonNullable<Awaited<ReturnType<typeof getOpportunityDraft>>>;
@@ -242,12 +368,19 @@ async function estimateSelection(
         }),
       ),
     );
-  if (selected.length !== input.unitIds.length)
+  if (selected.length !== input.unitIds.length) {
+    // Named by id so the window can drop just these and keep the rest of the selection.
+    const unavailableUnitIds = input.unitIds.filter(
+      (id) => !selected.some((unit) => unit.id === id),
+    );
     return {
       success: false as const,
-      message:
-        "One or more selected units are unavailable or not shared with you. Clear the unit selection and choose available units in this property.",
+      message: `${unavailableUnitIds.length} selected ${
+        unavailableUnitIds.length === 1 ? "unit is" : "units are"
+      } no longer available, or not in this property or shared with you.`,
+      unavailableUnitIds,
     };
+  }
   if (building.parkingSpaces !== null && input.parkingSlotIds.length > building.parkingSpaces)
     return {
       success: false as const,
@@ -256,7 +389,7 @@ async function estimateSelection(
   // Each slot's own price, set on it or by its parking type.
   let slotPrices: (string | null)[] = [];
   let slotFees: (string | null)[] = [];
-  let selectedSlots: { code: string; price: string | null }[] = [];
+  let selectedSlots: { id: string; code: string; price: string | null }[] = [];
   if (input.parkingSlotIds.length) {
     const parking = await listParkingSlots(context, building.id);
     // Free slots, plus those this opportunity itself holds; a slot another one has since taken
@@ -264,11 +397,14 @@ async function estimateSelection(
     const available = new Set(
       parking.filter((slot) => isSlotFreeFor(slot, held?.dealId)).map((slot) => slot.id),
     );
-    if (input.parkingSlotIds.some((id) => !available.has(id)))
+    const unavailableParkingSlotIds = input.parkingSlotIds.filter((id) => !available.has(id));
+    if (unavailableParkingSlotIds.length)
       return {
         success: false as const,
-        message:
-          "One or more selected parking slots are unavailable or not shared with you. Choose available parking slots or remove parking to continue.",
+        message: `${unavailableParkingSlotIds.length} selected parking ${
+          unavailableParkingSlotIds.length === 1 ? "slot is" : "slots are"
+        } no longer available or not shared with you.`,
+        unavailableParkingSlotIds,
       };
     const priceOf = new Map(parking.map((slot) => [slot.id, slot.price]));
     slotPrices = input.parkingSlotIds.map((id) => priceOf.get(id) ?? null);
@@ -276,7 +412,7 @@ async function estimateSelection(
     slotFees = input.parkingSlotIds.map((id) => feeOf.get(id) ?? null);
     const codeOf = new Map(parking.map((slot) => [slot.id, slot.code]));
     selectedSlots = input.parkingSlotIds
-      .map((id) => ({ code: codeOf.get(id) ?? "", price: priceOf.get(id) ?? null }))
+      .map((id) => ({ id, code: codeOf.get(id) ?? "", price: priceOf.get(id) ?? null }))
       .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
   }
   const unpriced = selected.filter((unit) => !(Number(unit.price) > 0)).map((unit) => unit.code);
@@ -317,7 +453,7 @@ async function estimateSelection(
     buildingTitle: building.title,
     /** Codes and prices of the selected units, in code order. */
     selectedUnits: selected
-      .map((unit) => ({ code: unit.code, price: unit.price! }))
+      .map((unit) => ({ id: unit.id, code: unit.code, price: unit.price! }))
       .sort((a, b) => a.code.localeCompare(b.code)),
     /** Identifiers and prices of the selected parking slots, in order. */
     selectedSlots,
@@ -432,12 +568,15 @@ export async function openOpportunity(formData: FormData): Promise<DealActionRes
       ),
     );
   const contactId = row.contactId;
-  // A lead moved back from Opportunity can still hold its units while it has payments.
+  // Units this opportunity already holds stay selectable for it (say, reopened from Lost).
   const estimate = await estimateSelection(context, v, {
     dealId: row.dealId,
     parkingSlotIds: row.parkingSlotIds,
   });
   if (!estimate.success) return validationFailure(estimate.message);
+  // Refused before anything is saved, so a lead never keeps units for a move it can't make.
+  const refusal = await moveRefusal(context, v.dealId, v.stageId);
+  if (refusal) return validationFailure(refusal);
 
   const onFile = await documentsOnFile(db, contactId);
   const checks = await Promise.all([
@@ -536,7 +675,35 @@ export async function openOpportunity(formData: FormData): Promise<DealActionRes
         throw new OpportunityChanged(
           "This lead has already moved. Refresh the pipeline before changing its selection.",
         );
+      // Archived meanwhile (say, from another tab): its lead is hidden and must not get units.
+      const [contact] = await tx
+        .select({ deletedAt: contacts.deletedAt })
+        .from(contacts)
+        .where(eq(contacts.id, contactId))
+        .for("update");
+      if (!contact || contact.deletedAt)
+        throw new OpportunityChanged("This contact was archived. Refresh the pipeline.");
       const savedAt = new Date(Math.max(Date.now(), locked.updatedAt.getTime() + 1));
+      // A lead that was an opportunity before may still have its bill: it follows the new pick.
+      const rebilled = await rebillForSelection(tx, {
+        dealId: v.dealId,
+        userId: context.userId,
+        estimate,
+        developmentName: development.name,
+        before: {
+          propertyId: row.buildingId,
+          unitId: null,
+          unitIds: row.unitIds ?? [],
+          parkingSlotIds: row.parkingSlotIds ?? [],
+        },
+        after: v,
+      });
+      if (rebilled)
+        throw new OpportunityChanged(
+          rebilled.error === "discount"
+            ? "The bill's reservation discount is more than the new price."
+            : `The new total is less than the ₱${rebilled.paid.toLocaleString("en-PH")} already paid.`,
+        );
       await tx
         .update(contacts)
         .set({
@@ -721,57 +888,19 @@ export async function changeOpportunityUnits(input: unknown): Promise<DealAction
       if (!deal) return { kind: "missing" as const };
       if (deal.isWonStage || deal.isLostStage || deal.isCancelledStage)
         return { kind: "closed" as const };
+      // Moved back to Leads since the window opened: a lead holds no units.
+      if (deal.slug === "leads") return { kind: "lead" as const };
+      if (!selectionChanged(deal, v)) return { kind: "unchanged" as const };
 
-      // Rebuild the bill for the new units, keeping its miscellaneous fee rate and payments.
-      const [bill] = await tx
-        .select({
-          id: bills.id,
-          unitPrice: bills.unitPrice,
-          miscellaneousFee: bills.miscellaneousFee,
-          reservationDiscount: bills.reservationDiscount,
-        })
-        .from(bills)
-        .where(eq(bills.dealId, v.dealId))
-        .for("update");
-      const sameIds = (a: string[], b: string[]) =>
-        a.length === b.length && a.every((id) => b.includes(id));
-      // Re-saving the same selection keeps any prices billing set by hand.
-      const selectionChanged =
-        deal.propertyId !== v.buildingId ||
-        !sameIds(
-          deal.unitIds.length ? deal.unitIds : deal.unitId ? [deal.unitId] : [],
-          v.unitIds,
-        ) ||
-        !sameIds(deal.parkingSlotIds, v.parkingSlotIds);
-      if (bill && selectionChanged) {
-        const { paid } = await readDealPayments(tx, v.dealId);
-        const rebuilt = rebuildBill({
-          units: estimate.selectedUnits,
-          place: [estimate.buildingTitle, development.name].filter(Boolean).join(" · "),
-          buildingTitle: estimate.buildingTitle,
-          slots: estimate.selectedSlots.map((slot) => ({
-            code: slot.code,
-            price: slot.price ?? "0",
-          })),
-          previous: bill,
-          paid,
-        });
-        if ("error" in rebuilt) return { kind: rebuilt.error, paid };
-        await tx
-          .update(bills)
-          .set({
-            unitLabel: rebuilt.unitLabel,
-            unitPrice: rebuilt.unitPrice,
-            miscellaneousFee: rebuilt.miscellaneousFee,
-            updatedBy: context.userId,
-            updatedAt: new Date(),
-          })
-          .where(eq(bills.id, bill.id));
-        await tx.delete(billItems).where(eq(billItems.billId, bill.id));
-        await tx
-          .insert(billItems)
-          .values(rebuilt.lines.map((line, position) => ({ billId: bill.id, position, ...line })));
-      }
+      const rebilled = await rebillForSelection(tx, {
+        dealId: v.dealId,
+        userId: context.userId,
+        estimate,
+        developmentName: development.name,
+        before: deal,
+        after: v,
+      });
+      if (rebilled) return { kind: rebilled.error, paid: rebilled.paid };
 
       await tx
         .update(deals)
@@ -840,6 +969,10 @@ export async function changeOpportunityUnits(input: unknown): Promise<DealAction
       };
     });
     if (outcome.kind === "missing") return notFoundFailure("Opportunity");
+    if (outcome.kind === "lead")
+      return validationFailure("This is a lead now. Pick its units with Move to Opportunity.");
+    if (outcome.kind === "unchanged")
+      return { success: true, data: { id: v.dealId } } as DealActionResult;
     if (outcome.kind === "closed")
       return validationFailure("Won, lost and cancelled opportunities cannot change units.");
     if (outcome.kind === "discount")

@@ -22,6 +22,7 @@ import type { UnitTypeFacts } from "../lib/floor-layout";
 export function UnitDetailsButton({
   unit,
   unitTypes,
+  billedPrices = [],
   canManagePrices,
 }: {
   unit: {
@@ -30,8 +31,11 @@ export function UnitDetailsButton({
     unitTypeId: string | null;
     floorArea: string | null;
     price: string | null;
+    status: string;
   };
   unitTypes: UnitTypeFacts[];
+  /** Prices it is billed at on open opportunities. */
+  billedPrices?: string[];
   /** Without "Manage prices", the price shows but can't be changed. */
   canManagePrices: boolean;
 }) {
@@ -52,6 +56,7 @@ export function UnitDetailsButton({
         <UnitDetailsDialog
           unit={unit}
           unitTypes={unitTypes}
+          billedPrices={billedPrices}
           canManagePrices={canManagePrices}
           onClose={() => setOpen(false)}
         />
@@ -63,11 +68,13 @@ export function UnitDetailsButton({
 function UnitDetailsDialog({
   unit,
   unitTypes,
+  billedPrices,
   canManagePrices,
   onClose,
 }: {
   unit: Parameters<typeof UnitDetailsButton>[0]["unit"];
   unitTypes: UnitTypeFacts[];
+  billedPrices: string[];
   canManagePrices: boolean;
   onClose: () => void;
 }) {
@@ -78,6 +85,12 @@ function UnitDetailsDialog({
   });
   const [pending, startTransition] = useTransition();
   const type = unitTypes.find((option) => option.id === values.unitTypeId);
+  // A reserved or sold unit keeps the price it was sold at, even under another type.
+  const held = unit.status === "deposit_paid" || unit.status === "sold";
+  const priceType = held ? unitTypes.find((option) => option.id === unit.unitTypeId) : type;
+  // Bills that hold a price other than the one saved on the unit.
+  const listed = Number(unit.price ?? unitTypes.find((o) => o.id === unit.unitTypeId)?.price);
+  const otherBills = billedPrices.filter((price) => Number(price) !== listed);
   const set =
     (key: keyof typeof values) =>
     (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -124,9 +137,26 @@ function UnitDetailsDialog({
                   step="0.01"
                   value={values.price}
                   onChange={set("price")}
-                  disabled={!canManagePrices}
-                  placeholder={type?.price ? `${formatMoney(type.price)} (type)` : undefined}
+                  disabled={!canManagePrices || held}
+                  placeholder={
+                    priceType?.price
+                      ? `${formatMoney(priceType.price)}${held ? "" : " (type)"}`
+                      : undefined
+                  }
                 />
+                {held ? (
+                  <span className="text-xs font-normal text-muted-foreground">
+                    Price is on the bill.
+                  </span>
+                ) : otherBills.length === 1 ? (
+                  <span className="text-xs font-normal text-muted-foreground">
+                    Billed at {formatMoney(otherBills[0])}.
+                  </span>
+                ) : otherBills.length > 1 ? (
+                  <span className="text-xs font-normal text-muted-foreground">
+                    On {otherBills.length} bills at other prices.
+                  </span>
+                ) : null}
               </label>
               <label className="grid gap-1.5 text-sm font-medium">
                 Size (sqm)

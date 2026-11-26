@@ -189,6 +189,7 @@ export function PropertyFloorUnitSelector({
   const floors =
     selectedBuildingId && floorData.key === selectedBuildingId ? floorData.rows : EMPTY_FLOORS;
   const units = selectedFloorId && unitData.key === selectedFloorId ? unitData.rows : EMPTY_UNITS;
+  const elsewhere = selectedUnitIds.filter((id) => !units.some((unit) => unit.id === id)).length;
 
   // Handle unit selection
   const toggleUnit = (unitId: string) => {
@@ -322,6 +323,8 @@ export function PropertyFloorUnitSelector({
       {selectedUnitIds.length > 0 && (
         <p className="flex items-center gap-2 text-[12px] text-muted-foreground">
           {selectedUnitIds.length} {selectedUnitIds.length === 1 ? "unit" : "units"} selected
+          {/* Picks on other floors (or ones that went away) aren't shown above; say so. */}
+          {selectedFloorId && elsewhere > 0 && ` · ${elsewhere} not on this floor`}
           <button
             type="button"
             onClick={clearUnits}

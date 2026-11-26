@@ -32,48 +32,90 @@ const inventory = vi.hoisted(() => ({
   queryRows: [] as unknown[][],
   updates: [] as Record<string, unknown>[],
   lockStage: "leads",
+  /** The lead and stages the move pre-check sees; none means it leaves the check to the move. */
+  moveDeal: [] as Record<string, unknown>[],
+  contactArchived: false,
+  moveStages: [] as Record<string, unknown>[],
+  /** The lead's existing bill, when it was an opportunity before. */
+  bill: null as Record<string, string> | null,
+  billItems: [] as unknown[],
   stageResult: { success: true, data: { id: "deal" } } as DealActionResult,
   put: vi.fn(),
   remove: vi.fn(),
 }));
 
-vi.mock("@/db", () => ({
-  db: {
-    select: () => {
-      const query = {
-        from: () => query,
-        leftJoin: () => query,
-        where: async () => inventory.queryRows.shift() ?? inventory.units,
-      };
-      return query;
-    },
-    transaction: async (run: (tx: unknown) => Promise<void>) =>
-      run({
-        select: () => {
-          const query = {
-            from: () => query,
-            innerJoin: () => query,
-            where: () => query,
-            limit: () => query,
-            for: async () => [
-              { stageSlug: inventory.lockStage, updatedAt: new Date("2026-11-01T00:00:00Z") },
-            ],
-          };
-          return query;
-        },
-        update: () => ({
-          set: (values: Record<string, unknown>) => {
-            inventory.updates.push(values);
-            return { where: async () => {} };
+vi.mock("@/db", async () => {
+  const { bills, billItems, contacts, deals, pipelineStages } = await import("@/db/schema");
+  return {
+    db: {
+      select: () => {
+        let table: unknown;
+        let joined = false;
+        const query = {
+          from: (from: unknown) => ((table = from), query),
+          leftJoin: () => ((joined = true), query),
+          // The move pre-check reads the lead (no joins) and its two stages; other reads are queued.
+          where: () =>
+            table === deals && !joined
+              ? { limit: async () => inventory.moveDeal }
+              : table === pipelineStages
+                ? Promise.resolve(inventory.moveStages)
+                : Promise.resolve(inventory.queryRows.shift() ?? inventory.units),
+        };
+        return query;
+      },
+      transaction: async (run: (tx: unknown) => Promise<void>) =>
+        run({
+          select: () => {
+            let table: unknown;
+            const query = {
+              from: (from: unknown) => ((table = from), query),
+              innerJoin: () => query,
+              where: () => query,
+              limit: () => query,
+              for: async () =>
+                table === contacts
+                  ? [{ deletedAt: inventory.contactArchived ? new Date() : null }]
+                  : table === bills
+                    ? inventory.bill
+                      ? [inventory.bill]
+                      : []
+                    : [
+                        {
+                          stageSlug: inventory.lockStage,
+                          updatedAt: new Date("2026-11-01T00:00:00Z"),
+                        },
+                      ],
+              // The bill's current lines: none here.
+              then: (resolve: (rows: unknown[]) => unknown) => Promise.resolve([]).then(resolve),
+            };
+            return query;
           },
+          update: () => ({
+            set: (values: Record<string, unknown>) => {
+              inventory.updates.push(values);
+              return { where: async () => {} };
+            },
+          }),
+          delete: () => ({ where: async () => {} }),
+          insert: (table: unknown) => ({
+            values: async (values: unknown) => {
+              if (table === billItems) inventory.billItems.push(values);
+            },
+          }),
         }),
-        insert: () => ({ values: async () => {} }),
-      }),
-  },
+    },
+  };
+});
+vi.mock("@/features/billing/lib/billing-inventory", async (original) => ({
+  ...(await original<typeof import("@/features/billing/lib/billing-inventory")>()),
+  readDealPayments: async () => ({ total: 0, paid: 0 }),
 }));
 vi.mock("@/lib/permissions/authorization", () => ({
   requirePermission: async () => ({
     organizationId: "organization",
+    userId: "agent",
+    roles: ["agent"],
     permissions: inventory.permissions,
   }),
   canAccessResource: async () => true,
@@ -99,6 +141,11 @@ vi.mock("@/features/properties/queries/property-floor-unit.queries", () => ({
 const id = "12345678-1234-4234-8234-123456789abc";
 const selection = { developmentId: id, buildingId: id, unitIds: [id], parkingSlotIds: [id] };
 beforeEach(() => {
+  inventory.moveDeal = [];
+  inventory.contactArchived = false;
+  inventory.moveStages = [];
+  inventory.bill = null;
+  inventory.billItems = [];
   inventory.permissions = new Set(["properties.view", "contacts.update"]);
   inventory.units = [{ id, code: "101", price: "120000.25" }];
   inventory.parking = [
@@ -225,7 +272,7 @@ it("rejects units that are no longer available before uploading or saving", asyn
   inventory.queryRows[1] = [];
   expect(await openOpportunity(form)).toMatchObject({
     success: false,
-    error: { message: expect.stringContaining("selected units are unavailable") },
+    error: { message: expect.stringContaining("1 selected unit is no longer available") },
   });
   expect(inventory.put).not.toHaveBeenCalled();
   expect(inventory.updates).toEqual([]);
@@ -300,9 +347,11 @@ it("rejects inaccessible buildings and unavailable units", async () => {
     }),
   ).toMatchObject({ success: false });
   inventory.units = [];
+  // Names exactly which picks to drop, so the window can remove just those.
   expect(await getOpportunityEstimate(selection)).toMatchObject({
     success: false,
-    message: expect.stringContaining("available units"),
+    message: expect.stringContaining("no longer available"),
+    unavailableUnitIds: selection.unitIds,
   });
 });
 
@@ -349,7 +398,8 @@ it.each(["sold", "deposit_paid", "inactive"])(
     inventory.parking[0].status = status;
     expect(await getOpportunityEstimate(selection)).toMatchObject({
       success: false,
-      message: expect.stringContaining("available parking slots"),
+      message: expect.stringContaining("1 selected parking slot is no longer available"),
+      unavailableParkingSlotIds: selection.parkingSlotIds,
     });
   },
 );
@@ -358,7 +408,7 @@ it("rejects inaccessible parking IDs and parking from another building", async (
   inventory.parking = [];
   expect(await getOpportunityEstimate(selection)).toMatchObject({
     success: false,
-    message: expect.stringContaining("parking slots are unavailable or not shared with you"),
+    message: expect.stringContaining("no longer available or not shared with you"),
   });
 });
 
@@ -375,4 +425,55 @@ it("limits the parking picker to an accessible building in the selected developm
   ).toBeNull();
   inventory.permissions.delete("properties.view");
   expect(await getOpportunityParking({ developmentId: id, buildingId: id })).toBeNull();
+});
+
+it("rebuilds a lead's old bill when it re-enters Opportunity with another pick", async () => {
+  // Moved back to Leads earlier: units released, bill kept from the old pick.
+  inventory.bill = {
+    id: "bill",
+    unitPrice: "90000",
+    miscellaneousFee: "0",
+    reservationDiscount: "0",
+  };
+  expect(await openOpportunity(leadForm())).toMatchObject({ success: true });
+  expect(inventory.updates).toContainEqual(expect.objectContaining({ unitPrice: "145000.75" }));
+  expect(inventory.billItems).toHaveLength(1);
+});
+
+it("refuses a move the agent can't make before saving anything", async () => {
+  // Another agent's lead.
+  inventory.moveDeal = [
+    { stageId: "leads", primaryAgentUserId: "someone-else", brokerUserId: null },
+  ];
+  inventory.moveStages = [
+    {
+      id: "leads",
+      position: 1,
+      isWonStage: false,
+      isLostStage: false,
+      isCancelledStage: false,
+      slug: "leads",
+    },
+    {
+      id: leadForm().get("stageId"),
+      position: 2,
+      isWonStage: false,
+      isLostStage: false,
+      isCancelledStage: false,
+      slug: "opportunity",
+    },
+  ];
+  const result = await openOpportunity(leadForm());
+  expect(result.success).toBe(false);
+  expect(inventory.put).not.toHaveBeenCalled();
+  expect(inventory.updates).toEqual([]);
+});
+
+it("refuses to save a lead whose contact was archived meanwhile", async () => {
+  inventory.contactArchived = true;
+  const result = await openOpportunity(leadForm());
+  expect(!result.success && result.error.message).toBe(
+    "This contact was archived. Refresh the pipeline.",
+  );
+  expect(inventory.updates).toEqual([]);
 });

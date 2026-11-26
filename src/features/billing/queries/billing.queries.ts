@@ -147,6 +147,9 @@ export type BillLine = {
   unitLabel: string;
   unitPrice: string;
   miscellaneousFee: string;
+  /** The unit or slot the line bills, carried through the form so its price stays with it. */
+  unitId?: string | null;
+  parkingSlotId?: string | null;
 };
 
 /**
@@ -185,6 +188,8 @@ async function billLinesFor(
             unitLabel: billItems.unitLabel,
             unitPrice: billItems.unitPrice,
             miscellaneousFee: billItems.miscellaneousFee,
+            unitId: billItems.unitId,
+            parkingSlotId: billItems.parkingSlotId,
           })
           .from(billItems)
           .where(inArray(billItems.billId, billIds))
@@ -260,7 +265,8 @@ async function billLinesFor(
         picked.map((unit) => unit.price),
         row,
       );
-      const suggested = picked.map((unit, index) => ({
+      const suggested: BillLine[] = picked.map((unit, index) => ({
+        unitId: unit.id,
         unitLabel: [`Unit ${unit.code}`, unit.propertyTitle, unit.developmentName]
           .filter(Boolean)
           .join(" · "),
@@ -277,6 +283,7 @@ async function billLinesFor(
       );
       slots.forEach((slot, index) =>
         suggested.push({
+          parkingSlotId: slot.id,
           unitLabel: [`Parking ${slot.code}`, row.propertyTitle].filter(Boolean).join(" · "),
           unitPrice: slotPrices[index] ?? "",
           miscellaneousFee: "",

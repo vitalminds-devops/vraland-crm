@@ -4,24 +4,28 @@ import { db } from "@/db/client";
 import { logError } from "@/lib/logger";
 import { manilaToday } from "@/lib/utils/manila-time";
 import {
+  activities,
   auditLogs,
   automationEnrollments,
   contacts,
   dealStageHistory,
   deals,
   documents,
+  lostReasons,
   pipelineStages,
 } from "@/db/schema";
 
 export const LEAD_EXPIRY_DAYS = 30;
 const EXPIRED_NOTE = `Expired after ${LEAD_EXPIRY_DAYS} days in Leads.`;
 const BATCH = 200;
+/** The starter loss reason an expired lead is filed under, when the organization has it. */
+const EXPIRED_REASON = "Client unresponsive";
 
 /**
  * Leads that entered the Leads stage 30+ days ago expire: the deal closes as lost and the contact is
  * archived for good, so the person needs a new contact record. Their documents are archived too, or
  * the duplicate-upload check would refuse the same ID on the new record. A lead with a recorded
- * payment is being worked and never expires. Safe to run concurrently: rows are claimed with skip locked.
+ * payment, or a move waiting for approval, is being worked and never expires. Safe to run concurrently: rows are claimed with skip locked.
  */
 export async function expireStaleLeads(): Promise<number> {
   let expired = 0;
@@ -32,6 +36,7 @@ export async function expireStaleLeads(): Promise<number> {
           dealId: deals.id,
           organizationId: deals.organizationId,
           stageId: deals.stageId,
+          title: deals.title,
           contactId: sql<string | null>`(
             select dc."contact_id" from "deal_contacts" dc
             where dc."deal_id" = "deals"."id" and dc."is_primary" limit 1)`,
@@ -52,6 +57,11 @@ export async function expireStaleLeads(): Promise<number> {
             sql`not exists (
               select 1 from "payments" p inner join "bills" b on b."id" = p."bill_id"
               where b."deal_id" = "deals"."id" and p."deleted_at" is null)`,
+            // A pending move (say, to Opportunity) is being worked; expiring it would let a later
+            // approval silently reopen an expired lead.
+            sql`not exists (
+              select 1 from "deal_stage_change_requests" r
+              where r."deal_id" = "deals"."id" and r."status" = 'pending')`,
             // Without an active Lost stage there is nowhere to close it; the board's stage check restores one.
             sql`exists (
               select 1 from "pipeline_stages" ls
@@ -75,6 +85,16 @@ export async function expireStaleLeads(): Promise<number> {
             ]),
           ),
         );
+      const reasons = await tx
+        .select({ id: lostReasons.id, organizationId: lostReasons.organizationId })
+        .from(lostReasons)
+        .where(
+          and(
+            eq(lostReasons.name, EXPIRED_REASON),
+            eq(lostReasons.isActive, true),
+            inArray(lostReasons.organizationId, [...new Set(stale.map((s) => s.organizationId))]),
+          ),
+        );
       const now = new Date();
       for (const lead of stale) {
         const lostStageId = lostStages.find((s) => s.organizationId === lead.organizationId)?.id;
@@ -84,6 +104,8 @@ export async function expireStaleLeads(): Promise<number> {
           .set({
             stageId: lostStageId,
             status: "lost",
+            lostReasonId:
+              reasons.find((reason) => reason.organizationId === lead.organizationId)?.id ?? null,
             lostNotes: EXPIRED_NOTE,
             actualCloseDate: manilaToday(),
             updatedAt: now,
@@ -94,6 +116,13 @@ export async function expireStaleLeads(): Promise<number> {
           fromStageId: lead.stageId,
           toStageId: lostStageId,
           note: EXPIRED_NOTE,
+        });
+        // In the opportunity's activity like any other move to Lost.
+        await tx.insert(activities).values({
+          organizationId: lead.organizationId,
+          activityType: "deal.stage_changed",
+          summary: `${lead.title} expired after ${LEAD_EXPIRY_DAYS} days in Leads and was marked lost.`,
+          dealId: lead.dealId,
         });
         if (lead.contactId) {
           // A contact still on another open or won deal stays; only this lead expires.

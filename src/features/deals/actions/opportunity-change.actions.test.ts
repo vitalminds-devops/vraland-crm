@@ -26,6 +26,7 @@ const mock = vi.hoisted(() => ({
   bill: null as Record<string, string> | null,
   paid: 0,
   writes: [] as { kind: string; table: unknown; values: unknown }[],
+  billLines: [] as { unitLabel: string; unitPrice: string; miscellaneousFee: string }[],
 }));
 
 /** A select chain whose terminal call resolves to the next queued rows. */
@@ -53,6 +54,9 @@ vi.mock("@/db", () => ({
             from: () => chain,
             where: () => chain,
             for: async () => (mock.bill ? [mock.bill] : []),
+            // The bill's current lines; none unless a test sets them.
+            then: (resolve: (rows: unknown[]) => unknown) =>
+              Promise.resolve(mock.billLines).then(resolve),
           };
           return chain;
         },
@@ -181,6 +185,7 @@ beforeEach(() => {
     parkingSlotIds: [],
   };
   mock.bill = null;
+  mock.billLines = [];
   mock.paid = 0;
   mock.writes = [];
   mock.canUpdate = true;
@@ -225,6 +230,36 @@ it("keeps hand-set bill prices when the same selection is saved again", async ()
   expect((await changeOpportunityUnits(selection)).success).toBe(true);
   expect(written("update", bills)).toEqual([]);
   expect(written("delete", billItems)).toEqual([]);
+  // Nothing at all is saved: the quoted fees aren't re-quoted at today's amounts.
+  expect(written("update", deals)).toEqual([]);
+});
+
+it("keeps a held unit's billed price when another is added", async () => {
+  mock.deal = { ...mock.deal, propertyId: buildingId, unitIds: [unitA], parkingSlotIds: [] };
+  mock.bill = {
+    id: "bill",
+    unitPrice: "3000000",
+    miscellaneousFee: "150000",
+    reservationDiscount: "0",
+  };
+  // 1A was billed at 3.0M; its list price has since risen to 3.3M.
+  mock.billLines = [
+    {
+      unitLabel: "Unit 1A · Tower 2 · Fairfield",
+      unitPrice: "3000000.00",
+      miscellaneousFee: "150000.00",
+    },
+  ];
+  queueChange(reserved, [
+    { id: unitA, code: "1A", price: "3300000" },
+    { id: unitB, code: "1B", price: "2500000" },
+  ]);
+  expect((await changeOpportunityUnits(selection)).success).toBe(true);
+  const lines = written("insert", billItems)[0]?.values as {
+    unitLabel: string;
+    unitPrice: string;
+  }[];
+  expect(lines.find((line) => line.unitLabel.startsWith("Unit 1A"))?.unitPrice).toBe("3000000.00");
 });
 
 it("rebuilds the bill for the new units at their fee rate, with a line per parking slot", async () => {
@@ -357,5 +392,15 @@ it("needs Edit opportunities to change units, since that re-totals the bill", as
   queueChange();
   const result = await changeOpportunityUnits(selection);
   expect(result.success).toBe(false);
+  expect(mock.writes).toEqual([]);
+});
+
+it("refuses to change units on an opportunity moved back to Leads meanwhile", async () => {
+  mock.deal = { ...mock.deal, slug: "leads" };
+  queueChange();
+  const result = await changeOpportunityUnits(selection);
+  expect(!result.success && result.error.message).toBe(
+    "This is a lead now. Pick its units with Move to Opportunity.",
+  );
   expect(mock.writes).toEqual([]);
 });

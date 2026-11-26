@@ -54,6 +54,7 @@ export default async function DealPage({
             {data.canUpdate || data.canChangeStage || data.canDelete ? (
               <DealActions
                 resumeOpportunityId={opportunityDraft}
+                lostReasons={options.lostReasons}
                 dealId={id}
                 dealTitle={d.title}
                 currentStageId={d.stageId}
@@ -311,8 +312,18 @@ export default async function DealPage({
             )}
           </Section>
 
-          {d.status === "won" && (
-            <Section title="Commission">
+          {/* A reopened won deal keeps the commission from its first win; say where it came from. */}
+          {(d.status === "won" || data.commissions.length > 0) && (
+            <Section
+              title="Commission"
+              action={
+                d.status !== "won" && (
+                  <span className="text-xs font-normal text-muted-foreground">
+                    From the first win
+                  </span>
+                )
+              }
+            >
               {data.commissions.length ? (
                 <ul className="space-y-3">
                   {data.commissions.map((v) => (

@@ -146,6 +146,15 @@ describe("reopening a lost deal", () => {
     });
   });
 
+  it("reopens a cancelled deal only before the payment gates, like a lost one", () => {
+    const cancelled = { ...lost, isLostStage: false, isCancelledStage: true };
+    expect(checkStageTransition(cancelled, won)).toEqual({ allowed: false, reason: "lost-reopen" });
+    expect(checkStageTransition(cancelled, reservation)).toEqual({
+      allowed: false,
+      reason: "lost-reopen",
+    });
+  });
+
   it("allows Leads and Opportunity", () => {
     expect(checkStageTransition(lost, leads).allowed).toBe(true);
     expect(checkStageTransition(lost, opportunity).allowed).toBe(true);

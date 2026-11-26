@@ -47,15 +47,15 @@ import { isContactsFirstDeal } from "../lib/first-deal";
 import { ensurePipelineStages } from "../lib/ensure-pipeline-stages";
 import { BOARD_COLUMN_LIMIT } from "../lib/board-limit";
 
+/** Opportunities the user reaches, whatever became of the contact. */
+const access = (context: Awaited<ReturnType<typeof requirePermission>>) =>
+  dataScopeCondition(context, {
+    organizationId: deals.organizationId,
+    ownerUserId: deals.primaryAgentUserId,
+    brokerUserId: deals.brokerUserId,
+  });
 const scope = (context: Awaited<ReturnType<typeof requirePermission>>) =>
-  and(
-    dataScopeCondition(context, {
-      organizationId: deals.organizationId,
-      ownerUserId: deals.primaryAgentUserId,
-      brokerUserId: deals.brokerUserId,
-    }),
-    leadNotArchived,
-  )!;
+  and(access(context), leadNotArchived)!;
 const fromStage = alias(pipelineStages, "from_stage");
 const toStage = alias(pipelineStages, "to_stage");
 const brokerUser = alias(users, "broker_user");
@@ -64,6 +64,15 @@ const leadCreator = alias(users, "lead_creator");
 const roleNamesOf = (userId: AnyColumn) =>
   sql<string | null>`(select string_agg(r.name, ', ' order by r.name)
     from user_roles ur join roles r on r.id = ur.role_id where ur.user_id = ${userId})`;
+
+/** The loss reasons someone marking an opportunity Lost can pick. */
+function activeLostReasons(organizationId: string) {
+  return db
+    .select({ id: lostReasons.id, name: lostReasons.name })
+    .from(lostReasons)
+    .where(and(eq(lostReasons.organizationId, organizationId), eq(lostReasons.isActive, true)))
+    .orderBy(asc(lostReasons.name));
+}
 
 export async function getPipelineBoard() {
   const context = await requirePermission("deals.view");
@@ -204,6 +213,7 @@ export async function getPipelineBoard() {
   return {
     stages,
     deals: rows,
+    lostReasons: await activeLostReasons(context.organizationId),
     canChangeStage: context.permissions.has("deals.change_stage"),
     canApproveStageChange: context.permissions.has("deals.approve_stage_change"),
     canManageBilling: canManageBilling(context),
@@ -407,13 +417,7 @@ export async function getDealOptions() {
       .from(users)
       .where(and(eligibleAgent(context.organizationId), scopedAgentCondition(context)))
       .orderBy(asc(users.lastName)),
-    lostReasons: await db
-      .select({ id: lostReasons.id, name: lostReasons.name })
-      .from(lostReasons)
-      .where(
-        and(eq(lostReasons.organizationId, context.organizationId), eq(lostReasons.isActive, true)),
-      )
-      .orderBy(asc(lostReasons.name)),
+    lostReasons: await activeLostReasons(context.organizationId),
   };
 }
 
@@ -586,7 +590,8 @@ export async function getLostAnalysis() {
     eq(deals.organizationId, context.organizationId),
     eq(deals.status, "lost"),
     isNull(deals.deletedAt),
-    scope(context),
+    // Expired leads have their contact archived; they still count as lost.
+    access(context),
   );
   const [summary, reasons, agents, monthly] = await Promise.all([
     db

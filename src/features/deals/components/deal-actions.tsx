@@ -35,6 +35,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { notify } from "@/components/ui/toast";
 import { cn } from "@/lib/utils/cn";
 import { useRouter } from "next/navigation";
+import { LostDialog, type LostReason } from "./lost-dialog";
 import { OpportunityDialog } from "./opportunity-dialog";
 
 type Mode = "stage" | "delete";
@@ -52,6 +53,7 @@ export function DealActions({
   canMoveBack,
   userRole,
   resumeOpportunityId,
+  lostReasons = [],
 }: {
   dealId: string;
   dealTitle: string;
@@ -69,8 +71,11 @@ export function DealActions({
   /** Decides which lanes may be left and how far back a move may unwind. */
   userRole?: MoveRole;
   resumeOpportunityId?: string;
+  /** Picked when the opportunity is marked Lost. */
+  lostReasons?: LostReason[];
 }) {
   const [mode, setMode] = useState<Mode | null>(null);
+  const [markingLost, setMarkingLost] = useState(false);
   const [pending, startTransition] = useTransition();
   const [targetStageId, setTargetStageId] = useState("");
   const [opportunityStageId, setOpportunityStageId] = useState<string | null>(() =>
@@ -155,6 +160,24 @@ export function DealActions({
         </Button>
       )}
 
+      {markingLost && (
+        <LostDialog
+          dealId={dealId}
+          dealTitle={dealTitle}
+          reasons={lostReasons}
+          onClose={() => setMarkingLost(false)}
+          onDone={(result) => {
+            setMarkingLost(false);
+            notify(
+              result.success && result.data.approvalRequested
+                ? "Sent for approval"
+                : "Marked lost",
+              "success",
+            );
+            router.refresh();
+          }}
+        />
+      )}
       {opportunityStageId && (
         <OpportunityDialog
           dealId={dealId}
@@ -178,24 +201,25 @@ export function DealActions({
             onSubmit={(event: FormEvent<HTMLFormElement>) => {
               event.preventDefault();
               if (!targetStage) return;
-              if (
-                (fromStage?.slug === "leads" || fromStage?.isLostStage) &&
-                targetStage.slug === "opportunity"
-              ) {
+              // Lost always records a loss reason.
+              if (targetStage.isLostStage) {
+                setMode(null);
+                setMarkingLost(true);
+                return;
+              }
+              // Only a lead needs the Move to Opportunity form; a lost one reopens with a reason.
+              if (fromStage?.slug === "leads" && targetStage.slug === "opportunity") {
                 setMode(null);
                 setOpportunityStageId(targetStage.id);
                 return;
               }
               const form = new FormData(event.currentTarget);
               run(() =>
-                changeDealStage(
-                  {
-                    dealId,
-                    stageId: targetStage.id,
-                    note: String(form.get("note") ?? ""),
-                  },
-                  { allowTerminalOutcome: targetStage.isLostStage },
-                ),
+                changeDealStage({
+                  dealId,
+                  stageId: targetStage.id,
+                  note: String(form.get("note") ?? ""),
+                }),
               );
             }}
           >

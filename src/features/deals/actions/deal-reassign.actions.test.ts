@@ -1,6 +1,5 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { reassignDealAgent } from "./deal-reassign.actions";
-import { recordDealCommissions } from "../lib/record-commissions";
 
 const dealId = "12345678-1234-4234-8234-123456789abc";
 const agentUserId = "22345678-1234-4234-8234-123456789abc";
@@ -10,6 +9,9 @@ const fixture = vi.hoisted(() => ({
   status: "open",
   updates: [] as Record<string, unknown>[],
   inserts: [] as unknown[],
+  deletes: 0,
+  /** The new agent's broker; null when they have none. */
+  newBroker: "new-broker" as string | null,
 }));
 
 function query(rows: () => unknown[]) {
@@ -29,7 +31,9 @@ vi.mock("@/db", () => ({
     // The eligible-agent lookup.
     select: () =>
       query(() =>
-        fixture.agentEligible ? [{ id: agentUserId, firstName: "Ana", lastName: "Cruz" }] : [],
+        fixture.agentEligible
+          ? [{ id: agentUserId, firstName: "Ana", lastName: "Cruz", brokerId: fixture.newBroker }]
+          : [],
       ),
     transaction: async (work: (tx: unknown) => Promise<unknown>) =>
       work({
@@ -50,7 +54,11 @@ vi.mock("@/db", () => ({
             return { where: async () => {} };
           },
         }),
-        delete: () => ({ where: async () => {} }),
+        delete: () => ({
+          where: async () => {
+            fixture.deletes += 1;
+          },
+        }),
         insert: () => ({
           values: (value: unknown) => {
             fixture.inserts.push(value);
@@ -74,7 +82,6 @@ vi.mock("@/lib/permissions/authorization", () => ({
 }));
 vi.mock("@/lib/permissions/scope", () => ({ scopedAgentCondition: () => undefined }));
 vi.mock("@/features/contacts/lib/assignment", () => ({ eligibleAgent: () => undefined }));
-vi.mock("../lib/record-commissions", () => ({ recordDealCommissions: vi.fn() }));
 vi.mock("@/lib/logger", () => ({ logError: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 
@@ -84,28 +91,43 @@ beforeEach(() => {
   fixture.status = "open";
   fixture.updates = [];
   fixture.inserts = [];
-  vi.mocked(recordDealCommissions).mockClear();
+  fixture.deletes = 0;
+  fixture.newBroker = "new-broker";
 });
 
 const input = { dealId, agentUserId, reason: "Agent left the team" };
 
-it("moves an open opportunity to the new agent without touching commission", async () => {
+it("moves an open opportunity to the new agent and their broker, recomputing no commission", async () => {
   expect((await reassignDealAgent(input)).success).toBe(true);
-  expect(fixture.updates[0]).toMatchObject({ primaryAgentUserId: agentUserId });
+  expect(fixture.updates[0]).toEqual(
+    expect.objectContaining({ primaryAgentUserId: agentUserId, brokerUserId: "new-broker" }),
+  );
+  // Shares kept from an earlier win (none on a deal never won) only change hands.
+  expect(fixture.updates.slice(1)).toEqual([{ userId: "new-broker" }, { userId: agentUserId }]);
   expect(fixture.inserts).toContainEqual({ dealId, userId: agentUserId, role: "primary" });
-  expect(recordDealCommissions).not.toHaveBeenCalled();
 });
 
-it("recomputes a won opportunity's commission for the new agent", async () => {
+it("makes an agent with no broker the opportunity's broker", async () => {
+  fixture.newBroker = null;
+  await reassignDealAgent(input);
+  expect(fixture.updates[0]).toMatchObject({ brokerUserId: agentUserId });
+});
+
+it("moves a won opportunity's commission shares as they were won, not at today's rates", async () => {
   fixture.status = "won";
   expect((await reassignDealAgent(input)).success).toBe(true);
-  expect(recordDealCommissions).toHaveBeenCalledWith(expect.anything(), {
-    organizationId: "organization",
-    dealId,
-    amount: "5000000.00",
-    sellerUserId: agentUserId,
-    brokerUserId: "broker",
-  });
+  // The broker's share goes to the new broker, the seller's to the new agent; nothing recomputed.
+  expect(fixture.updates).toContainEqual({ userId: "new-broker" });
+  expect(fixture.updates).toContainEqual({ userId: agentUserId });
+  expect(fixture.deletes).toBe(1); // only the old primary agent link
+});
+
+it("drops the broker share when the new agent is their own broker", async () => {
+  fixture.status = "won";
+  fixture.newBroker = null;
+  await reassignDealAgent(input);
+  expect(fixture.deletes).toBe(2);
+  expect(fixture.updates).toContainEqual({ userId: agentUserId });
 });
 
 it("refuses an agent who isn't eligible or in scope", async () => {

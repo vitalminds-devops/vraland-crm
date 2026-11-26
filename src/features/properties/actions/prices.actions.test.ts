@@ -53,3 +53,16 @@ it("refuses a slot out of reach or not found, writing nothing", async () => {
   expect((await saveSlotPrices({ slotId, price: -5 })).success).toBe(false);
   expect(db.saved).toBeNull();
 });
+
+it("keeps a reserved or sold slot's price, which changes only in Billing", async () => {
+  db.slot = { ...db.slot, reservedDealId: "deal" };
+  const refused = await saveSlotPrices({ slotId, price: "350000" });
+  expect(!refused.success && refused.error.message).toBe(
+    "Parking P1 is reserved or sold. Change its price in Billing.",
+  );
+  expect(db.saved).toBeNull();
+  // Its reservation fee can still be set, and the same price saves.
+  expect((await saveSlotPrices({ slotId, price: "300000", reservationFee: "5000" })).success).toBe(
+    true,
+  );
+});

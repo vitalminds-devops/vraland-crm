@@ -12,8 +12,10 @@ import {
   failure,
   notFoundFailure,
   success,
+  validationFailure,
   validationFailureFromZod,
 } from "@/lib/types/action-result";
+import { changesMoney, heldPriceMessage } from "../lib/price-changes";
 import { canWriteProperty } from "../queries/property-scope.queries";
 import { revalidateProperty } from "../lib/revalidate-property";
 import { slotPricesSchema } from "../schemas/property-prices.schema";
@@ -35,6 +37,7 @@ export async function saveSlotPrices(input: unknown): Promise<ActionResult> {
         code: propertyParkingSlots.code,
         price: propertyParkingSlots.price,
         reservationFee: propertyParkingSlots.reservationFee,
+        reservedDealId: propertyParkingSlots.reservedDealId,
       })
       .from(propertyParkingSlots)
       .innerJoin(properties, eq(propertyParkingSlots.buildingId, properties.id))
@@ -48,6 +51,8 @@ export async function saveSlotPrices(input: unknown): Promise<ActionResult> {
       .limit(1);
     if (!slot) return notFoundFailure("Parking slot");
     if (!(await canWriteProperty(context, slot.propertyId))) return failure(outOfScope());
+    if (slot.reservedDealId && changesMoney({ price: slot.price }, { price: next.price }))
+      return validationFailure(heldPriceMessage(`Parking ${slot.code}`));
     await db.transaction(async (tx) => {
       await tx
         .update(propertyParkingSlots)

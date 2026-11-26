@@ -32,6 +32,7 @@ export function UnitViewDialog({
   monthlyAmortization,
   imageUrl,
   unitTypes,
+  billedPrices,
   canManageUnits,
   canManagePrices,
   canManageUnitPictures,
@@ -62,6 +63,7 @@ export function UnitViewDialog({
   monthlyAmortization: string | null;
   imageUrl: string | null;
   unitTypes: UnitTypeFacts[];
+  billedPrices: string[];
   canManageUnits: boolean;
   canManagePrices: boolean;
   canManageUnitPictures: boolean;
@@ -152,8 +154,10 @@ export function UnitViewDialog({
                     unitTypeId: unit.unitTypeId ?? null,
                     floorArea: unit.floorArea ?? null,
                     price: unit.price ?? null,
+                    status: unit.status,
                   }}
                   unitTypes={unitTypes}
+                  billedPrices={billedPrices}
                   canManagePrices={canManagePrices}
                 />
               </div>

@@ -16,3 +16,7 @@ export function changesMoney(
 
 /** What a user without "Manage prices" is told when a save would change an amount. */
 export const pricesNeedPermission = "You can't change prices and fees on this property.";
+
+/** Why a reserved or sold unit or slot keeps its price: the sale's price lives on its bill. */
+export const heldPriceMessage = (name: string) =>
+  `${name} is reserved or sold. Change its price in Billing.`;

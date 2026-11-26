@@ -1,6 +1,6 @@
 "use server";
 
-import { and, count, eq, inArray, isNull } from "drizzle-orm";
+import { and, count, eq, inArray, isNull, notInArray } from "drizzle-orm";
 import { z } from "zod";
 import { ActionErrorCode } from "@/lib/errors/action-error";
 import { revalidateProperty } from "../lib/revalidate-property";
@@ -21,7 +21,7 @@ import {
   validationFailureFromZod,
 } from "@/lib/types/action-result";
 import { canWriteProperty } from "../queries/property-scope.queries";
-import { changesMoney, pricesNeedPermission } from "../lib/price-changes";
+import { changesMoney, heldPriceMessage, pricesNeedPermission } from "../lib/price-changes";
 import { designFacts, REPRICED_STATUSES } from "../lib/floor-layout";
 import { unitDetailsSchema, unitTypeSchema } from "../schemas/floor-layout.schema";
 
@@ -87,6 +87,26 @@ export async function saveUnitType(
   };
   try {
     const saved = await db.transaction(async (tx) => {
+      // Reserved and sold units that follow the type's price keep the price they were sold at.
+      if (value.id) {
+        const [before] = await tx
+          .select({ price: unitTypes.price })
+          .from(unitTypes)
+          .where(and(eq(unitTypes.id, value.id), eq(unitTypes.propertyId, property.id)))
+          .for("update");
+        if (before?.price && changesMoney(before, { price: fields.price }))
+          await tx
+            .update(units)
+            .set({ price: before.price })
+            .where(
+              and(
+                eq(units.unitTypeId, value.id),
+                eq(units.buildingId, property.id),
+                isNull(units.price),
+                notInArray(units.status, [...REPRICED_STATUSES]),
+              ),
+            );
+      }
       const [row] = value.id
         ? await tx
             .update(unitTypes)
@@ -207,9 +227,13 @@ export async function saveUnitDetails(input: unknown): Promise<ActionResult> {
       unitTypeId: units.unitTypeId,
       floorArea: units.floorArea,
       price: units.price,
+      code: units.code,
+      reservedDealId: units.reservedDealId,
+      typePrice: unitTypes.price,
     })
     .from(units)
     .innerJoin(properties, eq(units.buildingId, properties.id))
+    .leftJoin(unitTypes, eq(units.unitTypeId, unitTypes.id))
     .where(
       and(
         eq(units.id, value.unitId),
@@ -233,11 +257,18 @@ export async function saveUnitDetails(input: unknown): Promise<ActionResult> {
     changesMoney({ price: unit.price }, { price: money(value.price) })
   )
     return failure(outOfScope(pricesNeedPermission));
+  // A reserved or sold unit's price is what the client agreed to; it changes only on the bill.
+  if (unit.reservedDealId && changesMoney({ price: unit.price }, { price: money(value.price) }))
+    return validationFailure(heldPriceMessage(`Unit ${unit.code}`));
 
   const fields = {
     unitTypeId: value.unitTypeId,
     floorArea: money(value.floorArea),
-    price: money(value.price),
+    // A held unit that followed its type's price keeps the price it was sold at under a new type.
+    price:
+      unit.reservedDealId && value.price === null && unit.price === null
+        ? unit.typePrice
+        : money(value.price),
   };
   try {
     await db.transaction(async (tx) => {

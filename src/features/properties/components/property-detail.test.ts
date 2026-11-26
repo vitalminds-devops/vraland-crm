@@ -87,6 +87,9 @@ vi.mock("@/features/properties/queries/property.queries", () => ({
 vi.mock("@/features/properties/queries/property-floor-unit.queries", () => ({
   getPropertyInventory: vi.fn(async () => fixture.inventory),
 }));
+vi.mock("@/features/properties/queries/billed-prices.queries", () => ({
+  getBilledUnitPrices: async () => ({}),
+}));
 vi.mock("@/features/properties/queries/parking.queries", () => ({
   listParkingSlots: vi.fn(async () => []),
 }));

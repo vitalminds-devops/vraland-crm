@@ -50,3 +50,36 @@ export function dashboardSections(has: PermissionLookup): DashboardSections {
       (canViewContacts || canViewDeals || canViewProperties || canViewTasks || canViewCalendar),
   };
 }
+
+/**
+ * The module permissions each dashboard panel needs: it can show with any one of them. The role
+ * editor greys out a panel without them, so a ticked panel always shows something.
+ */
+export const dashboardPanelNeeds: Partial<Record<PermissionKey, readonly PermissionKey[]>> = {
+  "dashboard.view_pipeline": ["deals.view"],
+  "dashboard.view_revenue": ["deals.view"],
+  "dashboard.view_closings": ["deals.view"],
+  "dashboard.view_metrics": ["contacts.view", "properties.view", "deals.view"],
+  "dashboard.view_priorities": ["tasks.view", "calendar.view"],
+  "dashboard.view_task_load": ["tasks.view"],
+  "dashboard.view_inventory": ["properties.view"],
+  "dashboard.view_activity": [
+    "contacts.view",
+    "deals.view",
+    "properties.view",
+    "tasks.view",
+    "calendar.view",
+  ],
+};
+
+/** Whether a dashboard panel can show anything with these permissions. */
+export function panelUsable(key: string, has: (key: PermissionKey) => boolean): boolean {
+  const needs = dashboardPanelNeeds[key as PermissionKey];
+  return !needs || needs.some(has);
+}
+
+/** The keys without dashboard panels that no longer have a module to show. */
+export function withoutUnusablePanels(keys: ReadonlySet<string>): Set<string> {
+  const has = (key: PermissionKey) => keys.has(key);
+  return new Set([...keys].filter((key) => panelUsable(key, has)));
+}

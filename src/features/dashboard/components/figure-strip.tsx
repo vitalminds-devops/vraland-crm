@@ -21,14 +21,12 @@ export function FigureStrip({ figures }: { figures: Figure[] }) {
     <section
       aria-label="Key figures"
       className={cn(
-        // 1px gaps over a border-coloured ground draw the dividers, at any column count.
-        "grid gap-px overflow-hidden rounded-xl border border-border bg-border",
-        "grid-cols-2",
-        figures.length >= 3 && "md:grid-cols-3",
-        figures.length >= 5 ? "xl:grid-cols-5" : figures.length === 4 && "xl:grid-cols-4",
+        // 1px gaps over a border-coloured ground draw the dividers. Figures grow to fill each row,
+        // so however many there are, no empty (border-coloured) cell is left over.
+        "flex flex-wrap gap-px overflow-hidden rounded-xl border border-border bg-border",
       )}
     >
-      {figures.map((figure, index) => {
+      {figures.map((figure) => {
         const body = (
           <>
             <span className="block text-[12.5px] text-muted-foreground">{figure.label}</span>
@@ -40,11 +38,7 @@ export function FigureStrip({ figures }: { figures: Figure[] }) {
             </span>
           </>
         );
-        const cell = cn(
-          "min-w-0 bg-card px-4 py-4 sm:px-5",
-          // An odd count leaves the last one alone on phones; let it span the row.
-          figures.length % 2 === 1 && index === figures.length - 1 && "col-span-2 md:col-span-1",
-        );
+        const cell = "min-w-0 flex-[1_1_10rem] bg-card px-4 py-4 sm:px-5 xl:flex-[1_1_12rem]";
         return figure.href ? (
           <Link
             key={figure.key}

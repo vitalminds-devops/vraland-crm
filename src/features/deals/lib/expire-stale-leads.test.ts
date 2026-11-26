@@ -3,6 +3,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 const fixture = vi.hoisted(() => ({
   stale: [] as Record<string, unknown>[],
   lostStages: [] as Record<string, unknown>[],
+  reasons: [] as Record<string, unknown>[],
   contactArchived: true,
   writes: [] as { table: string; value: Record<string, unknown> }[],
 }));
@@ -10,12 +11,18 @@ const fixture = vi.hoisted(() => ({
 vi.mock("@/db/client", async () => {
   const { getTableName } = await import("drizzle-orm");
   const name = (table: unknown) => getTableName(table as Parameters<typeof getTableName>[0]);
-  let selects = 0;
+  // Rows by the table read: the due leads, the Lost stages, the loss reasons.
+  const rowsOf = (table: string) =>
+    table === "deals"
+      ? fixture.stale
+      : table === "pipeline_stages"
+        ? fixture.lostStages
+        : fixture.reasons;
   const tx = {
     select: () => {
-      const rows = selects++ % 2 === 0 ? fixture.stale : fixture.lostStages;
+      let rows: unknown[] = [];
       const query = {
-        from: () => query,
+        from: (table: unknown) => ((rows = rowsOf(name(table))), query),
         innerJoin: () => query,
         where: () => query,
         limit: () => query,
@@ -45,9 +52,10 @@ const { expireStaleLeads } = await import("./expire-stale-leads");
 
 beforeEach(() => {
   fixture.stale = [
-    { dealId: "deal", organizationId: "org", stageId: "leads", contactId: "contact" },
+    { dealId: "deal", organizationId: "org", stageId: "leads", contactId: "contact", title: "Ana" },
   ];
   fixture.lostStages = [{ id: "lost", organizationId: "org" }];
+  fixture.reasons = [{ id: "unresponsive", organizationId: "org" }];
   fixture.contactArchived = true;
   fixture.writes = [];
 });
@@ -58,11 +66,12 @@ it("closes the lead as lost in the organization's Lost stage and archives its co
   expect(await expireStaleLeads()).toBe(1);
   expect(fixture.writes[0]).toMatchObject({
     table: "deals",
-    value: { stageId: "lost", status: "lost" },
+    value: { stageId: "lost", status: "lost", lostReasonId: "unresponsive" },
   });
   expect(tables()).toEqual([
     "deals",
     "deal_stage_history",
+    "activities",
     "contacts",
     "documents",
     "automation_enrollments",
@@ -87,4 +96,10 @@ it("does nothing when no lead is due", async () => {
   fixture.stale = [];
   expect(await expireStaleLeads()).toBe(0);
   expect(fixture.writes).toEqual([]);
+});
+
+it("files an expired lead without a loss reason when the organization has no matching one", async () => {
+  fixture.reasons = [];
+  await expireStaleLeads();
+  expect(fixture.writes[0]?.value).toMatchObject({ lostReasonId: null });
 });

@@ -49,6 +49,7 @@ import { hashPassword } from "better-auth/crypto";
 import { canManageUsers, hasPermission } from "@/lib/permissions/policy";
 import { logError } from "@/lib/logger";
 import { buildChangeSet, isEmptyChangeSet } from "@/lib/audit/redact";
+import { withoutUnusablePanels } from "@/lib/permissions/view-access";
 import {
   type ActionResult,
   databaseFailure,
@@ -1380,8 +1381,11 @@ export async function updateRolePermissions(input: unknown): Promise<SettingsRes
     .safeParse(input);
   if (!parsed.success) return validationFailureFromZod(parsed.error, "Invalid role permissions.");
 
-  // Retired keys the Roles page still lists are dropped on save rather than blocking it.
-  const requested = [...new Set(parsed.data.permissionKeys)].filter(isPermissionKey);
+  // Retired keys the Roles page still lists are dropped on save rather than blocking it, and so
+  // are dashboard panels left without a module to show.
+  const requested = [
+    ...withoutUnusablePanels(new Set(parsed.data.permissionKeys.filter(isPermissionKey))),
+  ].filter(isPermissionKey);
 
   const [role] = await db
     .select({ id: roles.id, name: roles.name, slug: roles.slug })
