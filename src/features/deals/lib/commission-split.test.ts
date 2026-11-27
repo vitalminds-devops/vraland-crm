@@ -15,6 +15,7 @@ describe("commissionSplit", () => {
         base: 2_300_000,
         sellerRoleIds: ["agent"],
         brokerRoleIds: ["broker"],
+        hasBroker: true,
         roleRates,
         links,
       }),
@@ -30,22 +31,35 @@ describe("commissionSplit", () => {
         base: 2_300_000,
         sellerRoleIds: ["agent"],
         brokerRoleIds: [],
+        hasBroker: false,
         roleRates,
         links,
       }),
     ).toEqual([{ recipient: "seller", roleId: "agent", rate: 3, amount: 69_000 }]);
   });
 
-  it("pays the own rate when the broker's role is not linked", () => {
+  it("pays nothing to a seller under a broker when their roles are not linked", () => {
+    // Under a broker the commission rule decides; the seller's own rate is only for independents.
     expect(
       commissionSplit({
         base: 1_000,
         sellerRoleIds: ["agent"],
         brokerRoleIds: ["other"],
+        hasBroker: true,
         roleRates,
         links,
       }),
-    ).toEqual([{ recipient: "seller", roleId: "agent", rate: 3, amount: 30 }]);
+    ).toEqual([]);
+    expect(
+      commissionSplit({
+        base: 1_000,
+        sellerRoleIds: ["agent"],
+        brokerRoleIds: [],
+        hasBroker: true,
+        roleRates,
+        links,
+      }),
+    ).toEqual([]);
   });
 
   it("pays nothing when no rate is set", () => {
@@ -54,6 +68,7 @@ describe("commissionSplit", () => {
         base: 1_000,
         sellerRoleIds: ["viewer"],
         brokerRoleIds: [],
+        hasBroker: false,
         roleRates,
         links,
       }),
@@ -66,6 +81,7 @@ describe("commissionSplit", () => {
         base: 1_234.56,
         sellerRoleIds: ["agent"],
         brokerRoleIds: [],
+        hasBroker: false,
         roleRates: new Map([["agent", 2.5]]),
         links: [],
       })[0].amount,
@@ -83,6 +99,7 @@ describe("commissionSplit", () => {
         base: 1_000_000,
         sellerRoleIds: ["viewer", "unset", "agent"],
         brokerRoleIds: [],
+        hasBroker: false,
         roleRates: rates,
         links,
       }),

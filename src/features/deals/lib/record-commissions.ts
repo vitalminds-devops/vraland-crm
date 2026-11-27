@@ -57,6 +57,7 @@ export async function recordDealCommissions(
     base,
     sellerRoleIds: rolesOf(deal.sellerUserId),
     brokerRoleIds: rolesOf(brokerUserId),
+    hasBroker: brokerUserId !== null,
     roleRates: new Map(
       roleRows.map((role) => [role.id, role.rate === null ? null : Number(role.rate)]),
     ),
