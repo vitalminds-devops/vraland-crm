@@ -19,4 +19,5 @@ export const parkingTypeSchema = z.object({
   h: z.coerce.number().min(2, "Length is 2–15 m.").max(15, "Length is 2–15 m."),
   price: amount,
   reservationFee: amount,
+  monthlyAmortization: amount,
 });

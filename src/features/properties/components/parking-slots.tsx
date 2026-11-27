@@ -43,8 +43,10 @@ export type ParkingSlot = {
   floorId?: string | null;
   price?: string | null;
   reservationFee?: string | null;
+  monthlyAmortization?: string | null;
   ownPrice?: string | null;
   ownReservationFee?: string | null;
+  ownMonthlyAmortization?: string | null;
 };
 type ParkingFloor = {
   id: string;

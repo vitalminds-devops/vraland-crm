@@ -49,10 +49,17 @@ export const parkingReservationFee = sql`(select sum(s."reservation_fee") from "
 export const dealReservationFee = sql<string | null>`coalesce("deals"."reservation_fee",
   case when ${perUnit("reservation_fee")} is null and ${parkingReservationFee} is null then null
   else coalesce(${perUnit("reservation_fee")}, 0) + coalesce(${parkingReservationFee}, 0) end)`;
-/** The monthly amortization Billing shows and the gate needs: the amount quoted, else every unit's. */
-export const dealMonthlyAmortization = sql<
-  string | null
->`coalesce("deals"."monthly_amortization", ${perUnit("monthly_amortization")})`;
+/** The monthly amortizations of the deal's parking slots. */
+export const parkingMonthlyAmortization = sql`(select sum(s."monthly_amortization") from "parking_slots" s
+  where s."id" = any("deals"."parking_slot_ids"))`;
+
+/**
+ * The monthly amortization Billing shows and the gate needs: the amount quoted, else every unit's
+ * plus every parking slot's. Null when none is set.
+ */
+export const dealMonthlyAmortization = sql<string | null>`coalesce("deals"."monthly_amortization",
+  case when ${perUnit("monthly_amortization")} is null and ${parkingMonthlyAmortization} is null then null
+  else coalesce(${perUnit("monthly_amortization")}, 0) + coalesce(${parkingMonthlyAmortization}, 0) end)`;
 
 /** Reservation payments covering the reservation fee (or a Full payment) unlock Opportunity → Reservation; none set means any amount. */
 export const dealReservationPaid = dealPaidAs(

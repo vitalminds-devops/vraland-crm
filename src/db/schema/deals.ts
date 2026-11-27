@@ -117,6 +117,11 @@ export const deals = pgTable(
     monthlyAmortization: numeric("monthly_amortization", { precision: 18, scale: 2 }),
     /** The parking part of the quoted reservation fee; the total stays in reservationFee. */
     parkingReservationFee: numeric("parking_reservation_fee", { precision: 18, scale: 2 }),
+    /** The parking part of the quoted monthly amortization; the total stays in monthlyAmortization. */
+    parkingMonthlyAmortization: numeric("parking_monthly_amortization", {
+      precision: 18,
+      scale: 2,
+    }),
     createdBy: uuid("created_by").references(() => users.id, {
       onDelete: "set null",
     }),

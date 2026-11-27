@@ -22,13 +22,17 @@ import { slotPricesSchema } from "../schemas/property-prices.schema";
 
 const amount = (value: number | null) => (value === null ? null : String(value));
 
-/** Sets one parking slot's price and reservation fee. */
+/** Sets one parking slot's price, reservation fee and monthly amortization. */
 export async function saveSlotPrices(input: unknown): Promise<ActionResult> {
   const context = await requirePermission("properties.manage_prices");
   const parsed = slotPricesSchema.safeParse(input);
   if (!parsed.success) return validationFailureFromZod(parsed.error);
   const value = parsed.data;
-  const next = { price: amount(value.price), reservationFee: amount(value.reservationFee) };
+  const next = {
+    price: amount(value.price),
+    reservationFee: amount(value.reservationFee),
+    monthlyAmortization: amount(value.monthlyAmortization),
+  };
 
   try {
     const [slot] = await db
@@ -37,6 +41,7 @@ export async function saveSlotPrices(input: unknown): Promise<ActionResult> {
         code: parkingSlots.identifier,
         price: parkingSlots.price,
         reservationFee: parkingSlots.reservationFee,
+        monthlyAmortization: parkingSlots.monthlyAmortization,
         reservedDealId: parkingSlots.reservedDealId,
       })
       .from(parkingSlots)
@@ -64,7 +69,11 @@ export async function saveSlotPrices(input: unknown): Promise<ActionResult> {
         action: "update",
         entityType: "parking_slot",
         entityId: value.slotId,
-        oldValues: { price: slot.price, reservationFee: slot.reservationFee },
+        oldValues: {
+          price: slot.price,
+          reservationFee: slot.reservationFee,
+          monthlyAmortization: slot.monthlyAmortization,
+        },
         newValues: next,
       });
     });

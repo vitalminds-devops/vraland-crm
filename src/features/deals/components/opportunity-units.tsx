@@ -1,10 +1,10 @@
 "use client";
 
 import { formatAmount } from "@/lib/utils/money";
-import { unitsReservationFee } from "@/features/billing/lib/quoted-terms";
+import { monthlyAmortizationLines, unitsReservationFee } from "@/features/billing/lib/quoted-terms";
 import { ArrowLeftRight, CopyPlus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { Fragment, useEffect, useState, useTransition } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
@@ -253,12 +253,17 @@ function ChangeUnitsDialog({ dealId, onClose }: { dealId: string; onClose: () =>
                         </dd>
                       </>
                     )}
-                    <dt>Monthly amortization</dt>
-                    <dd className="tabular-nums">
-                      {current.monthlyAmortization
-                        ? formatAmount(current.monthlyAmortization, current.currency)
-                        : "—"}
-                    </dd>
+                    {monthlyAmortizationLines(
+                      current.monthlyAmortization,
+                      current.parkingMonthlyAmortization,
+                    ).map(([label, amount]) => (
+                      <Fragment key={label}>
+                        <dt>{label}</dt>
+                        <dd className="tabular-nums">
+                          {amount ? formatAmount(amount, current.currency) : "—"}
+                        </dd>
+                      </Fragment>
+                    ))}
                   </dl>
                 )}
                 {current?.success && current.missingFee && (

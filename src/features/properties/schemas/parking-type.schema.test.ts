@@ -12,8 +12,17 @@ it("reads a parking type from form text, blank amounts as none", () => {
       h: "10",
       price: "800000",
       reservationFee: "",
+      monthlyAmortization: "4500",
     }),
-  ).toEqual({ propertyId, name: "Tandem", w: 2.5, h: 10, price: 800000, reservationFee: null });
+  ).toEqual({
+    propertyId,
+    name: "Tandem",
+    w: 2.5,
+    h: 10,
+    price: 800000,
+    reservationFee: null,
+    monthlyAmortization: 4500,
+  });
 });
 
 it("refuses a nameless type, an odd size or a negative price", () => {

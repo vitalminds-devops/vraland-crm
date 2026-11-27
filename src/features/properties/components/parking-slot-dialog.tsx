@@ -23,9 +23,11 @@ type SlotAmounts = {
   /** What it costs: its own amount, else the property's. */
   price?: string | null;
   reservationFee?: string | null;
+  monthlyAmortization?: string | null;
   /** Its own amounts only; null follows the property's. */
   ownPrice?: string | null;
   ownReservationFee?: string | null;
+  ownMonthlyAmortization?: string | null;
 };
 
 /** The same amount, with blank and null alike ("350000" equals "350000.00"). */
@@ -59,10 +61,12 @@ export function ParkingSlotDialog({
   const [own, setOwn] = useState({
     price: slot.ownPrice ?? null,
     reservationFee: slot.ownReservationFee ?? null,
+    monthlyAmortization: slot.ownMonthlyAmortization ?? null,
   });
   const changed =
     !sameAmount(own.price, slot.ownPrice) ||
-    !sameAmount(own.reservationFee, slot.ownReservationFee);
+    !sameAmount(own.reservationFee, slot.ownReservationFee) ||
+    !sameAmount(own.monthlyAmortization, slot.ownMonthlyAmortization);
   const taken = isHeld(slot.status);
   const run = (action: () => Promise<{ success: boolean; message: string }>, after?: () => void) =>
     startTransition(async () => {
@@ -111,6 +115,7 @@ export function ParkingSlotDialog({
           ["Size", `${size.w} × ${size.h} m`],
           ["Price", formatMoney(slot.price, currency)],
           ["Reservation fee", formatMoney(slot.reservationFee, currency)],
+          ["Monthly amortization", formatMoney(slot.monthlyAmortization, currency)],
         ]}
       />
       <div className="p-5">
@@ -175,6 +180,18 @@ export function ParkingSlotDialog({
                 value={own.reservationFee}
                 onValueChange={(next) =>
                   setOwn((current) => ({ ...current, reservationFee: next || null }))
+                }
+                placeholder="0.00"
+                disabled={pending}
+                className="h-9"
+              />
+            </label>
+            <label className="col-span-2 grid gap-1 text-xs text-muted-foreground">
+              Monthly amortization
+              <MoneyInput
+                value={own.monthlyAmortization}
+                onValueChange={(next) =>
+                  setOwn((current) => ({ ...current, monthlyAmortization: next || null }))
                 }
                 placeholder="0.00"
                 disabled={pending}

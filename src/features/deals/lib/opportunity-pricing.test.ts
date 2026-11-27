@@ -40,25 +40,31 @@ it("requires a building and unique unit and parking IDs", () => {
   }
 });
 
-it("quotes the reservation fee from unit types and slots, and monthly from unit types", () => {
+it("quotes the reservation fee and monthly amortization from unit types and slots", () => {
   expect(
     opportunityFees(
       [
         { reservationFee: "15000", monthlyAmortization: "25000.50" },
         { reservationFee: "15000.25", monthlyAmortization: null },
       ],
-      ["5000", null],
+      [
+        { reservationFee: "5000", monthlyAmortization: "1500" },
+        { reservationFee: null, monthlyAmortization: null },
+      ],
     ),
   ).toEqual({
     reservationFee: "35000.25",
     parkingReservationFee: "5000.00",
-    monthlyAmortization: "25000.50",
+    // Parking's monthly amortization adds to the units', and is kept apart for the quote.
+    monthlyAmortization: "26500.50",
+    parkingMonthlyAmortization: "1500.00",
   });
   // Nothing set stays "no fee", so any payment opens the stage as before.
   expect(opportunityFees([{ reservationFee: null, monthlyAmortization: null }], [])).toEqual({
     reservationFee: null,
     parkingReservationFee: null,
     monthlyAmortization: null,
+    parkingMonthlyAmortization: null,
   });
 });
 

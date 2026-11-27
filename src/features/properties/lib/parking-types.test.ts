@@ -8,14 +8,22 @@ const tandem: ParkingType = {
   h: 10,
   price: "500000",
   reservationFee: "10000",
+  monthlyAmortization: "4500",
 };
 
-it("joins a slot to its picked type, taking its price only while available", () => {
+it("joins a slot to its picked type, taking its amounts only while available", () => {
   expect(slotTypeChange({ status: "available", parkingTypeId: null }, "t1", [tandem])).toEqual({
     parkingTypeId: "t1",
     price: "500000",
     reservationFee: "10000",
+    monthlyAmortization: "4500",
   });
+  // A type saved before parking had a monthly amortization gives none.
+  const older: ParkingType = { ...tandem, monthlyAmortization: undefined };
+  expect(
+    slotTypeChange({ status: "available", parkingTypeId: null }, "t1", [older])
+      ?.monthlyAmortization,
+  ).toBeNull();
   expect(slotTypeChange({ status: "sold", parkingTypeId: null }, "t1", [tandem])).toEqual({
     parkingTypeId: "t1",
   });

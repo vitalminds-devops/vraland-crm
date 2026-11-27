@@ -21,9 +21,11 @@ export type ParkingSlot = {
   /** What the slot costs, set on the slot or by its parking type. */
   price: string | null;
   reservationFee: string | null;
+  monthlyAmortization: string | null;
   /** The same amounts, for the slot window's price fields. */
   ownPrice: string | null;
   ownReservationFee: string | null;
+  ownMonthlyAmortization: string | null;
 };
 
 /**
@@ -54,8 +56,10 @@ export async function listParkingSlots(
       accessible: sql<boolean>`${granted}`,
       price: parkingSlots.price,
       reservationFee: parkingSlots.reservationFee,
+      monthlyAmortization: parkingSlots.monthlyAmortization,
       ownPrice: parkingSlots.price,
       ownReservationFee: parkingSlots.reservationFee,
+      ownMonthlyAmortization: parkingSlots.monthlyAmortization,
     })
     .from(parkingSlots)
     .innerJoin(properties, eq(parkingSlots.propertyId, properties.id))

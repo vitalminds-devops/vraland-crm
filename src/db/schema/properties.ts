@@ -245,6 +245,7 @@ export const parkingSlots = pgTable(
     /** This slot's own price and reservation fee; null uses the property's parking amounts. */
     price: numeric({ precision: 18, scale: 2 }),
     reservationFee: numeric("reservation_fee", { precision: 18, scale: 2 }),
+    monthlyAmortization: numeric("monthly_amortization", { precision: 18, scale: 2 }),
     /** The parking type it was placed as; its price follows the type while it is available. */
     parkingTypeId: varchar("parking_type_id", { length: 40 }),
     reservedDealId: uuid("reserved_deal_id").references((): AnyPgColumn => deals.id, {

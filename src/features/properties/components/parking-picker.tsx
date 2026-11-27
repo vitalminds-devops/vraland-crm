@@ -5,15 +5,17 @@ import { cn } from "@/lib/utils/cn";
 import { formatMoney, formatMoneyShort } from "@/lib/utils/money";
 import { unitStatusLabel, unitStatusToneFor } from "../lib/unit-codes";
 
-/** What a slot says on hover and to screen readers: its type, price and fee. */
+/** What a slot says on hover and to screen readers: its type, price, fee and monthly amount. */
 const slotDetails = (slot: {
   price?: string | null;
   reservationFee?: string | null;
+  monthlyAmortization?: string | null;
   parkingTypeName?: string | null;
 }) => [
   slot.parkingTypeName,
   formatMoney(slot.price),
   slot.reservationFee && `Reservation fee ${formatMoney(slot.reservationFee)}`,
+  slot.monthlyAmortization && `Monthly ${formatMoney(slot.monthlyAmortization)}`,
 ];
 
 /** Parking bays to tick for a partial grant; lit bays are given. */
@@ -33,6 +35,7 @@ export function ParkingPicker({
     accessible: boolean;
     price?: string | null;
     reservationFee?: string | null;
+    monthlyAmortization?: string | null;
     parkingTypeName?: string | null;
   }[];
   selectedIds: string[];

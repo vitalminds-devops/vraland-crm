@@ -304,6 +304,7 @@ export async function saveFloorLayout(
                     parkingTypeId: type?.id ?? null,
                     price: type?.price ?? null,
                     reservationFee: type?.reservationFee ?? null,
+                    monthlyAmortization: type?.monthlyAmortization ?? null,
                   };
                 }),
               )

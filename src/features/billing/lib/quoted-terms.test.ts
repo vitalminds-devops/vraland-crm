@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { quotedTerms, unitsReservationFee } from "./quoted-terms";
+import { monthlyAmortizationLines, quotedTerms, unitsReservationFee } from "./quoted-terms";
 
 it("splits the quoted price and reservation fee into units, parking and total", () => {
   expect(
@@ -49,4 +49,13 @@ it("leaves the units' fee empty when parking takes all of it", () => {
   expect(unitsReservationFee("10000", "10000")).toBeNull();
   expect(unitsReservationFee(null, "10000")).toBeNull();
   expect(unitsReservationFee("20000", null)).toBe("20000.00");
+});
+
+it("shows the monthly amortization split only when parking has one", () => {
+  expect(monthlyAmortizationLines("26500.50", "1500")).toEqual([
+    ["Unit monthly amortization", "25000.50"],
+    ["Parking monthly amortization", "1500.00"],
+  ]);
+  expect(monthlyAmortizationLines("25000", null)).toEqual([["Monthly amortization", "25000"]]);
+  expect(monthlyAmortizationLines(null, "0")).toEqual([["Monthly amortization", null]]);
 });

@@ -36,6 +36,7 @@ import {
   dealMonthlyAmortization,
   dealReservationFee,
   parkingReservationFee,
+  parkingMonthlyAmortization,
 } from "../lib/deal-payment";
 
 export const billStatuses = ["unbilled", "unpaid", "partial", "paid"] as const;
@@ -95,6 +96,9 @@ const dealRows = () =>
         string | null
       >`coalesce(${deals.parkingReservationFee}, ${parkingReservationFee})`,
       monthlyAmortization: dealMonthlyAmortization,
+      parkingMonthlyAmortization: sql<
+        string | null
+      >`coalesce(${deals.parkingMonthlyAmortization}, ${parkingMonthlyAmortization})`,
       stageName: pipelineStages.name,
       dealStatus: deals.status,
       contactId: contacts.id,

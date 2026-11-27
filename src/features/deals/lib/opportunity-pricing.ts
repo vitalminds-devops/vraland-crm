@@ -39,9 +39,11 @@ export function opportunityPrice(unitPrices: (string | null)[], slotPrices: (str
  * The reservation fee and monthly amortization quoted for a selection: unit type fees plus slot
  * fees, and unit type monthly amounts, added in cents. Null when none of them sets one.
  */
+type SlotOrUnitAmounts = { reservationFee: string | null; monthlyAmortization: string | null };
+
 export function opportunityFees(
-  units: readonly { reservationFee: string | null; monthlyAmortization: string | null }[],
-  slotFees: readonly (string | null)[],
+  units: readonly SlotOrUnitAmounts[],
+  slots: readonly SlotOrUnitAmounts[],
 ) {
   const total = (amounts: readonly (string | null)[]) => {
     const set = amounts.filter((amount): amount is string => amount !== null && amount !== "");
@@ -50,10 +52,15 @@ export function opportunityFees(
       2,
     );
   };
+  const fees = (rows: readonly SlotOrUnitAmounts[]) => rows.map((row) => row.reservationFee);
+  const monthly = (rows: readonly SlotOrUnitAmounts[]) =>
+    rows.map((row) => row.monthlyAmortization);
+  // Each total covers units and parking; the parking part is kept too, so quotes can show it apart.
   return {
-    reservationFee: total([...units.map((unit) => unit.reservationFee), ...slotFees]),
-    parkingReservationFee: total(slotFees),
-    monthlyAmortization: total(units.map((unit) => unit.monthlyAmortization)),
+    reservationFee: total([...fees(units), ...fees(slots)]),
+    parkingReservationFee: total(fees(slots)),
+    monthlyAmortization: total([...monthly(units), ...monthly(slots)]),
+    parkingMonthlyAmortization: total(monthly(slots)),
   };
 }
 

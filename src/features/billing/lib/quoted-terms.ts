@@ -18,6 +18,21 @@ export function unitsReservationFee(
 }
 
 /**
+ * The monthly amortization as quoted, as label and amount lines: the units' and parking's apart
+ * when parking has one, else a single line.
+ */
+export function monthlyAmortizationLines(
+  total: string | null | undefined,
+  parking: string | null | undefined,
+): [label: string, amount: string | null][] {
+  if (!toCents(parking)) return [["Monthly amortization", total ?? null]];
+  return [
+    ["Unit monthly amortization", unitsReservationFee(total, parking)],
+    ["Parking monthly amortization", amount(toCents(parking) ?? null)],
+  ];
+}
+
+/**
  * The quoted price and reservation fee, split into units and parking with their totals. The
  * opportunity saves the total price, the parking price, the total fee and the parking fee; the
  * units' share of each is what is left.

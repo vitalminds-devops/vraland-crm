@@ -395,6 +395,7 @@ export async function openOpportunity(formData: FormData): Promise<DealActionRes
           reservationFee: estimate.reservationFee,
           parkingReservationFee: estimate.parkingReservationFee,
           monthlyAmortization: estimate.monthlyAmortization,
+          parkingMonthlyAmortization: estimate.parkingMonthlyAmortization,
           developmentId: v.developmentId,
           unitIds: v.unitIds,
           title: dealTitleFor(
@@ -569,6 +570,7 @@ export async function changeOpportunityUnits(input: unknown): Promise<DealAction
           reservationFee: estimate.reservationFee,
           parkingReservationFee: estimate.parkingReservationFee,
           monthlyAmortization: estimate.monthlyAmortization,
+          parkingMonthlyAmortization: estimate.parkingMonthlyAmortization,
           amount: estimate.total,
           currency: estimate.currency,
           title: dealTitleFor(

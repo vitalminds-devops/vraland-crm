@@ -6,9 +6,10 @@ const optionalNonnegative = z.preprocess(
   z.coerce.number().nonnegative("Enter an amount of zero or more.").nullable(),
 );
 
-/** One parking slot's price and reservation fee; blank is none. */
+/** One parking slot's price, reservation fee and monthly amortization; blank is none. */
 export const slotPricesSchema = z.object({
   slotId: z.uuid(),
   price: optionalNonnegative,
   reservationFee: optionalNonnegative,
+  monthlyAmortization: optionalNonnegative,
 });

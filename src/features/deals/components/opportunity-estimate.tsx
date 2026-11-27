@@ -1,6 +1,6 @@
 "use client";
 
-import { unitsReservationFee } from "@/features/billing/lib/quoted-terms";
+import { monthlyAmortizationLines, unitsReservationFee } from "@/features/billing/lib/quoted-terms";
 import { cn } from "@/lib/utils/cn";
 import { formatAmount } from "@/lib/utils/money";
 
@@ -61,7 +61,10 @@ export function OpportunityEstimatePanel({
                     ["Parking reservation fee", estimate.parkingReservationFee],
                   ] as const)
                 : ([["Reservation fee", estimate.reservationFee]] as const)),
-              ["Monthly amortization", estimate.monthlyAmortization],
+              ...monthlyAmortizationLines(
+                estimate.monthlyAmortization,
+                estimate.parkingMonthlyAmortization,
+              ),
             ] as const
           ).map(([label, amount]) => (
             <div key={label} className="flex justify-between gap-3 text-muted-foreground">

@@ -271,6 +271,7 @@ export async function applyStageChange(
             reservationFee: null,
             parkingReservationFee: null,
             monthlyAmortization: null,
+            parkingMonthlyAmortization: null,
           }),
           updatedBy: context.userId,
           updatedAt: new Date(),

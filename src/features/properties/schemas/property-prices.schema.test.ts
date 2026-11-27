@@ -8,7 +8,11 @@ it("reads optional, nonnegative amounts; blank is none", () => {
     slotId: id,
     price: 350000.5,
     reservationFee: null,
+    monthlyAmortization: null,
   });
+  expect(
+    slotPricesSchema.parse({ slotId: id, monthlyAmortization: "4500" }).monthlyAmortization,
+  ).toBe(4500);
   expect(slotPricesSchema.safeParse({ slotId: id, price: -1 }).success).toBe(false);
   expect(slotPricesSchema.safeParse({ slotId: id, price: "invalid" }).success).toBe(false);
 });

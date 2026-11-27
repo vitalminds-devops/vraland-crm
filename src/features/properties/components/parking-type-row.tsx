@@ -123,6 +123,7 @@ export function ParkingTypeDialog({
     h: String(type?.h ?? 5),
     price: type?.price ?? null,
     reservationFee: type?.reservationFee ?? null,
+    monthlyAmortization: type?.monthlyAmortization ?? null,
   });
   const [pending, startTransition] = useTransition();
   const w = Number(draft.w);
@@ -214,6 +215,17 @@ export function ParkingTypeDialog({
                     <MoneyInput
                       value={draft.reservationFee}
                       onValueChange={(next) => setDraft({ ...draft, reservationFee: next || null })}
+                      placeholder="0.00"
+                      disabled={pending || !canManagePrices}
+                    />
+                  </label>
+                  <label className="grid gap-1.5 text-sm font-medium">
+                    Monthly amortization
+                    <MoneyInput
+                      value={draft.monthlyAmortization}
+                      onValueChange={(next) =>
+                        setDraft({ ...draft, monthlyAmortization: next || null })
+                      }
                       placeholder="0.00"
                       disabled={pending || !canManagePrices}
                     />

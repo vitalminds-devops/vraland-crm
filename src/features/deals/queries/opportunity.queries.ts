@@ -222,7 +222,7 @@ export async function estimateSelection(
     };
   // Each slot's own price, set on it or by its parking type.
   let slotPrices: (string | null)[] = [];
-  let slotFees: (string | null)[] = [];
+  let slotAmounts: { reservationFee: string | null; monthlyAmortization: string | null }[] = [];
   let selectedSlots: { id: string; code: string; price: string | null }[] = [];
   if (input.parkingSlotIds.length) {
     const parking = await listParkingSlots(context, building.id);
@@ -242,8 +242,11 @@ export async function estimateSelection(
       };
     const priceOf = new Map(parking.map((slot) => [slot.id, slot.price]));
     slotPrices = input.parkingSlotIds.map((id) => priceOf.get(id) ?? null);
-    const feeOf = new Map(parking.map((slot) => [slot.id, slot.reservationFee]));
-    slotFees = input.parkingSlotIds.map((id) => feeOf.get(id) ?? null);
+    const slotOf = new Map(parking.map((slot) => [slot.id, slot]));
+    slotAmounts = input.parkingSlotIds.map((id) => ({
+      reservationFee: slotOf.get(id)?.reservationFee ?? null,
+      monthlyAmortization: slotOf.get(id)?.monthlyAmortization ?? null,
+    }));
     const codeOf = new Map(parking.map((slot) => [slot.id, slot.code]));
     selectedSlots = input.parkingSlotIds
       .map((id) => ({ id, code: codeOf.get(id) ?? "", price: priceOf.get(id) ?? null }))
@@ -278,7 +281,7 @@ export async function estimateSelection(
     success: true as const,
     ...prices,
     // Saved on the opportunity, so later unit type or slot edits don't change this sale.
-    ...opportunityFees(selected, slotFees),
+    ...opportunityFees(selected, slotAmounts),
     /** Units whose type sets no reservation fee: the fee due is lower than it looks. */
     missingFee: missingFeeWarning(
       selected.filter((unit) => unit.reservationFee === null).map((unit) => unit.code),

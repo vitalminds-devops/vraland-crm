@@ -61,6 +61,7 @@ export async function saveParkingType(input: unknown): Promise<ActionResult<{ id
     h: value.h,
     price: amount(value.price),
     reservationFee: amount(value.reservationFee),
+    monthlyAmortization: amount(value.monthlyAmortization),
   };
 
   try {
@@ -72,7 +73,11 @@ export async function saveParkingType(input: unknown): Promise<ActionResult<{ id
       // Amounts need "Manage prices"; without it a type can still be renamed or resized.
       if (
         !hasPermission(context, "properties.manage_prices") &&
-        changesMoney(before, { price: next.price, reservationFee: next.reservationFee })
+        changesMoney(before, {
+          price: next.price,
+          reservationFee: next.reservationFee,
+          monthlyAmortization: next.monthlyAmortization,
+        })
       )
         return "prices" as const;
       await tx
@@ -90,8 +95,9 @@ export async function saveParkingType(input: unknown): Promise<ActionResult<{ id
         for (const [column, field] of [
           [parkingSlots.price, "price"],
           [parkingSlots.reservationFee, "reservationFee"],
+          [parkingSlots.monthlyAmortization, "monthlyAmortization"],
         ] as const)
-          if (!sameAmount(before[field], next[field]))
+          if (!sameAmount(before[field] ?? null, next[field] ?? null))
             await tx
               .update(parkingSlots)
               .set({ [field]: next[field], updatedAt: new Date() })
@@ -100,7 +106,7 @@ export async function saveParkingType(input: unknown): Promise<ActionResult<{ id
                   eq(parkingSlots.propertyId, propertyId),
                   eq(parkingSlots.parkingTypeId, next.id),
                   eq(parkingSlots.status, "available"),
-                  sql`${column} is not distinct from ${before[field]}::numeric`,
+                  sql`${column} is not distinct from ${before[field] ?? null}::numeric`,
                 ),
               );
       await tx.insert(auditLogs).values({

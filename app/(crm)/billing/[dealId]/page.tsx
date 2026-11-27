@@ -36,7 +36,7 @@ import { getAuthorizationContext } from "@/lib/permissions/authorization";
 import { canViewBilling } from "@/lib/permissions/policy";
 import styles from "./print.module.css";
 import { paymentSuggestions } from "@/features/billing/lib/payment-suggestions";
-import { quotedTerms } from "@/features/billing/lib/quoted-terms";
+import { monthlyAmortizationLines, quotedTerms } from "@/features/billing/lib/quoted-terms";
 
 function Row({
   label,
@@ -257,10 +257,15 @@ export default async function DealBillingPage({ params }: { params: Promise<{ de
                         <dd>{peso(row.reservationFee)}</dd>
                       </div>,
                     ])}
-                    <div>
-                      <dt>Monthly amortization</dt>
-                      <dd>{peso(bill.monthlyAmortization)}</dd>
-                    </div>
+                    {monthlyAmortizationLines(
+                      bill.monthlyAmortization,
+                      bill.parkingMonthlyAmortization,
+                    ).map(([label, amount]) => (
+                      <div key={label}>
+                        <dt>{label}</dt>
+                        <dd>{peso(amount)}</dd>
+                      </div>
+                    ))}
                   </dl>
                 </section>
               )}
@@ -460,12 +465,17 @@ export default async function DealBillingPage({ params }: { params: Promise<{ de
                     ))}
                   </tbody>
                 </table>
-                <p className="mt-3 flex items-baseline justify-between gap-3 border-t border-border/40 pt-2.5 text-sm">
-                  <span className="text-muted-foreground">Monthly amortization</span>
-                  <span className="tabular-nums">
-                    {bill.monthlyAmortization ? peso(bill.monthlyAmortization) : "—"}
-                  </span>
-                </p>
+                <div className="mt-3 border-t border-border/40 pt-2.5">
+                  {monthlyAmortizationLines(
+                    bill.monthlyAmortization,
+                    bill.parkingMonthlyAmortization,
+                  ).map(([label, amount]) => (
+                    <p key={label} className="flex items-baseline justify-between gap-3 text-sm">
+                      <span className="text-muted-foreground">{label}</span>
+                      <span className="tabular-nums">{amount ? peso(amount) : "—"}</span>
+                    </p>
+                  ))}
+                </div>
               </div>
             )}
             {bill.billId && (
