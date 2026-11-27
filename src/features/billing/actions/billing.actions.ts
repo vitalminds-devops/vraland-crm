@@ -99,9 +99,9 @@ export async function saveBill(input: unknown): Promise<ActionResult<{ id: strin
     const outcome = await db.transaction(async (tx) => {
       const deal = await lockDealForInventory(tx, context.organizationId, value.dealId);
       if (!deal) return { kind: "missing" as const };
-      if (deal.slug === "leads") return { kind: "lead" as const };
+      if (deal.slug === "leads") return { kind: "refused" as const, message: LEAD_NOT_BILLABLE };
       const held = await inventoryHeldElsewhere(tx, deal);
-      if (held) return { kind: "held" as const, message: held };
+      if (held) return { kind: "refused" as const, message: held };
 
       const [existing] = await tx
         .select({
@@ -115,10 +115,15 @@ export async function saveBill(input: unknown): Promise<ActionResult<{ id: strin
         .for("update");
       const reservationDiscount =
         value.reservationDiscount ?? Number(existing?.reservationDiscount ?? 0);
-      if (reservationDiscount > itemsTotal) return { kind: "discount-too-large" as const };
+      if (reservationDiscount > itemsTotal)
+        return {
+          kind: "refused" as const,
+          message: "The reservation discount cannot exceed the selling price.",
+        };
       const total = itemsTotal - reservationDiscount + miscellaneousFee;
       // A ₱0 bill would read as paid in full and open the stage gates with nothing paid.
-      if (total <= 0) return { kind: "zero-total" as const };
+      if (total <= 0)
+        return { kind: "refused" as const, message: "The bill total must be more than ₱0." };
       // Commissions were split from the net price when the deal was won.
       if (
         deal.isWonStage &&
@@ -126,13 +131,21 @@ export async function saveBill(input: unknown): Promise<ActionResult<{ id: strin
         toCents(itemsTotal - reservationDiscount) !==
           toCents(Number(existing.itemsTotal) - Number(existing.reservationDiscount))
       )
-        return { kind: "won-price" as const };
+        return {
+          kind: "refused" as const,
+          message:
+            "This opportunity is won and its commissions are set. Reopen it to change the price.",
+        };
       if (existing) {
         const [{ paid }] = await tx
           .select({ paid: billPaid() })
           .from(bills)
           .where(eq(bills.id, existing.id));
-        if (total < Number(paid)) return { kind: "below-paid" as const, paid: Number(paid) };
+        if (total < Number(paid))
+          return {
+            kind: "refused" as const,
+            message: `The total cannot be less than the ${formatMoney(Number(paid))} already paid.`,
+          };
       }
 
       const fields = {
@@ -203,20 +216,7 @@ export async function saveBill(input: unknown): Promise<ActionResult<{ id: strin
     });
 
     if (outcome.kind === "missing") return notFoundFailure("Opportunity");
-    if (outcome.kind === "lead") return validationFailure(LEAD_NOT_BILLABLE);
-    if (outcome.kind === "held") return validationFailure(outcome.message);
-    if (outcome.kind === "discount-too-large")
-      return validationFailure("The reservation discount cannot exceed the selling price.");
-    if (outcome.kind === "zero-total")
-      return validationFailure("The bill total must be more than ₱0.");
-    if (outcome.kind === "won-price")
-      return validationFailure(
-        "This opportunity is won and its commissions are set. Reopen it to change the price.",
-      );
-    if (outcome.kind === "below-paid")
-      return validationFailure(
-        `The total cannot be less than the ${formatMoney(outcome.paid)} already paid.`,
-      );
+    if (outcome.kind === "refused") return validationFailure(outcome.message);
     refresh(value.dealId, outcome.propertyIds);
     return success({ id: outcome.id });
   } catch (error) {
@@ -257,10 +257,14 @@ export async function recordPayment(
         return { kind: "missing" as const };
       const deal = await lockDealForInventory(tx, context.organizationId, target.dealId);
       if (!deal) return { kind: "missing" as const };
-      if (deal.isLostStage || deal.isCancelledStage) return { kind: "closed" as const };
-      if (deal.slug === "leads") return { kind: "lead" as const };
+      if (deal.isLostStage || deal.isCancelledStage)
+        return {
+          kind: "refused" as const,
+          message: "This opportunity is lost or cancelled. Reopen it to record a payment.",
+        };
+      if (deal.slug === "leads") return { kind: "refused" as const, message: LEAD_NOT_BILLABLE };
       const held = await inventoryHeldElsewhere(tx, deal);
-      if (held) return { kind: "held" as const, message: held };
+      if (held) return { kind: "refused" as const, message: held };
       // All billing changes lock deal, bill, then inventory in the same order as stage moves.
       const [bill] = await tx
         .select({
@@ -283,23 +287,42 @@ export async function recordPayment(
         .innerJoin(deals, eq(deals.id, bills.dealId))
         .where(eq(bills.id, bill.id));
       const balance = Number(bill.total) - Number(paid);
-      if (toCents(value.amount) > toCents(balance)) return { kind: "over" as const, balance };
+      if (toCents(value.amount) > toCents(balance))
+        return {
+          kind: "refused" as const,
+          message:
+            balance <= 0
+              ? "This bill is already fully paid."
+              : `The payment is more than the ${formatAmount(balance)} balance.`,
+        };
       if (value.classification === "full_payment" && toCents(value.amount) < toCents(balance))
-        return { kind: "short" as const, balance };
+        return {
+          kind: "refused" as const,
+          message: `A full payment must cover the whole ${formatAmount(balance)} balance. Use Monthly for part of it.`,
+        };
       // A Reservation may go above the fee but must cover what is left of it (or the balance, if smaller).
       const reservationDue = Math.min(
         Number(reservationFee ?? 0) - Number(reservationPaid ?? 0),
         balance,
       );
       if (value.classification === "reservation" && toCents(value.amount) < toCents(reservationDue))
-        return { kind: "reservation-short" as const, due: reservationDue };
+        return {
+          kind: "refused" as const,
+          message: `A reservation must be at least the ${formatAmount(reservationDue)} reservation fee.`,
+        };
       if (value.classification === "monthly") {
         // Monthly payments start only after the reservation fee (or any reservation, if none is set) is paid.
         if (toCents(reservationDue) > 0 || !(Number(reservationPaid) > 0))
-          return { kind: "reservation-unpaid" as const };
+          return {
+            kind: "refused" as const,
+            message: "Pay the reservation fee before recording a monthly payment.",
+          };
         const monthlyDue = Math.min(Number(monthlyAmount ?? 0), balance);
         if (toCents(value.amount) < toCents(monthlyDue))
-          return { kind: "monthly-short" as const, due: monthlyDue };
+          return {
+            kind: "refused" as const,
+            message: `A monthly payment must be at least the ${formatAmount(monthlyDue)} monthly amortization.`,
+          };
       }
 
       let transactionSlipDocumentId: string | null = null;
@@ -388,32 +411,7 @@ export async function recordPayment(
     });
 
     if (outcome.kind === "missing") return notFoundFailure("Bill");
-    if (outcome.kind === "lead") return validationFailure(LEAD_NOT_BILLABLE);
-    if (outcome.kind === "held") return validationFailure(outcome.message);
-    if (outcome.kind === "closed")
-      return validationFailure(
-        "This opportunity is lost or cancelled. Reopen it to record a payment.",
-      );
-    if (outcome.kind === "short")
-      return validationFailure(
-        `A full payment must cover the whole ${formatAmount(outcome.balance)} balance. Use Monthly for part of it.`,
-      );
-    if (outcome.kind === "reservation-short")
-      return validationFailure(
-        `A reservation must be at least the ${formatAmount(outcome.due)} reservation fee.`,
-      );
-    if (outcome.kind === "reservation-unpaid")
-      return validationFailure("Pay the reservation fee before recording a monthly payment.");
-    if (outcome.kind === "monthly-short")
-      return validationFailure(
-        `A monthly payment must be at least the ${formatAmount(outcome.due)} monthly amortization.`,
-      );
-    if (outcome.kind === "over")
-      return validationFailure(
-        outcome.balance <= 0
-          ? "This bill is already fully paid."
-          : `The payment is more than the ${formatAmount(outcome.balance)} balance.`,
-      );
+    if (outcome.kind === "refused") return validationFailure(outcome.message);
     savedPaymentId = outcome.id;
     refresh(outcome.dealId, outcome.propertyIds);
     // After the payment commits, so a refused move or one awaiting approval never loses the payment.
