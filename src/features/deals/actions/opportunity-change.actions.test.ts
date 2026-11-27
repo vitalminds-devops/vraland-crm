@@ -201,7 +201,7 @@ it("moves an open opportunity to new units and reprices it", async () => {
     developmentId,
     propertyId: propertyId,
     unitIds: [unitA, unitB],
-    parkingSlots: 1,
+    parkingSlotCount: 1,
     parkingSlotIds: [heldSlot],
     amount: "5500000.00",
     title: expect.stringContaining("Fairfield"),

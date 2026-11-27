@@ -11,7 +11,7 @@ import {
   floors,
   properties,
   propertyAccessGrantTargets,
-  propertyParkingSlots,
+  parkingSlots,
   propertyAccessGrants,
   units,
   users,
@@ -83,13 +83,10 @@ export async function setPropertyGrant(input: unknown): Promise<PropertyAccessRe
   if ("error" in checked) return validationFailure(checked.error);
   if (v.parkingSlotIds.length) {
     const found = await db
-      .select({ id: propertyParkingSlots.id })
-      .from(propertyParkingSlots)
+      .select({ id: parkingSlots.id })
+      .from(parkingSlots)
       .where(
-        and(
-          eq(propertyParkingSlots.propertyId, v.propertyId),
-          inArray(propertyParkingSlots.id, v.parkingSlotIds),
-        ),
+        and(eq(parkingSlots.propertyId, v.propertyId), inArray(parkingSlots.id, v.parkingSlotIds)),
       );
     if (found.length !== new Set(v.parkingSlotIds).size)
       return validationFailure("Every parking slot you name must belong to this property.");
@@ -173,16 +170,16 @@ export async function setPropertyGrant(input: unknown): Promise<PropertyAccessRe
         );
       const unavailableParking = v.parkingSlotIds.length
         ? await tx
-            .select({ id: propertyParkingSlots.id })
-            .from(propertyParkingSlots)
+            .select({ id: parkingSlots.id })
+            .from(parkingSlots)
             .where(
               and(
-                eq(propertyParkingSlots.propertyId, v.propertyId),
-                inArray(propertyParkingSlots.id, v.parkingSlotIds),
-                ne(propertyParkingSlots.status, "available"),
+                eq(parkingSlots.propertyId, v.propertyId),
+                inArray(parkingSlots.id, v.parkingSlotIds),
+                ne(parkingSlots.status, "available"),
               ),
             )
-            .orderBy(asc(propertyParkingSlots.id))
+            .orderBy(asc(parkingSlots.id))
             .for("update")
         : [];
       if (

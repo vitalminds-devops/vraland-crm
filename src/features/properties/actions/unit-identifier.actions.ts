@@ -3,14 +3,7 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import {
-  activities,
-  auditLogs,
-  floors,
-  properties,
-  propertyParkingSlots,
-  units,
-} from "@/db/schema";
+import { activities, auditLogs, floors, properties, parkingSlots, units } from "@/db/schema";
 import { outOfScope } from "@/lib/errors";
 import { logError } from "@/lib/logger";
 import { requirePermission } from "@/lib/permissions/authorization";
@@ -84,12 +77,12 @@ export async function applyIdentifiersToAllFloors(
       // Parking by floor gets each floor's codes; across the property, P1, P2… floor by floor.
       const slotRows = await tx
         .select({
-          id: propertyParkingSlots.id,
-          code: propertyParkingSlots.identifier,
-          floorId: propertyParkingSlots.floorId,
+          id: parkingSlots.id,
+          code: parkingSlots.identifier,
+          floorId: parkingSlots.floorId,
         })
-        .from(propertyParkingSlots)
-        .where(eq(propertyParkingSlots.propertyId, propertyId))
+        .from(parkingSlots)
+        .where(eq(parkingSlots.propertyId, propertyId))
         .for("update");
       const levelOf = new Map(floorRows.map((floor) => [floor.id, floor.level]));
       const slotChanges =
@@ -113,14 +106,14 @@ export async function applyIdentifiersToAllFloors(
             );
       for (const rename of slotChanges)
         await tx
-          .update(propertyParkingSlots)
+          .update(parkingSlots)
           .set({ identifier: `~${rename.id}` })
-          .where(eq(propertyParkingSlots.id, rename.id));
+          .where(eq(parkingSlots.id, rename.id));
       for (const rename of slotChanges)
         await tx
-          .update(propertyParkingSlots)
+          .update(parkingSlots)
           .set({ identifier: rename.code, updatedAt: new Date() })
-          .where(eq(propertyParkingSlots.id, rename.id));
+          .where(eq(parkingSlots.id, rename.id));
       // Two steps, through a temporary code, so shifted or swapped identifiers never collide.
       for (const rename of renames)
         await tx

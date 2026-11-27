@@ -89,7 +89,7 @@ export const deals = pgTable(
     currency: varchar({ length: 3 }).default("PHP").notNull(),
     amount: numeric({ precision: 18, scale: 2 }),
     // Kept in step with parkingSlotIds; read only for older opportunities that have no slot list.
-    parkingSlots: smallint("parking_slots").default(0).notNull(),
+    parkingSlotCount: smallint("parking_slots").default(0).notNull(),
     parkingSlotIds: uuid("parking_slot_ids").array().default([]).notNull(),
     parkingAmount: numeric("parking_amount", { precision: 18, scale: 2 }),
     expectedCommission: numeric("expected_commission", {

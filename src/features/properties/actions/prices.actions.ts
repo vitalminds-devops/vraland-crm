@@ -2,7 +2,7 @@
 
 import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
-import { auditLogs, properties, propertyParkingSlots } from "@/db/schema";
+import { auditLogs, properties, parkingSlots } from "@/db/schema";
 import { outOfScope } from "@/lib/errors";
 import { logError } from "@/lib/logger";
 import { requirePermission } from "@/lib/permissions/authorization";
@@ -33,17 +33,17 @@ export async function saveSlotPrices(input: unknown): Promise<ActionResult> {
   try {
     const [slot] = await db
       .select({
-        propertyId: propertyParkingSlots.propertyId,
-        code: propertyParkingSlots.identifier,
-        price: propertyParkingSlots.price,
-        reservationFee: propertyParkingSlots.reservationFee,
-        reservedDealId: propertyParkingSlots.reservedDealId,
+        propertyId: parkingSlots.propertyId,
+        code: parkingSlots.identifier,
+        price: parkingSlots.price,
+        reservationFee: parkingSlots.reservationFee,
+        reservedDealId: parkingSlots.reservedDealId,
       })
-      .from(propertyParkingSlots)
-      .innerJoin(properties, eq(propertyParkingSlots.propertyId, properties.id))
+      .from(parkingSlots)
+      .innerJoin(properties, eq(parkingSlots.propertyId, properties.id))
       .where(
         and(
-          eq(propertyParkingSlots.id, value.slotId),
+          eq(parkingSlots.id, value.slotId),
           eq(properties.organizationId, context.organizationId),
           isNull(properties.deletedAt),
         ),
@@ -55,9 +55,9 @@ export async function saveSlotPrices(input: unknown): Promise<ActionResult> {
       return validationFailure(heldPriceMessage(`Parking ${slot.code}`));
     await db.transaction(async (tx) => {
       await tx
-        .update(propertyParkingSlots)
+        .update(parkingSlots)
         .set({ ...next, updatedAt: new Date() })
-        .where(eq(propertyParkingSlots.id, value.slotId));
+        .where(eq(parkingSlots.id, value.slotId));
       await tx.insert(auditLogs).values({
         organizationId: context.organizationId,
         actorUserId: context.userId,

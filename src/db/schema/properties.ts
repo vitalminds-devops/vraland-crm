@@ -68,7 +68,7 @@ export const properties = pgTable(
     listingType: varchar("listing_type", { length: 20 }).default("sale").notNull(),
     status: varchar({ length: 30 }).default("active").notNull(),
     currency: varchar({ length: 3 }).default("PHP").notNull(),
-    parkingSpaces: smallint("parking_spaces"),
+    parkingSlotLimit: smallint("parking_spaces"),
     addressLine1: varchar("address_line1", { length: 255 }),
     addressLine2: varchar("address_line2", { length: 255 }),
     barangay: varchar({ length: 120 }),
@@ -231,7 +231,7 @@ export const units = pgTable(
 );
 
 /** One parking slot of a property, managed like its units. */
-export const propertyParkingSlots = pgTable(
+export const parkingSlots = pgTable(
   "parking_slots",
   {
     id: uuid().defaultRandom().primaryKey(),
@@ -296,7 +296,7 @@ export const propertyAccessGrantTargets = pgTable(
       onDelete: "cascade",
     }),
     unitId: uuid("unit_id").references(() => units.id, { onDelete: "cascade" }),
-    parkingSlotId: uuid("parking_slot_id").references(() => propertyParkingSlots.id, {
+    parkingSlotId: uuid("parking_slot_id").references(() => parkingSlots.id, {
       onDelete: "cascade",
     }),
     isExclusion: boolean("is_exclusion").notNull().default(false),

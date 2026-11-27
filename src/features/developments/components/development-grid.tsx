@@ -24,7 +24,7 @@ type Props = {
   hasFilters?: boolean;
 };
 
-/** One row per development: its cover, what and where it is, its buildings, and buttons for the next step. */
+/** One row per development: its cover, what and where it is, its propertyCount, and buttons for the next step. */
 export function DevelopmentGrid({ rows, canUpdate, hasFilters = false }: Props) {
   if (!rows.length) {
     return (
@@ -55,7 +55,7 @@ export function DevelopmentGrid({ rows, canUpdate, hasFilters = false }: Props) 
       <ul className="divide-y divide-border/40">
         {rows.map((row) => {
           const location = [row.city, row.province].filter(Boolean).join(", ");
-          const buildings = row.propertyNames.length;
+          const propertyCount = row.propertyNames.length;
           return (
             <li
               key={row.id}
@@ -102,7 +102,7 @@ export function DevelopmentGrid({ rows, canUpdate, hasFilters = false }: Props) 
                   )}
                 </p>
                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  {buildings ? (
+                  {propertyCount ? (
                     <>
                       {row.propertyNames.slice(0, 3).map((name) => (
                         <span
@@ -116,12 +116,12 @@ export function DevelopmentGrid({ rows, canUpdate, hasFilters = false }: Props) 
                           <span className="truncate">{name}</span>
                         </span>
                       ))}
-                      {buildings > 3 && (
+                      {propertyCount > 3 && (
                         <span
                           className="rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
                           title={row.propertyNames.slice(3).join(", ")}
                         >
-                          +{buildings - 3} more
+                          +{propertyCount - 3} more
                         </span>
                       )}
                     </>
@@ -136,7 +136,7 @@ export function DevelopmentGrid({ rows, canUpdate, hasFilters = false }: Props) 
               <div className="col-span-2 flex lg:col-span-1 lg:justify-end">
                 <span className="inline-flex items-center gap-1.5 text-sm tabular-nums text-muted-foreground">
                   <Building2 aria-hidden="true" className="size-3.5" />
-                  {buildings} {buildings === 1 ? "property" : "properties"}
+                  {propertyCount} {propertyCount === 1 ? "property" : "properties"}
                 </span>
               </div>
 

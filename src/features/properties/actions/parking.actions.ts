@@ -4,7 +4,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { revalidateProperty } from "../lib/revalidate-property";
 import { z } from "zod";
 import { db } from "@/db";
-import { auditLogs, floors, properties, propertyParkingSlots } from "@/db/schema";
+import { auditLogs, floors, properties, parkingSlots } from "@/db/schema";
 import { logError } from "@/lib/logger";
 import { requirePermission } from "@/lib/permissions/authorization";
 import { activeHold, heldMessage, InventoryHeldError } from "../lib/inventory-hold";
@@ -35,17 +35,17 @@ async function loadWritableSlot(slotId: string) {
   if (!z.uuid().safeParse(slotId).success) return { context, slot: null };
   const [slot] = await db
     .select({
-      id: propertyParkingSlots.id,
-      code: propertyParkingSlots.identifier,
-      status: propertyParkingSlots.status,
-      floorId: propertyParkingSlots.floorId,
-      propertyId: propertyParkingSlots.propertyId,
+      id: parkingSlots.id,
+      code: parkingSlots.identifier,
+      status: parkingSlots.status,
+      floorId: parkingSlots.floorId,
+      propertyId: parkingSlots.propertyId,
     })
-    .from(propertyParkingSlots)
-    .innerJoin(properties, eq(propertyParkingSlots.propertyId, properties.id))
+    .from(parkingSlots)
+    .innerJoin(properties, eq(parkingSlots.propertyId, properties.id))
     .where(
       and(
-        eq(propertyParkingSlots.id, slotId),
+        eq(parkingSlots.id, slotId),
         eq(properties.organizationId, context.organizationId),
         isNull(properties.deletedAt),
       ),
@@ -83,9 +83,9 @@ export async function addParkingSlot(
     const code = await db.transaction(async (tx) => {
       const taken = (
         await tx
-          .select({ code: propertyParkingSlots.identifier })
-          .from(propertyParkingSlots)
-          .where(eq(propertyParkingSlots.propertyId, propertyId))
+          .select({ code: parkingSlots.identifier })
+          .from(parkingSlots)
+          .where(eq(parkingSlots.propertyId, propertyId))
       ).map((slot) => slot.code);
       const [property] = await tx
         .select({ numbering: properties.unitIdentifier })
@@ -98,9 +98,9 @@ export async function addParkingSlot(
         next = nextSlotCode(numbering, level, taken);
         taken.push(next);
         const [slot] = await tx
-          .insert(propertyParkingSlots)
+          .insert(parkingSlots)
           .values({ propertyId: propertyId, floorId, identifier: next })
-          .returning({ id: propertyParkingSlots.id });
+          .returning({ id: parkingSlots.id });
         added.push(slot.id);
         await tx.insert(auditLogs).values({
           organizationId: context.organizationId,
@@ -138,21 +138,21 @@ export async function setParkingSlotStatus(
     await db.transaction(async (tx) => {
       // Locked so a deal cannot take the slot between this check and the update.
       const [locked] = await tx
-        .select({ reservedDealId: propertyParkingSlots.reservedDealId })
-        .from(propertyParkingSlots)
-        .where(eq(propertyParkingSlots.id, slot.id))
+        .select({ reservedDealId: parkingSlots.reservedDealId })
+        .from(parkingSlots)
+        .where(eq(parkingSlots.id, slot.id))
         .for("update");
       const hold = await activeHold(tx, locked?.reservedDealId ?? null);
       if (hold) throw new InventoryHeldError(heldMessage(`Parking ${slot.code}`, hold.code));
       await tx
-        .update(propertyParkingSlots)
+        .update(parkingSlots)
         .set({
           status: parsed.data,
           // Only a stale hold from a closed opportunity reaches here; a hand change drops it.
           reservedDealId: null,
           updatedAt: new Date(),
         })
-        .where(eq(propertyParkingSlots.id, slot.id));
+        .where(eq(parkingSlots.id, slot.id));
       await tx.insert(auditLogs).values({
         organizationId: context.organizationId,
         actorUserId: context.userId,
@@ -184,23 +184,18 @@ export async function renameParkingSlot(
   if (next === slot.code) return { success: true, message: "No change." };
 
   const [taken] = await db
-    .select({ id: propertyParkingSlots.id })
-    .from(propertyParkingSlots)
-    .where(
-      and(
-        eq(propertyParkingSlots.propertyId, slot.propertyId),
-        eq(propertyParkingSlots.identifier, next),
-      ),
-    )
+    .select({ id: parkingSlots.id })
+    .from(parkingSlots)
+    .where(and(eq(parkingSlots.propertyId, slot.propertyId), eq(parkingSlots.identifier, next)))
     .limit(1);
   if (taken) return { success: false, message: `Parking ${next} already exists.` };
 
   try {
     await db.transaction(async (tx) => {
       await tx
-        .update(propertyParkingSlots)
+        .update(parkingSlots)
         .set({ identifier: next, updatedAt: new Date() })
-        .where(eq(propertyParkingSlots.id, slot.id));
+        .where(eq(parkingSlots.id, slot.id));
       await tx.insert(auditLogs).values({
         organizationId: context.organizationId,
         actorUserId: context.userId,
@@ -243,9 +238,9 @@ export async function assignParkingSlotFloor(
   try {
     await db.transaction(async (tx) => {
       await tx
-        .update(propertyParkingSlots)
+        .update(parkingSlots)
         .set({ floorId, updatedAt: new Date() })
-        .where(eq(propertyParkingSlots.id, slot.id));
+        .where(eq(parkingSlots.id, slot.id));
       await placeOnDesignedFloor(tx, floorId, [slot.id]);
       await tx.insert(auditLogs).values({
         organizationId: context.organizationId,
@@ -278,7 +273,7 @@ export async function deleteParkingSlot(slotId: string): Promise<ParkingActionRe
       const blocked = await parkingRemovalBlocker(tx, [slot.id]);
       if (blocked) return blocked;
       await dropFromFloorPlans(tx, [slot.floorId], { slotIds: [slot.id] });
-      await tx.delete(propertyParkingSlots).where(eq(propertyParkingSlots.id, slot.id));
+      await tx.delete(parkingSlots).where(eq(parkingSlots.id, slot.id));
       await syncParkingCount(tx, slot.propertyId);
       await tx.insert(auditLogs).values({
         organizationId: context.organizationId,

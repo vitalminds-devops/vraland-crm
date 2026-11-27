@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/common/page-header";
 import { Card } from "@/components/ui/card";
 import { ButtonLink } from "@/components/ui/button";
 import { Detail, Stat, formatDate, label } from "@/features/developments";
-import { DevelopmentBuildingCard } from "@/features/developments/components/development-building-card";
+import { DevelopmentPropertyCard } from "@/features/developments/components/development-property-card";
 import { DevelopmentDeleteButton } from "@/features/developments/components/development-delete-button";
 import { getDevelopment } from "@/features/developments/queries/development.queries";
 import { developmentCoverImageUrl } from "@/features/developments/lib/cover-image";
@@ -21,11 +21,11 @@ export default async function DevelopmentPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const data = await getDevelopment(id);
   if (!data) notFound();
-  const { record, buildings, unitCount } = data;
+  const { record, properties, unitCount } = data;
   // Edit shows only on properties the user could save, as on the Property page.
   const writable = await writablePropertyIds(
     context,
-    buildings.map((building) => building.id),
+    properties.map((property) => property.id),
   );
   const canEdit = context.permissions.has("developments.update");
   const canAddProperty = context.permissions.has("properties.create");
@@ -102,7 +102,7 @@ export default async function DevelopmentPage({ params }: { params: Promise<{ id
             <Stat
               icon={<Layers aria-hidden="true" className="size-4" />}
               label="Properties"
-              value={buildings.length}
+              value={properties.length}
             />
             <Stat
               icon={<MapPin aria-hidden="true" className="size-4" />}
@@ -118,9 +118,9 @@ export default async function DevelopmentPage({ params }: { params: Promise<{ id
           <h2 className="text-[15px] font-semibold">Properties</h2>
           <div className="flex items-center gap-3">
             <span className="text-[13px] text-muted-foreground">
-              {buildings.length} {buildings.length === 1 ? "property" : "properties"}
+              {properties.length} {properties.length === 1 ? "property" : "properties"}
             </span>
-            {canAddProperty && buildings.length > 0 ? (
+            {canAddProperty && properties.length > 0 ? (
               <ButtonLink href={addPropertyHref} variant="secondary" size="sm" className="gap-1.5">
                 <Plus aria-hidden="true" className="size-3.5" />
                 Add property
@@ -128,13 +128,13 @@ export default async function DevelopmentPage({ params }: { params: Promise<{ id
             ) : null}
           </div>
         </div>
-        {buildings.length ? (
+        {properties.length ? (
           <ul className="space-y-3 p-3">
-            {buildings.map((building) => (
-              <li key={building.id}>
-                <DevelopmentBuildingCard
-                  building={building}
-                  canEdit={propertyPageActions(context, writable.has(building.id)).canEdit}
+            {properties.map((property) => (
+              <li key={property.id}>
+                <DevelopmentPropertyCard
+                  property={property}
+                  canEdit={propertyPageActions(context, writable.has(property.id)).canEdit}
                   canAccess={canGrantUnitAccess(context)}
                 />
               </li>

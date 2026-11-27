@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { PgDialect } from "drizzle-orm/pg-core";
 import type { SQL } from "drizzle-orm";
-import { units, propertyParkingSlots } from "@/db/schema";
+import { units, parkingSlots } from "@/db/schema";
 import { heldElsewhereMessage, InventoryUnavailable, syncDealInventory } from "./deal-inventory";
 
 vi.mock("@/db", () => ({ db: {} }));
@@ -72,12 +72,12 @@ beforeEach(() => {
 
 it("reserves every selected unit and parking slot together and records the owning deal", async () => {
   expect(await syncDealInventory(transaction(), input)).toEqual(["building"]);
-  expect(locks).toEqual([units, propertyParkingSlots]);
+  expect(locks).toEqual([units, parkingSlots]);
   expect(writes.find((write) => write.table === units)).toMatchObject({
     values: { status: "deposit_paid", reservedDealId: "deal" },
     ids: ["unit-1", "unit-2"],
   });
-  expect(writes.find((write) => write.table === propertyParkingSlots)).toMatchObject({
+  expect(writes.find((write) => write.table === parkingSlots)).toMatchObject({
     values: { status: "deposit_paid", reservedDealId: "deal" },
     ids: ["parking-1"],
   });

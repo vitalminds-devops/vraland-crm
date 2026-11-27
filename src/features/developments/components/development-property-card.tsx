@@ -22,19 +22,21 @@ import { unitStatusLabel, unitStatusToneFor } from "@/features/properties/lib/un
 import { cn } from "@/lib/utils/cn";
 import type { getDevelopment } from "../queries/development.queries";
 
-type Building = NonNullable<Awaited<ReturnType<typeof getDevelopment>>>["buildings"][number];
+type DevelopmentProperty = NonNullable<
+  Awaited<ReturnType<typeof getDevelopment>>
+>["properties"][number];
 
-export function DevelopmentBuildingCard({
-  building,
+export function DevelopmentPropertyCard({
+  property,
   canEdit,
   canAccess,
 }: {
-  building: Building;
+  property: DevelopmentProperty;
   canEdit: boolean;
   canAccess: boolean;
 }) {
   const [showAllFloors, setShowAllFloors] = useState(false);
-  const floors = [...building.floors].sort((a, b) => b.level - a.level);
+  const floors = [...property.floors].sort((a, b) => b.level - a.level);
   const units = floors.flatMap((floor) => floor.units);
   const available = units.filter((unit) => unit.status === "available").length;
   const hiddenFloors = floors.slice(3, -3);
@@ -43,14 +45,14 @@ export function DevelopmentBuildingCard({
     foldEmptyFloors && !showAllFloors ? [...floors.slice(0, 3), ...floors.slice(-3)] : floors;
 
   return (
-    <details className="group/building overflow-hidden rounded-xl border border-border bg-card shadow-xs dark:border-primary/20 dark:bg-gradient-to-br dark:from-primary/5 dark:to-card">
+    <details className="group/property overflow-hidden rounded-xl border border-border bg-card shadow-xs dark:border-primary/20 dark:bg-gradient-to-br dark:from-primary/5 dark:to-card">
       <summary className="flex cursor-pointer list-none items-center gap-3 p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary [&::-webkit-details-marker]:hidden sm:gap-4">
-        <BuildingThumbnail floors={floors.length} />
+        <PropertyThumbnail floors={floors.length} />
         <div className="min-w-0 flex-1">
           <h3 className="flex items-center gap-2 text-base font-semibold">
             <Building2 aria-hidden="true" className="size-5 shrink-0 text-primary" />
-            <Link href={`/properties/${building.id}`} className="truncate hover:underline">
-              {building.title}
+            <Link href={`/properties/${property.id}`} className="truncate hover:underline">
+              {property.title}
             </Link>
           </h3>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -75,32 +77,32 @@ export function DevelopmentBuildingCard({
               variant="secondary"
               size="icon"
               className="size-8 shrink-0"
-              aria-label={`Actions for ${building.title}`}
+              aria-label={`Actions for ${property.title}`}
             >
               <MoreHorizontal aria-hidden="true" className="size-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem asChild>
-              <Link href={`/properties/${building.id}`}>View property</Link>
+              <Link href={`/properties/${property.id}`}>View property</Link>
             </DropdownMenuItem>
             {canEdit && (
               <DropdownMenuItem asChild>
-                <Link href={`/properties/${building.id}/edit`}>Edit property</Link>
+                <Link href={`/properties/${property.id}/edit`}>Edit property</Link>
               </DropdownMenuItem>
             )}
             {canAccess && (
               <DropdownMenuItem asChild>
-                <Link href={`/properties/${building.id}/access`}>Manage access</Link>
+                <Link href={`/properties/${property.id}/access`}>Manage access</Link>
               </DropdownMenuItem>
             )}
           </DropdownMenuContent>
         </DropdownMenu>
         <ChevronDown
           aria-hidden="true"
-          className="size-7 shrink-0 rounded-md border border-border p-1 text-muted-foreground transition-transform group-open/building:rotate-180"
+          className="size-7 shrink-0 rounded-md border border-border p-1 text-muted-foreground transition-transform group-open/property:rotate-180"
         />
-        <span className="sr-only">Toggle floors for {building.title}</span>
+        <span className="sr-only">Toggle floors for {property.title}</span>
       </summary>
       <div className="px-3 pb-3">
         {floors.length ? (
@@ -117,7 +119,7 @@ export function DevelopmentBuildingCard({
                     Show {hiddenFloors.length} more empty floors
                   </button>
                 )}
-                <FloorRow floor={floor} propertyId={building.id} />
+                <FloorRow floor={floor} propertyId={property.id} />
               </div>
             ))}
             {foldEmptyFloors && showAllFloors && (
@@ -145,7 +147,7 @@ function FloorRow({
   floor,
   propertyId,
 }: {
-  floor: Building["floors"][number];
+  floor: DevelopmentProperty["floors"][number];
   propertyId: string;
 }) {
   const [expanded, setExpanded] = useState(true);
@@ -206,7 +208,7 @@ function FloorRow({
   );
 }
 
-function BuildingThumbnail({ floors }: { floors: number }) {
+function PropertyThumbnail({ floors }: { floors: number }) {
   const levels = Math.min(Math.max(floors, 1), 6);
   return (
     <div className="hidden h-20 w-32 shrink-0 items-end justify-center overflow-hidden rounded-lg border border-primary/15 bg-primary/5 sm:flex">

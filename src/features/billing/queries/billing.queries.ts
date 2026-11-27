@@ -13,7 +13,7 @@ import {
   payments,
   pipelineStages,
   properties,
-  propertyParkingSlots,
+  parkingSlots,
   unitTypes,
   units,
   users,
@@ -85,7 +85,7 @@ const dealRows = () =>
       dealCode: deals.dealCode,
       title: deals.title,
       amount: deals.amount,
-      parkingSlots: deals.parkingSlots,
+      parkingSlotCount: deals.parkingSlotCount,
       parkingAmount: deals.parkingAmount,
       parkingSlotIds: deals.parkingSlotIds,
       // The same amounts the payment gates need, summed over the deal's units.
@@ -207,17 +207,14 @@ async function billLinesFor(
     slotIds.length
       ? db
           .select({
-            id: propertyParkingSlots.id,
-            code: propertyParkingSlots.identifier,
-            price: propertyParkingSlots.price,
+            id: parkingSlots.id,
+            code: parkingSlots.identifier,
+            price: parkingSlots.price,
           })
-          .from(propertyParkingSlots)
-          .innerJoin(properties, eq(propertyParkingSlots.propertyId, properties.id))
+          .from(parkingSlots)
+          .innerJoin(properties, eq(parkingSlots.propertyId, properties.id))
           .where(
-            and(
-              inArray(propertyParkingSlots.id, slotIds),
-              eq(properties.organizationId, organizationId),
-            ),
+            and(inArray(parkingSlots.id, slotIds), eq(properties.organizationId, organizationId)),
           )
       : [],
   ]);
@@ -287,8 +284,8 @@ async function billLinesFor(
       if (!slots.length && Number(row.parkingAmount) > 0)
         suggested.push({
           unitLabel: [
-            row.parkingSlots
-              ? `Parking (${row.parkingSlots} ${row.parkingSlots === 1 ? "slot" : "slots"})`
+            row.parkingSlotCount
+              ? `Parking (${row.parkingSlotCount} ${row.parkingSlotCount === 1 ? "slot" : "slots"})`
               : "Parking",
             row.propertyTitle,
           ]

@@ -2,7 +2,7 @@ import "server-only";
 
 import { and, asc, eq, inArray, isNotNull, ne, or } from "drizzle-orm";
 import type { db } from "@/db";
-import { activities, auditLogs, properties, propertyParkingSlots, units } from "@/db/schema";
+import { activities, auditLogs, properties, parkingSlots, units } from "@/db/schema";
 import { isHeld } from "@/features/properties/lib/unit-codes";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -26,7 +26,7 @@ export async function heldElsewhere(
   const taken: string[] = [];
   for (const [table, ids, label] of [
     [units, deal.unitIds, "Unit"],
-    [propertyParkingSlots, deal.parkingSlotIds, "Parking"],
+    [parkingSlots, deal.parkingSlotIds, "Parking"],
   ] as const) {
     if (!ids.length) continue;
     const rows = await tx
@@ -88,26 +88,26 @@ export async function syncDealInventory(
     .for("update", { of: units });
   const parkingRows = await tx
     .select({
-      id: propertyParkingSlots.id,
-      propertyId: propertyParkingSlots.propertyId,
-      code: propertyParkingSlots.identifier,
-      status: propertyParkingSlots.status,
-      reservedDealId: propertyParkingSlots.reservedDealId,
+      id: parkingSlots.id,
+      propertyId: parkingSlots.propertyId,
+      code: parkingSlots.identifier,
+      status: parkingSlots.status,
+      reservedDealId: parkingSlots.reservedDealId,
       propertyDeletedAt: properties.deletedAt,
     })
-    .from(propertyParkingSlots)
-    .innerJoin(properties, eq(propertyParkingSlots.propertyId, properties.id))
+    .from(parkingSlots)
+    .innerJoin(properties, eq(parkingSlots.propertyId, properties.id))
     .where(
       and(
         eq(properties.organizationId, input.organizationId),
         or(
-          parkingIds.length ? inArray(propertyParkingSlots.id, parkingIds) : undefined,
-          eq(propertyParkingSlots.reservedDealId, input.dealId),
+          parkingIds.length ? inArray(parkingSlots.id, parkingIds) : undefined,
+          eq(parkingSlots.reservedDealId, input.dealId),
         ),
       ),
     )
-    .orderBy(asc(propertyParkingSlots.id))
-    .for("update", { of: propertyParkingSlots });
+    .orderBy(asc(parkingSlots.id))
+    .for("update", { of: parkingSlots });
 
   if (input.status !== "available") {
     const selectedBuildings = new Set([
@@ -160,7 +160,7 @@ export async function syncDealInventory(
     }
   }
   for (const type of ["unit", "parking_slot"] as const) {
-    const table = type === "unit" ? units : propertyParkingSlots;
+    const table = type === "unit" ? units : parkingSlots;
     for (const released of [false, true]) {
       const rows = changes.filter(
         (change) => change.type === type && (change.owner === null) === released,

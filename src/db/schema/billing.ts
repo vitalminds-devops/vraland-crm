@@ -15,7 +15,7 @@ import {
 import { deals } from "./deals";
 import { documents } from "./documents";
 import { organizations, users } from "./organization";
-import { propertyParkingSlots, units } from "./properties";
+import { parkingSlots, units } from "./properties";
 import { createdAt, updatedAt } from "./shared";
 
 /**
@@ -79,7 +79,7 @@ export const billItems = pgTable(
       .notNull(),
     /** The unit or slot this line bills; it keeps its billed price when the pick changes. */
     unitId: uuid("unit_id").references(() => units.id, { onDelete: "set null" }),
-    parkingSlotId: uuid("parking_slot_id").references(() => propertyParkingSlots.id, {
+    parkingSlotId: uuid("parking_slot_id").references(() => parkingSlots.id, {
       onDelete: "set null",
     }),
     createdAt,

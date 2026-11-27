@@ -8,7 +8,7 @@ import {
   auditLogs,
   floors,
   properties,
-  propertyParkingSlots,
+  parkingSlots,
   unitTypes,
   units,
 } from "@/db/schema";
@@ -247,14 +247,14 @@ export async function saveFloorLayout(
         // Parking slots on the plan, resolved like units but numbered across the property.
         const propertySlots = await tx
           .select({
-            id: propertyParkingSlots.id,
-            code: propertyParkingSlots.identifier,
-            floorId: propertyParkingSlots.floorId,
-            status: propertyParkingSlots.status,
-            parkingTypeId: propertyParkingSlots.parkingTypeId,
+            id: parkingSlots.id,
+            code: parkingSlots.identifier,
+            floorId: parkingSlots.floorId,
+            status: parkingSlots.status,
+            parkingTypeId: parkingSlots.parkingTypeId,
           })
-          .from(propertyParkingSlots)
-          .where(eq(propertyParkingSlots.propertyId, source.propertyId))
+          .from(parkingSlots)
+          .where(eq(parkingSlots.propertyId, source.propertyId))
           .for("update");
         const floorSlots = propertySlots.filter((slot) => slot.floorId === floor.id);
         const otherCodes = propertySlots
@@ -284,14 +284,12 @@ export async function saveFloorLayout(
         if (slotsResolved.removed.length) {
           const blocker = await parkingRemovalBlocker(tx, slotsResolved.removed);
           if (blocker) throw new LayoutError(blocker);
-          await tx
-            .delete(propertyParkingSlots)
-            .where(inArray(propertyParkingSlots.id, slotsResolved.removed));
+          await tx.delete(parkingSlots).where(inArray(parkingSlots.id, slotsResolved.removed));
         }
         const freshSlots = slotsResolved.assigned.filter((entry) => entry.unitId === null);
         const insertedSlots = freshSlots.length
           ? await tx
-              .insert(propertyParkingSlots)
+              .insert(parkingSlots)
               .values(
                 freshSlots.map((entry) => {
                   // A slot dragged in as a parking type starts with its price and fee.
@@ -309,7 +307,7 @@ export async function saveFloorLayout(
                   };
                 }),
               )
-              .returning({ id: propertyParkingSlots.id, code: propertyParkingSlots.identifier })
+              .returning({ id: parkingSlots.id, code: parkingSlots.identifier })
           : [];
         const slotIdOfCode = new Map(insertedSlots.map((slot) => [slot.code, slot.id]));
         const slotIdOf = new Map(
@@ -330,14 +328,14 @@ export async function saveFloorLayout(
             });
         for (const rename of slotRenames)
           await tx
-            .update(propertyParkingSlots)
+            .update(parkingSlots)
             .set({ identifier: `~${rename.slotId}` })
-            .where(eq(propertyParkingSlots.id, rename.slotId));
+            .where(eq(parkingSlots.id, rename.slotId));
         for (const rename of slotRenames)
           await tx
-            .update(propertyParkingSlots)
+            .update(parkingSlots)
             .set({ identifier: rename.code, updatedAt: new Date() })
-            .where(eq(propertyParkingSlots.id, rename.slotId));
+            .where(eq(parkingSlots.id, rename.slotId));
 
         // A slot given a parking type on the plan joins it; an available one takes its price and
         // fee too, while a reserved or sold slot keeps what it was sold at.
@@ -350,9 +348,9 @@ export async function saveFloorLayout(
             const change = slot && slotTypeChange(slot, spot.typeId, source.parkingTypes);
             if (change)
               await tx
-                .update(propertyParkingSlots)
+                .update(parkingSlots)
                 .set({ ...change, updatedAt: new Date() })
-                .where(eq(propertyParkingSlots.id, slot.id));
+                .where(eq(parkingSlots.id, slot.id));
           }
 
         // Typed names are applied now, so the saved plan doesn't carry them.

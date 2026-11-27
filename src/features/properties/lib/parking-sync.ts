@@ -3,7 +3,7 @@ import "server-only";
 import { count, eq } from "drizzle-orm";
 
 import { db } from "@/db";
-import { floors, properties, propertyParkingSlots } from "@/db/schema";
+import { floors, properties, parkingSlots } from "@/db/schema";
 import { placeSlotsOnFloor } from "./parking-layout";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -12,11 +12,11 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 export async function syncParkingCount(tx: Tx, propertyId: string) {
   const [{ total }] = await tx
     .select({ total: count() })
-    .from(propertyParkingSlots)
-    .where(eq(propertyParkingSlots.propertyId, propertyId));
+    .from(parkingSlots)
+    .where(eq(parkingSlots.propertyId, propertyId));
   await tx
     .update(properties)
-    .set({ parkingSpaces: total, updatedAt: new Date() })
+    .set({ parkingSlotLimit: total, updatedAt: new Date() })
     .where(eq(properties.id, propertyId));
 }
 

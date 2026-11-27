@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from "vitest";
-import { auditLogs, floors, propertyParkingSlots, units } from "@/db/schema";
+import { auditLogs, floors, parkingSlots, units } from "@/db/schema";
 import { syncParkingCount } from "../lib/parking-sync";
 import { addParkingSlot } from "./parking.actions";
 import { addFloor, addUnit } from "./unit.actions";
@@ -26,7 +26,7 @@ function select(fields: Record<string, unknown> | undefined) {
         { id, level: 3, label: "3rd Floor", propertyId: "property", developmentId: "development" },
       ];
     if (table === units) return mock.unitCodes.map((code) => ({ code }));
-    if (table === propertyParkingSlots) return mock.parkingCodes.map((code) => ({ code }));
+    if (table === parkingSlots) return mock.parkingCodes.map((code) => ({ code }));
     return [{ id, title: "Tower 2", developmentId: "development" }];
   };
   const chain = {
@@ -135,7 +135,7 @@ it("adds several parking slots on the chosen floor and keeps the count in step",
     success: true,
     message: "3 parking slots added.",
   });
-  expect(rowsIn(propertyParkingSlots).map((row) => [row.identifier, row.floorId])).toEqual([
+  expect(rowsIn(parkingSlots).map((row) => [row.identifier, row.floorId])).toEqual([
     ["P3", id],
     ["P4", id],
     ["P5", id],

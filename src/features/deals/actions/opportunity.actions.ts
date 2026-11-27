@@ -460,7 +460,7 @@ async function estimateSelection(
     unitPrice: unitPrices.length === 1 ? selected[0]!.price : null,
     /** The shared slot price when every selected slot costs the same; null when they differ. */
     parkingPrice: parkingPrices.length === 1 ? slotPrices[0]! : null,
-    parkingSpaces: building.parkingSpaces,
+    parkingSlotLimit: building.parkingSpaces,
   };
 }
 
@@ -729,7 +729,7 @@ export async function openOpportunity(formData: FormData): Promise<DealActionRes
           amount: estimate.total,
           currency: estimate.currency,
           propertyId: v.propertyId,
-          parkingSlots: v.parkingSlotIds.length,
+          parkingSlotCount: v.parkingSlotIds.length,
           parkingSlotIds: v.parkingSlotIds,
           parkingAmount: estimate.parking,
           reservationFee: estimate.reservationFee,
@@ -800,7 +800,7 @@ export async function openOpportunity(formData: FormData): Promise<DealActionRes
             financingPreference: v.financingPreference,
             amount: estimate.total,
             propertyId: v.propertyId,
-            parkingSlots: v.parkingSlotIds.length,
+            parkingSlotCount: v.parkingSlotIds.length,
             parkingSlotIds: v.parkingSlotIds,
             parkingAmount: estimate.parking,
             documents: uploads.map((upload) => upload.name),
@@ -905,7 +905,7 @@ export async function changeOpportunityUnits(input: unknown): Promise<DealAction
           developmentId: v.developmentId,
           propertyId: v.propertyId,
           unitIds: v.unitIds,
-          parkingSlots: v.parkingSlotIds.length,
+          parkingSlotCount: v.parkingSlotIds.length,
           parkingSlotIds: v.parkingSlotIds,
           parkingAmount: estimate.parking,
           reservationFee: estimate.reservationFee,

@@ -3,7 +3,7 @@ import "server-only";
 import { and, eq, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { properties, propertyParkingSlots } from "@/db/schema";
+import { properties, parkingSlots } from "@/db/schema";
 import type { AuthorizationContext } from "@/lib/permissions/policy";
 import { grantedParkingCondition } from "@/lib/permissions/property-access";
 import { compareParkingCodes } from "../lib/parking-codes";
@@ -37,31 +37,31 @@ export async function listParkingSlots(
   { includeHidden = false }: { includeHidden?: boolean } = {},
 ): Promise<ParkingSlot[]> {
   const granted = grantedParkingCondition(context, {
-    propertyId: propertyParkingSlots.propertyId,
-    parkingSlotId: propertyParkingSlots.id,
+    propertyId: parkingSlots.propertyId,
+    parkingSlotId: parkingSlots.id,
   });
   const rows = await db
     .select({
-      id: propertyParkingSlots.id,
-      code: propertyParkingSlots.identifier,
-      status: propertyParkingSlots.status,
-      floorId: propertyParkingSlots.floorId,
-      reservedDealId: propertyParkingSlots.reservedDealId,
+      id: parkingSlots.id,
+      code: parkingSlots.identifier,
+      status: parkingSlots.status,
+      floorId: parkingSlots.floorId,
+      reservedDealId: parkingSlots.reservedDealId,
       // Its parking type's name, from the property's types.
       parkingTypeName: sql<string | null>`(select t->>'name'
         from jsonb_array_elements(${properties.parkingTypes}) t
-        where t->>'id' = ${propertyParkingSlots.parkingTypeId})`,
+        where t->>'id' = ${parkingSlots.parkingTypeId})`,
       accessible: sql<boolean>`${granted}`,
-      price: propertyParkingSlots.price,
-      reservationFee: propertyParkingSlots.reservationFee,
-      ownPrice: propertyParkingSlots.price,
-      ownReservationFee: propertyParkingSlots.reservationFee,
+      price: parkingSlots.price,
+      reservationFee: parkingSlots.reservationFee,
+      ownPrice: parkingSlots.price,
+      ownReservationFee: parkingSlots.reservationFee,
     })
-    .from(propertyParkingSlots)
-    .innerJoin(properties, eq(propertyParkingSlots.propertyId, properties.id))
+    .from(parkingSlots)
+    .innerJoin(properties, eq(parkingSlots.propertyId, properties.id))
     .where(
       and(
-        eq(propertyParkingSlots.propertyId, propertyId),
+        eq(parkingSlots.propertyId, propertyId),
         eq(properties.organizationId, context.organizationId),
         isNull(properties.deletedAt),
         includeHidden ? undefined : granted,

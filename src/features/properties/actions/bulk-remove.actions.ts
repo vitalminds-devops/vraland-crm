@@ -3,7 +3,7 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { activities, auditLogs, properties, propertyParkingSlots, units } from "@/db/schema";
+import { activities, auditLogs, properties, parkingSlots, units } from "@/db/schema";
 import { requirePermission } from "@/lib/permissions/authorization";
 import { logError } from "@/lib/logger";
 import { outOfScope } from "@/lib/errors";
@@ -139,18 +139,13 @@ export async function deleteParkingSlots(
     const removed = await db.transaction(async (tx) => {
       const targets = await tx
         .select({
-          id: propertyParkingSlots.id,
-          code: propertyParkingSlots.identifier,
-          status: propertyParkingSlots.status,
-          floorId: propertyParkingSlots.floorId,
+          id: parkingSlots.id,
+          code: parkingSlots.identifier,
+          status: parkingSlots.status,
+          floorId: parkingSlots.floorId,
         })
-        .from(propertyParkingSlots)
-        .where(
-          and(
-            inArray(propertyParkingSlots.id, ids),
-            eq(propertyParkingSlots.propertyId, property.id),
-          ),
-        )
+        .from(parkingSlots)
+        .where(and(inArray(parkingSlots.id, ids), eq(parkingSlots.propertyId, property.id)))
         .for("update");
       if (targets.length !== new Set(ids).size)
         throw new Blocked("Some of these parking slots are not on this property.");
@@ -162,7 +157,7 @@ export async function deleteParkingSlots(
         targets.map((slot) => slot.floorId),
         { slotIds: targetIds },
       );
-      await tx.delete(propertyParkingSlots).where(inArray(propertyParkingSlots.id, targetIds));
+      await tx.delete(parkingSlots).where(inArray(parkingSlots.id, targetIds));
       await syncParkingCount(tx, property.id);
       await tx.insert(auditLogs).values(
         targets.map((slot) => ({

@@ -30,7 +30,7 @@ import {
   pipelineStages,
   properties,
   tasks,
-  propertyParkingSlots,
+  parkingSlots,
   units,
   users,
 } from "@/db/schema";
@@ -142,7 +142,7 @@ export async function getPipelineBoard() {
         /** The deal's parking slot identifiers, such as "P1, P12". */
         parkingCodes: sql<
           string | null
-        >`(select string_agg(s.code, ', ' order by s.code) from ${propertyParkingSlots} s
+        >`(select string_agg(s.code, ', ' order by s.code) from ${parkingSlots} s
           where s.id = any(${deals.parkingSlotIds}))`,
         agentFirstName: users.firstName,
         agentLastName: users.lastName,
@@ -463,10 +463,10 @@ export async function getDeal(id: string) {
       : [],
     record.deal.parkingSlotIds.length
       ? db
-          .select({ id: propertyParkingSlots.id, code: propertyParkingSlots.identifier })
-          .from(propertyParkingSlots)
-          .where(inArray(propertyParkingSlots.id, record.deal.parkingSlotIds))
-          .orderBy(asc(propertyParkingSlots.identifier))
+          .select({ id: parkingSlots.id, code: parkingSlots.identifier })
+          .from(parkingSlots)
+          .where(inArray(parkingSlots.id, record.deal.parkingSlotIds))
+          .orderBy(asc(parkingSlots.identifier))
       : [],
   ]);
   const [contactRows, agentRows, history, taskRows, activityRows, commissionRows] =

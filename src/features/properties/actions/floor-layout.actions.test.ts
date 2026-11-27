@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from "vitest";
-import { activities, floors, propertyParkingSlots, units } from "@/db/schema";
+import { activities, floors, parkingSlots, units } from "@/db/schema";
 import { saveFloorLayout } from "./floor-layout.actions";
 
 const floorId = "7a1d3e3c-0f43-4c39-9d3f-4f0d7d8b1a01";
@@ -49,7 +49,7 @@ vi.mock("@/db", async () => {
       ];
     if (table === schema.units) return db.floorUnits;
     if (table === schema.unitTypes) return [{ id: typeId }];
-    if (table === schema.propertyParkingSlots) return [];
+    if (table === schema.parkingSlots) return [];
     return [
       {
         id: floorId,
@@ -78,7 +78,7 @@ vi.mock("@/db", async () => {
   const write = (op: string) => (table: unknown) => ({
     set: (values: unknown) => (db.writes.push({ op, table, values }), chain(table, () => [])),
     values: (values: unknown) => {
-      if (op === "insert" && db.failInsert && table === schema.propertyParkingSlots)
+      if (op === "insert" && db.failInsert && table === schema.parkingSlots)
         throw Object.assign(new Error("duplicate key"), { cause: db.failInsert });
       db.writes.push({ op, table, values });
       const list = Array.isArray(values) ? values : [values];
@@ -166,9 +166,8 @@ it("gives a new slot dragged in as a parking type that type's price and fee", as
     },
   });
   expect(result.success).toBe(true);
-  const inserted = db.writes.find(
-    (write) => write.op === "insert" && write.table === propertyParkingSlots,
-  )?.values as Record<string, unknown>[];
+  const inserted = db.writes.find((write) => write.op === "insert" && write.table === parkingSlots)
+    ?.values as Record<string, unknown>[];
   expect(inserted[0]).toMatchObject({
     parkingTypeId: "tandem",
     price: "500000",

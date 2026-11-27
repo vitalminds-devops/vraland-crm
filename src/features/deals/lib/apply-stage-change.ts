@@ -361,7 +361,7 @@ export async function applyStageChange(
           ...(status !== "lost" && { lostReasonId: null, lostNotes: null }),
           ...(releasing && {
             unitIds: [],
-            parkingSlots: 0,
+            parkingSlotCount: 0,
             parkingSlotIds: [],
             parkingAmount: null,
             // The old price would keep showing on the lead's card and in pipeline totals.

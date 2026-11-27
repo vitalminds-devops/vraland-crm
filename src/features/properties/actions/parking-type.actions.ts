@@ -3,7 +3,7 @@
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { auditLogs, properties, propertyParkingSlots } from "@/db/schema";
+import { auditLogs, properties, parkingSlots } from "@/db/schema";
 import { outOfScope } from "@/lib/errors";
 import { logError } from "@/lib/logger";
 import { requirePermission } from "@/lib/permissions/authorization";
@@ -88,18 +88,18 @@ export async function saveParkingType(input: unknown): Promise<ActionResult<{ id
       // amount: a slot given its own price in the parking window keeps it.
       if (before)
         for (const [column, field] of [
-          [propertyParkingSlots.price, "price"],
-          [propertyParkingSlots.reservationFee, "reservationFee"],
+          [parkingSlots.price, "price"],
+          [parkingSlots.reservationFee, "reservationFee"],
         ] as const)
           if (!sameAmount(before[field], next[field]))
             await tx
-              .update(propertyParkingSlots)
+              .update(parkingSlots)
               .set({ [field]: next[field], updatedAt: new Date() })
               .where(
                 and(
-                  eq(propertyParkingSlots.propertyId, propertyId),
-                  eq(propertyParkingSlots.parkingTypeId, next.id),
-                  eq(propertyParkingSlots.status, "available"),
+                  eq(parkingSlots.propertyId, propertyId),
+                  eq(parkingSlots.parkingTypeId, next.id),
+                  eq(parkingSlots.status, "available"),
                   sql`${column} is not distinct from ${before[field]}::numeric`,
                 ),
               );
@@ -140,13 +140,10 @@ export async function deleteParkingType(propertyId: string, typeId: string): Pro
         .set({ parkingTypes: types.filter((type) => type.id !== typeId), updatedAt: new Date() })
         .where(eq(properties.id, propertyId));
       await tx
-        .update(propertyParkingSlots)
+        .update(parkingSlots)
         .set({ parkingTypeId: null, updatedAt: new Date() })
         .where(
-          and(
-            eq(propertyParkingSlots.propertyId, propertyId),
-            eq(propertyParkingSlots.parkingTypeId, typeId),
-          ),
+          and(eq(parkingSlots.propertyId, propertyId), eq(parkingSlots.parkingTypeId, typeId)),
         );
       await tx.insert(auditLogs).values({
         organizationId: context.organizationId,

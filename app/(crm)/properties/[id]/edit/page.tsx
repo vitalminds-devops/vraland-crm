@@ -30,7 +30,7 @@ export default async function EditPropertyPage({ params }: { params: Promise<{ i
     listingType: r.listingType as PropertyInput["listingType"],
     status: r.status as PropertyInput["status"],
     currency: r.currency,
-    parkingSpaces: r.parkingSpaces,
+    parkingSlotLimit: r.parkingSlotLimit,
     addressLine1: r.addressLine1,
     addressLine2: r.addressLine2,
     barangay: r.barangay,

@@ -61,7 +61,7 @@ export async function getPropertiesForDevelopment(
       id: properties.id,
       title: properties.title,
       addressLine1: properties.addressLine1,
-      parkingSpaces: properties.parkingSpaces,
+      parkingSpaces: properties.parkingSlotLimit,
       currency: properties.currency,
     })
     .from(properties)

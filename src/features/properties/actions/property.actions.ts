@@ -11,7 +11,7 @@ import {
   developments,
   properties,
   propertyFeatureValues,
-  propertyParkingSlots,
+  parkingSlots,
   units,
   propertyAccessGrants,
   propertyFeatures,
@@ -138,7 +138,7 @@ const valuesFor = (value: PropertyInput, context: { organizationId: string; user
   listingType: value.listingType,
   status: value.status,
   currency: value.currency,
-  parkingSpaces: value.parkingSpaces,
+  parkingSlotLimit: value.parkingSlotLimit,
   addressLine1: value.addressLine1,
   addressLine2: value.addressLine2,
   barangay: value.barangay,
@@ -163,7 +163,7 @@ export async function createProperty(input: PropertyInput): Promise<PropertyActi
     ...input,
     floorCount: null,
     unitsPerFloor: null,
-    parkingSpaces: null,
+    parkingSlotLimit: null,
   });
   if (!parsed.success) return toLegacyResult(handleValidationError(parsed.error));
 
@@ -298,9 +298,9 @@ export async function archiveProperty(id: string): Promise<PropertyActionResult>
       // Locked so no deal can reserve a unit or slot here between this check and the archive.
       await tx.select({ id: units.id }).from(units).where(eq(units.propertyId, id)).for("update");
       await tx
-        .select({ id: propertyParkingSlots.id })
-        .from(propertyParkingSlots)
-        .where(eq(propertyParkingSlots.propertyId, id))
+        .select({ id: parkingSlots.id })
+        .from(parkingSlots)
+        .where(eq(parkingSlots.propertyId, id))
         .for("update");
       // An open deal still reserves this property's units, which archiving would make unavailable.
       // Older deals have no building link, so their held units and slots count too.

@@ -1,7 +1,7 @@
 import { isHeld } from "./unit-codes";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { db } from "@/db";
-import { deals, propertyParkingSlots } from "@/db/schema";
+import { deals, parkingSlots } from "@/db/schema";
 
 /**
  * Why these slots must stay, or null: a reserved or sold slot, or one an open opportunity
@@ -14,13 +14,13 @@ export async function parkingRemovalBlocker(
   if (!slotIds.length) return null;
   const slots = await tx
     .select({
-      id: propertyParkingSlots.id,
-      code: propertyParkingSlots.identifier,
-      status: propertyParkingSlots.status,
-      reservedDealId: propertyParkingSlots.reservedDealId,
+      id: parkingSlots.id,
+      code: parkingSlots.identifier,
+      status: parkingSlots.status,
+      reservedDealId: parkingSlots.reservedDealId,
     })
-    .from(propertyParkingSlots)
-    .where(inArray(propertyParkingSlots.id, slotIds))
+    .from(parkingSlots)
+    .where(inArray(parkingSlots.id, slotIds))
     .for("update");
   const taken = slots.find((slot) => isHeld(slot.status) || slot.reservedDealId);
   if (taken)

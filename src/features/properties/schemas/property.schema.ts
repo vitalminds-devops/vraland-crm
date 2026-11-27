@@ -51,7 +51,7 @@ export const propertySchema = z
       .trim()
       .regex(/^[A-Za-z]{3}$/)
       .transform((v) => v.toUpperCase()),
-    parkingSpaces: optionalNonnegative,
+    parkingSlotLimit: optionalNonnegative,
     addressLine1: optionalText(),
     addressLine2: optionalText(),
     barangay: optionalText(120),

@@ -209,7 +209,7 @@ it("saves the building, parking quantity, and authoritative total before moving"
       propertyId: id,
       unitIds: [id],
       amount: "145000.75",
-      parkingSlots: 1,
+      parkingSlotCount: 1,
       parkingSlotIds: [id],
       parkingAmount: "25000.50",
       currency: "PHP",

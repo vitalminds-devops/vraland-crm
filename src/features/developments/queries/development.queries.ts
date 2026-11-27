@@ -88,7 +88,7 @@ export async function getDevelopment(id: string) {
     .limit(1);
   if (!record) return null;
 
-  const buildings = await db
+  const propertyRows = await db
     .select({
       id: properties.id,
       code: properties.propertyCode,
@@ -112,8 +112,8 @@ export async function getDevelopment(id: string) {
     )
     .orderBy(asc(properties.title));
 
-  const buildingIds = buildings.map((building) => building.id);
-  const [floorRows, unitRows] = buildingIds.length
+  const propertyIds = propertyRows.map((property) => property.id);
+  const [floorRows, unitRows] = propertyIds.length
     ? await Promise.all([
         db
           .select({
@@ -125,7 +125,7 @@ export async function getDevelopment(id: string) {
           .from(floors)
           .where(
             and(
-              inArray(floors.propertyId, buildingIds),
+              inArray(floors.propertyId, propertyIds),
               grantedFloorsCondition(context, {
                 propertyId: floors.propertyId,
                 floorId: floors.id,
@@ -145,7 +145,7 @@ export async function getDevelopment(id: string) {
           .innerJoin(floors, eq(units.floorId, floors.id))
           .where(
             and(
-              inArray(units.propertyId, buildingIds),
+              inArray(units.propertyId, propertyIds),
               grantedUnitsCondition(context, {
                 propertyId: units.propertyId,
                 floorId: units.floorId,
@@ -159,10 +159,10 @@ export async function getDevelopment(id: string) {
 
   return {
     record,
-    buildings: buildings.map((building) => ({
-      ...building,
+    properties: propertyRows.map((property) => ({
+      ...property,
       floors: floorRows
-        .filter((floor) => floor.propertyId === building.id)
+        .filter((floor) => floor.propertyId === property.id)
         .map((floor) => ({
           ...floor,
           units: unitRows.filter((unit) => unit.floorId === floor.id),

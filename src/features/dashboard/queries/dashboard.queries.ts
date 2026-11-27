@@ -32,7 +32,7 @@ import {
   payments,
   pipelineStages,
   properties,
-  propertyParkingSlots,
+  parkingSlots,
   propertyViewings,
   tasks,
   units,
@@ -597,17 +597,17 @@ export async function getDashboardData() {
     db
       .select({
         total: count(),
-        available: sql<number>`(count(*) filter (where ${propertyParkingSlots.status} = 'available'))::int`,
+        available: sql<number>`(count(*) filter (where ${parkingSlots.status} = 'available'))::int`,
       })
-      .from(propertyParkingSlots)
-      .innerJoin(properties, eq(propertyParkingSlots.propertyId, properties.id))
+      .from(parkingSlots)
+      .innerJoin(properties, eq(parkingSlots.propertyId, properties.id))
       .where(
         and(
           eq(properties.organizationId, context.organizationId),
           isNull(properties.deletedAt),
           grantedParkingCondition(context, {
-            propertyId: propertyParkingSlots.propertyId,
-            parkingSlotId: propertyParkingSlots.id,
+            propertyId: parkingSlots.propertyId,
+            parkingSlotId: parkingSlots.id,
           }),
           propertyScope,
         ),

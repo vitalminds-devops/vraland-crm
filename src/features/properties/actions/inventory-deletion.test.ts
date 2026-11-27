@@ -1,7 +1,7 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { PgDialect } from "drizzle-orm/pg-core";
 import type { SQL } from "drizzle-orm";
-import { deals, floors, propertyParkingSlots, units } from "@/db/schema";
+import { deals, floors, parkingSlots, units } from "@/db/schema";
 import { deleteFloor, deleteUnit } from "./unit.actions";
 import { deleteParkingSlot } from "./parking.actions";
 
@@ -93,7 +93,7 @@ beforeEach(() => {
 it.each([
   ["unit", deleteUnit, units],
   ["floor", deleteFloor, units],
-  ["parking", deleteParkingSlot, propertyParkingSlots],
+  ["parking", deleteParkingSlot, parkingSlots],
 ] as const)(
   "rechecks newly reserved %s inventory while locked before deleting",
   async (_, remove, table) => {
@@ -143,7 +143,7 @@ it("locks the floor before its units and removes unclaimed inventory", async () 
 
 it.each([
   [deleteUnit, units],
-  [deleteParkingSlot, propertyParkingSlots],
+  [deleteParkingSlot, parkingSlots],
 ] as const)("still removes available unclaimed inventory", async (remove, table) => {
   expect(await remove(id)).toMatchObject({ success: true });
   expect(mock.deleted).toEqual([table]);

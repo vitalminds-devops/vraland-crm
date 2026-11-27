@@ -1,15 +1,15 @@
 import { createElement, type ComponentProps } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
-import { DevelopmentBuildingCard } from "./development-building-card";
+import { DevelopmentPropertyCard } from "./development-property-card";
 
 vi.mock("next/link", () => ({
   default: ({ children, ...props }: ComponentProps<"a">) => createElement("a", props, children),
 }));
 
-function building(): ComponentProps<typeof DevelopmentBuildingCard>["building"] {
+function property(): ComponentProps<typeof DevelopmentPropertyCard>["property"] {
   return {
-    id: "building",
+    id: "property",
     code: "QA-1",
     title: "QA House 1",
     propertyType: "condominium",
@@ -21,7 +21,7 @@ function building(): ComponentProps<typeof DevelopmentBuildingCard>["building"] 
     unitIdentifierStyle: "letter",
     floors: Array.from({ length: 20 }, (_, index) => ({
       id: `floor-${index + 1}`,
-      propertyId: "building",
+      propertyId: "property",
       level: index + 1,
       label: `Floor ${index + 1}`,
       units:
@@ -29,12 +29,12 @@ function building(): ComponentProps<typeof DevelopmentBuildingCard>["building"] 
           ? [
               {
                 id: "a",
-                propertyId: "building",
+                propertyId: "property",
                 floorId: "floor-1",
                 code: "1A",
                 status: "available",
               },
-              { id: "b", propertyId: "building", floorId: "floor-1", code: "1B", status: "sold" },
+              { id: "b", propertyId: "property", floorId: "floor-1", code: "1B", status: "sold" },
             ]
           : [],
     })),
@@ -43,8 +43,8 @@ function building(): ComponentProps<typeof DevelopmentBuildingCard>["building"] 
 
 it("shows actual totals, shared unit statuses, and descending floors without duplicate property lists", () => {
   const html = renderToStaticMarkup(
-    createElement(DevelopmentBuildingCard, {
-      building: building(),
+    createElement(DevelopmentPropertyCard, {
+      property: property(),
       canEdit: false,
       canAccess: false,
     }),
@@ -61,22 +61,22 @@ it("shows actual totals, shared unit statuses, and descending floors without dup
 });
 
 it("never folds a middle floor containing inventory", () => {
-  const data = building();
+  const data = property();
   data.floors[9].units = [
-    { id: "mid", propertyId: "building", floorId: "floor-10", code: "10A", status: "available" },
+    { id: "mid", propertyId: "property", floorId: "floor-10", code: "10A", status: "available" },
   ];
   const html = renderToStaticMarkup(
-    createElement(DevelopmentBuildingCard, { building: data, canEdit: false, canAccess: false }),
+    createElement(DevelopmentPropertyCard, { property: data, canEdit: false, canAccess: false }),
   );
   expect(html).toContain('aria-label="Unit 10A, Available"');
   expect(html).not.toContain("more empty floors");
 });
 
-it("handles buildings without floors", () => {
-  const data = building();
+it("handles properties without floors", () => {
+  const data = property();
   data.floors = [];
   const html = renderToStaticMarkup(
-    createElement(DevelopmentBuildingCard, { building: data, canEdit: false, canAccess: false }),
+    createElement(DevelopmentPropertyCard, { property: data, canEdit: false, canAccess: false }),
   );
   expect(html).toContain("No floors configured yet.");
   expect(html).toContain("0 Available");

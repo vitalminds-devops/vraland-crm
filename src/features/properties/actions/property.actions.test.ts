@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from "vitest";
-import { floors, properties, propertyParkingSlots, units } from "@/db/schema";
+import { floors, properties, parkingSlots, units } from "@/db/schema";
 import { requirePermission } from "@/lib/permissions/authorization";
 import { propertySchema } from "../schemas/property.schema";
 import { createProperty, updateProperty } from "./property.actions";
@@ -82,21 +82,21 @@ it("preserves inventory counts when editing property details, including legacy p
 it("never deletes parking slots when a lower parking count is saved", async () => {
   const result = await updateProperty("property", {
     ...propertySchema.parse(base),
-    parkingSpaces: 0,
+    parkingSlotLimit: 0,
   });
   expect(result.success).toBe(true);
-  expect(mock.writes.some((write) => write.table === propertyParkingSlots)).toBe(false);
+  expect(mock.writes.some((write) => write.table === parkingSlots)).toBe(false);
 });
 
 it("creates only the property; floors, units and parking are added on its page", async () => {
   const result = await createProperty(
-    propertySchema.parse({ ...base, floorCount: 4, unitsPerFloor: 2, parkingSpaces: 3 }),
+    propertySchema.parse({ ...base, floorCount: 4, unitsPerFloor: 2, parkingSlotLimit: 3 }),
   );
   expect(result.success).toBe(true);
   expect(requirePermission).toHaveBeenCalledWith("properties.create");
   const created = mock.writes.find((write) => write.table === properties)!.rows[0];
   expect(created).not.toHaveProperty("floorCount");
-  expect(created.parkingSpaces).toBe(0);
+  expect(created.parkingSlotLimit).toBe(0);
   expect(mock.writes.some((write) => write.table === floors || write.table === units)).toBe(false);
 });
 
