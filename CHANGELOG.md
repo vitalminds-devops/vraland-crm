@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-27
+
 ### Added
 - A won opportunity's Commission card has Recalculate, for users who manage commission rates: it replaces the commission with today's commission rules for the current agent and broker, and is logged.
 
