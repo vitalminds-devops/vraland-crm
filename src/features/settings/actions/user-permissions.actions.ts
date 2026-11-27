@@ -1,5 +1,6 @@
 "use server";
 
+import { permissionOverridesSchema } from "../schemas/settings.schema";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -17,11 +18,7 @@ import {
   type ActionResult,
 } from "@/lib/types/action-result";
 
-import {
-  checkPermissionOverrides,
-  permissionOverridesSchema,
-  writePermissionOverrides,
-} from "./user-permission-writes";
+import { checkPermissionOverrides, writePermissionOverrides } from "./user-permission-writes";
 
 const userPermissionsSchema = z.object({
   userId: z.uuid(),

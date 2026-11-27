@@ -15,7 +15,7 @@ import { activeHold, heldMessage, InventoryHeldError } from "../lib/inventory-ho
 import { canWriteProperty } from "../queries/property-scope.queries";
 import { removalBlocker } from "../lib/unit-removal";
 import { dropFromFloorPlans } from "../lib/floor-plan-cleanup";
-import { floorLabel, unitStatuses } from "../lib/unit-codes";
+import { floorLabel } from "../lib/unit-codes";
 import { floorCodes, legacyIdentifier, nextFreeCode, nextLevel } from "../lib/unit-identifier";
 import { ActionResult, failure, databaseFailure } from "@/lib/types/action-result";
 import { outOfScope } from "@/lib/errors";
@@ -23,6 +23,14 @@ import { outOfScope } from "@/lib/errors";
 /**
  * Backward-compatible result type for unit actions.
  */
+import {
+  statusSchema,
+  addCountSchema,
+  unitsEachSchema,
+  floorNameSchema,
+  renameSchema,
+  unitIdSchema,
+} from "../schemas/unit.schema";
 export type UnitActionResult =
   { success: true; message: string } | { success: false; message: string };
 
@@ -55,11 +63,6 @@ function handleDatabaseError(error: unknown, what: string): ActionResult<void> {
     detail,
   );
 }
-
-const statusSchema = z.object({
-  unitId: z.uuid(),
-  status: z.enum(unitStatuses),
-});
 
 /** Move one unit between available, deposit paid, sold and inactive. */
 export async function setUnitStatus(unitId: string, status: string): Promise<UnitActionResult> {
@@ -161,11 +164,8 @@ async function loadFloor(organizationId: string, floorId: string) {
   return row ?? null;
 }
 
-const addCountSchema = z.number().int().min(1).max(100);
-
 /** A custom-numbered floor already has a unit for every number. */
 class FloorFullError extends Error {}
-const unitsEachSchema = z.number().int().min(0).max(100);
 
 /**
  * Adds `count` floors above the top one (level 4 is skipped, as Generate does),
@@ -254,15 +254,6 @@ export async function addFloor(
     return toLegacyResult(handleDatabaseError(error, "Floor"));
   }
 }
-
-const floorNameSchema = z.object({
-  floorId: z.uuid(),
-  label: z
-    .string()
-    .trim()
-    .min(1, "Enter a floor name.")
-    .max(60, "Keep the name under 60 characters."),
-});
 
 /** Renames a floor; its level, and so its place in the building, stays the same. */
 export async function renameFloor(floorId: string, label: string): Promise<UnitActionResult> {
@@ -449,15 +440,6 @@ export async function deleteUnit(unitId: string): Promise<UnitActionResult> {
   }
 }
 
-const renameSchema = z.object({
-  unitId: z.uuid(),
-  code: z
-    .string()
-    .trim()
-    .min(1, "Enter a unit name.")
-    .max(50, "Keep the name under 50 characters."),
-});
-
 /** Renames a unit; names stay unique within their floor. */
 export async function renameUnit(unitId: string, code: string): Promise<UnitActionResult> {
   const context = await requirePermission("properties.manage_units");
@@ -541,8 +523,6 @@ const unitImageTypes: Record<string, string> = {
 };
 
 const unitImageLimit = 5 * 1024 * 1024;
-
-const unitIdSchema = z.uuid();
 
 type UnitRow = {
   id: string;

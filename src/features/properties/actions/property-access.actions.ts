@@ -2,7 +2,6 @@
 
 import { and, asc, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
 
 import { db } from "@/db";
 import {
@@ -37,25 +36,7 @@ import { outOfScope, permissionDenied } from "@/lib/errors";
 import { logError } from "@/lib/logger";
 import { readGrantTargets } from "../queries/property-access.queries";
 
-const grantSchema = z.object({
-  propertyId: z.uuid(),
-  userId: z.uuid(),
-  floorIds: z.array(z.uuid()).max(500).default([]),
-  unitIds: z.array(z.uuid()).max(2000).default([]),
-  excludedUnitIds: z.array(z.uuid()).max(2000).default([]),
-  parkingSlotIds: z.array(z.uuid()).max(2000).default([]),
-});
-
-const clearSchema = z.object({
-  propertyId: z.uuid(),
-  userId: z.uuid(),
-});
-
-const bulkSchema = z.object({
-  /** One person, or every non-administrator in the organization. */
-  userId: z.uuid().optional(),
-  everyone: z.boolean().default(false),
-});
+import { grantSchema, clearSchema, bulkSchema } from "../schemas/property-access.schema";
 class AccessInventoryUnavailable extends Error {}
 
 export type PropertyAccessResult = ActionResult<{ id: string }>;

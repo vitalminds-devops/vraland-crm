@@ -1,7 +1,6 @@
 import "server-only";
 
 import { eq } from "drizzle-orm";
-import { z } from "zod";
 
 import type { db } from "@/db";
 import { auditLogs, userPermissions } from "@/db/schema";
@@ -13,19 +12,10 @@ import {
   hasPermission,
   type AuthorizationContext,
 } from "@/lib/permissions/policy";
-import {
-  failure,
-  success,
-  validationFailure,
-  type ActionResult,
-} from "@/lib/types/action-result";
+import { failure, success, validationFailure, type ActionResult } from "@/lib/types/action-result";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 export type PermissionOverride = { key: string; granted: boolean };
-
-export const permissionOverridesSchema = z
-  .array(z.object({ key: z.string().min(1).max(150), granted: z.boolean() }))
-  .max(500);
 
 /**
  * Checks that the caller may set these overrides on a user of their organization, and returns
