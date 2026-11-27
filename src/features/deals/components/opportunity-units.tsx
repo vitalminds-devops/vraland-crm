@@ -22,8 +22,8 @@ import {
   changeOpportunityUnits,
   getOpportunityDraft,
   getOpportunityEstimate,
-  type OpportunityDraft,
 } from "../actions/opportunity.actions";
+import type { OpportunityDraft } from "../queries/opportunity.queries";
 import { OpportunityParkingSelector } from "./opportunity-parking-selector";
 
 const field =

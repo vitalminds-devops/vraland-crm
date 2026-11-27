@@ -53,8 +53,8 @@ import {
   getOpportunityDraft,
   getOpportunityEstimate,
   openOpportunity,
-  type OpportunityDraft,
 } from "../actions/opportunity.actions";
+import type { OpportunityDraft } from "../queries/opportunity.queries";
 import type { DealActionResult } from "../actions/deal.actions";
 
 import { Field, fieldClass } from "./opportunity-field";
