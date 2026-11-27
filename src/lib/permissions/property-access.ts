@@ -184,7 +184,7 @@ export function grantedFloorsCondition(
           and(
             eq(units.floorId, columns.floorId),
             grantedUnitsCondition(context, {
-              propertyId: units.buildingId,
+              propertyId: units.propertyId,
               floorId: units.floorId,
               unitId: units.id,
             }),

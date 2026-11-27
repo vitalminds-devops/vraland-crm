@@ -37,7 +37,7 @@ export async function listParkingSlots(
   { includeHidden = false }: { includeHidden?: boolean } = {},
 ): Promise<ParkingSlot[]> {
   const granted = grantedParkingCondition(context, {
-    propertyId: propertyParkingSlots.buildingId,
+    propertyId: propertyParkingSlots.propertyId,
     parkingSlotId: propertyParkingSlots.id,
   });
   const rows = await db
@@ -58,10 +58,10 @@ export async function listParkingSlots(
       ownReservationFee: propertyParkingSlots.reservationFee,
     })
     .from(propertyParkingSlots)
-    .innerJoin(properties, eq(propertyParkingSlots.buildingId, properties.id))
+    .innerJoin(properties, eq(propertyParkingSlots.propertyId, properties.id))
     .where(
       and(
-        eq(propertyParkingSlots.buildingId, propertyId),
+        eq(propertyParkingSlots.propertyId, propertyId),
         eq(properties.organizationId, context.organizationId),
         isNull(properties.deletedAt),
         includeHidden ? undefined : granted,

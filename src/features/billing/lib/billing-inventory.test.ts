@@ -109,7 +109,7 @@ it("marks all persisted units and parking sold after a settled payment", async (
     organizationId: "org",
     actorUserId: "actor",
     dealId: "deal",
-    buildingId: "building",
+    propertyId: "building",
     unitIds: ["primary", "second"],
     parkingSlotIds: ["parking"],
     status: "sold",

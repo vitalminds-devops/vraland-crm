@@ -51,7 +51,7 @@ type Props = {
   initialUnitIds?: readonly string[];
   initialBuildingId?: string | null;
   unitIds?: readonly string[];
-  onBuildingChange?: (buildingId: string | null) => void;
+  onBuildingChange?: (propertyId: string | null) => void;
   /** Called with the whole set whenever a unit is ticked or unticked. */
   onUnitsChange: (unitIds: string[]) => void;
   selectClassName?: string;

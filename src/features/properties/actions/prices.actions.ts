@@ -33,14 +33,14 @@ export async function saveSlotPrices(input: unknown): Promise<ActionResult> {
   try {
     const [slot] = await db
       .select({
-        propertyId: propertyParkingSlots.buildingId,
+        propertyId: propertyParkingSlots.propertyId,
         code: propertyParkingSlots.code,
         price: propertyParkingSlots.price,
         reservationFee: propertyParkingSlots.reservationFee,
         reservedDealId: propertyParkingSlots.reservedDealId,
       })
       .from(propertyParkingSlots)
-      .innerJoin(properties, eq(propertyParkingSlots.buildingId, properties.id))
+      .innerJoin(properties, eq(propertyParkingSlots.propertyId, properties.id))
       .where(
         and(
           eq(propertyParkingSlots.id, value.slotId),

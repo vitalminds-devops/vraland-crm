@@ -26,12 +26,12 @@ export function selectionChanged(
     unitIds: readonly string[];
     parkingSlotIds: readonly string[];
   },
-  after: { buildingId: string; unitIds: readonly string[]; parkingSlotIds: readonly string[] },
+  after: { propertyId: string; unitIds: readonly string[]; parkingSlotIds: readonly string[] },
 ): boolean {
   const same = (a: readonly string[], b: readonly string[]) =>
     a.length === b.length && a.every((id) => b.includes(id));
   return (
-    before.propertyId !== after.buildingId ||
+    before.propertyId !== after.propertyId ||
     !same(before.unitIds, after.unitIds) ||
     !same(before.parkingSlotIds, after.parkingSlotIds)
   );

@@ -55,7 +55,7 @@ export async function saveUnitNaming(input: unknown): Promise<ActionResult> {
               await tx
                 .select({ id: floors.id })
                 .from(floors)
-                .where(and(eq(floors.buildingId, value.propertyId), inArray(floors.id, floorIds)))
+                .where(and(eq(floors.propertyId, value.propertyId), inArray(floors.id, floorIds)))
             ).map((floor) => floor.id)
           : [],
       );

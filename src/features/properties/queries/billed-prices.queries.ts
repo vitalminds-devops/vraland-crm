@@ -23,7 +23,7 @@ export async function getBilledUnitPrices(
     .innerJoin(units, eq(billItems.unitId, units.id))
     .where(
       and(
-        eq(units.buildingId, propertyId),
+        eq(units.propertyId, propertyId),
         eq(deals.organizationId, context.organizationId),
         eq(deals.status, "open"),
         isNull(deals.deletedAt),

@@ -12,7 +12,7 @@ function transaction(tinNumber: string | null, overrides: Record<string, unknown
       {
         amount: "100",
         developmentId: "development",
-        buildingId: "building",
+        propertyId: "building",
         unitCount: 1,
         contactId: "contact",
         financing: "cash",

@@ -69,7 +69,7 @@ export async function setUnitStatus(unitId: string, status: string): Promise<Uni
 
   const target = await loadUnit(context.organizationId, parsed.data.unitId);
   if (!target) return { success: false, message: "Unit not found." };
-  if (!(await canWriteProperty(context, target.buildingId)))
+  if (!(await canWriteProperty(context, target.propertyId)))
     return toLegacyResult(failure(outOfScope()));
 
   try {
@@ -96,7 +96,7 @@ export async function setUnitStatus(unitId: string, status: string): Promise<Uni
         actorUserId: context.userId,
         activityType: "unit.status_changed",
         summary: `Unit ${target.code} is now ${parsed.data.status.replaceAll("_", " ")}.`,
-        propertyId: target.buildingId,
+        propertyId: target.propertyId,
         metadata: {
           unitId: target.id,
           code: target.code,
@@ -114,7 +114,7 @@ export async function setUnitStatus(unitId: string, status: string): Promise<Uni
         newValues: { status: parsed.data.status },
       });
     });
-    revalidateProperty(target.buildingId);
+    revalidateProperty(target.propertyId);
     return { success: true, message: `Unit ${target.code} updated.` };
   } catch (error) {
     if (error instanceof InventoryHeldError) return { success: false, message: error.message };
@@ -130,7 +130,7 @@ async function syncFloorCount(
   const [{ total }] = await tx
     .select({ total: sql<number>`count(*)::int` })
     .from(floors)
-    .where(eq(floors.buildingId, propertyId));
+    .where(eq(floors.propertyId, propertyId));
   await tx
     .update(properties)
     .set({ floorCount: total || null, updatedAt: new Date() })
@@ -143,13 +143,13 @@ async function loadFloor(organizationId: string, floorId: string) {
       id: floors.id,
       level: floors.level,
       label: floors.label,
-      buildingId: floors.buildingId,
+      propertyId: floors.propertyId,
       developmentId: properties.developmentId,
       propertyTitle: properties.title,
       unitNumbering: properties.unitNumbering,
     })
     .from(floors)
-    .innerJoin(properties, eq(floors.buildingId, properties.id))
+    .innerJoin(properties, eq(floors.propertyId, properties.id))
     .where(
       and(
         eq(floors.id, floorId),
@@ -214,7 +214,7 @@ export async function addFloor(
         await tx
           .select({ level: floors.level })
           .from(floors)
-          .where(eq(floors.buildingId, propertyId))
+          .where(eq(floors.propertyId, propertyId))
       ).map((floor) => floor.level);
       // New floors follow the property's numbering; older properties keep letters, skipping 4.
       const numbering = property.unitNumbering ?? legacyNumbering;
@@ -224,14 +224,14 @@ export async function addFloor(
         levels.push(level);
         const [floor] = await tx
           .insert(floors)
-          .values({ buildingId: propertyId, level, label: labels?.[added] ?? floorLabel(level) })
+          .values({ propertyId: propertyId, level, label: labels?.[added] ?? floorLabel(level) })
           .returning({ id: floors.id, label: floors.label });
         label = floor.label;
         if (unitsEach)
           await tx.insert(units).values(
             floorCodes(numbering, level, unitsEach).map((code) => ({
               developmentId: property.developmentId,
-              buildingId: propertyId,
+              propertyId: propertyId,
               floorId: floor.id,
               code,
             })),
@@ -272,7 +272,7 @@ export async function renameFloor(floorId: string, label: string): Promise<UnitA
     return { success: false, message: parsed.error.issues[0]?.message ?? "Invalid name." };
   const floor = await loadFloor(context.organizationId, parsed.data.floorId);
   if (!floor) return { success: false, message: "Floor not found." };
-  if (!(await canWriteProperty(context, floor.buildingId)))
+  if (!(await canWriteProperty(context, floor.propertyId)))
     return toLegacyResult(failure(outOfScope()));
   const next = parsed.data.label;
   if (next === floor.label) return { success: true, message: "No change." };
@@ -293,7 +293,7 @@ export async function renameFloor(floorId: string, label: string): Promise<UnitA
         newValues: { label: next },
       });
     });
-    revalidateProperty(floor.buildingId);
+    revalidateProperty(floor.propertyId);
     return { success: true, message: `${floor.label} renamed to ${next}.` };
   } catch (error) {
     return toLegacyResult(handleDatabaseError(error, "Floor"));
@@ -306,7 +306,7 @@ export async function deleteFloor(floorId: string): Promise<UnitActionResult> {
   if (!z.uuid().safeParse(floorId).success) return { success: false, message: "Invalid floor." };
   const floor = await loadFloor(context.organizationId, floorId);
   if (!floor) return { success: false, message: "Floor not found." };
-  if (!(await canWriteProperty(context, floor.buildingId)))
+  if (!(await canWriteProperty(context, floor.propertyId)))
     return toLegacyResult(failure(outOfScope()));
 
   try {
@@ -324,7 +324,7 @@ export async function deleteFloor(floorId: string): Promise<UnitActionResult> {
       if (blocker) return blocker;
       // Units cascade with the floor.
       await tx.delete(floors).where(eq(floors.id, floor.id));
-      await syncFloorCount(tx, floor.buildingId);
+      await syncFloorCount(tx, floor.propertyId);
       await tx.insert(auditLogs).values({
         organizationId: context.organizationId,
         actorUserId: context.userId,
@@ -340,7 +340,7 @@ export async function deleteFloor(floorId: string): Promise<UnitActionResult> {
       return null;
     });
     if (blocker) return { success: false, message: blocker };
-    revalidateProperty(floor.buildingId);
+    revalidateProperty(floor.propertyId);
     return { success: true, message: `${floor.label} removed.` };
   } catch (error) {
     return toLegacyResult(handleDatabaseError(error, "Floor"));
@@ -355,7 +355,7 @@ export async function addUnit(floorId: string, count = 1): Promise<UnitActionRes
     return { success: false, message: "Enter between 1 and 100." };
   const floor = await loadFloor(context.organizationId, floorId);
   if (!floor) return { success: false, message: "Floor not found." };
-  if (!(await canWriteProperty(context, floor.buildingId)))
+  if (!(await canWriteProperty(context, floor.propertyId)))
     return toLegacyResult(failure(outOfScope()));
 
   try {
@@ -377,7 +377,7 @@ export async function addUnit(floorId: string, count = 1): Promise<UnitActionRes
           .insert(units)
           .values({
             developmentId: floor.developmentId,
-            buildingId: floor.buildingId,
+            propertyId: floor.propertyId,
             floorId: floor.id,
             code: next,
           })
@@ -393,7 +393,7 @@ export async function addUnit(floorId: string, count = 1): Promise<UnitActionRes
       }
       return next;
     });
-    revalidateProperty(floor.buildingId);
+    revalidateProperty(floor.propertyId);
     return {
       success: true,
       message:
@@ -415,7 +415,7 @@ export async function deleteUnit(unitId: string): Promise<UnitActionResult> {
 
   const target = await loadUnit(context.organizationId, parsed.data);
   if (!target) return { success: false, message: "Unit not found." };
-  if (!(await canWriteProperty(context, target.buildingId)))
+  if (!(await canWriteProperty(context, target.propertyId)))
     return toLegacyResult(failure(outOfScope()));
   try {
     const blocker = await db.transaction(async (tx) => {
@@ -428,7 +428,7 @@ export async function deleteUnit(unitId: string): Promise<UnitActionResult> {
         actorUserId: context.userId,
         activityType: "unit.deleted",
         summary: `Unit ${target.code} was removed.`,
-        propertyId: target.buildingId,
+        propertyId: target.propertyId,
         metadata: { unitId: target.id, code: target.code },
       });
       await tx.insert(auditLogs).values({
@@ -442,7 +442,7 @@ export async function deleteUnit(unitId: string): Promise<UnitActionResult> {
       return null;
     });
     if (blocker) return { success: false, message: blocker };
-    revalidateProperty(target.buildingId);
+    revalidateProperty(target.propertyId);
     return { success: true, message: `Unit ${target.code} removed.` };
   } catch (error) {
     return toLegacyResult(handleDatabaseError(error, "Unit"));
@@ -467,7 +467,7 @@ export async function renameUnit(unitId: string, code: string): Promise<UnitActi
 
   const target = await loadUnit(context.organizationId, parsed.data.unitId);
   if (!target) return { success: false, message: "Unit not found." };
-  if (!(await canWriteProperty(context, target.buildingId)))
+  if (!(await canWriteProperty(context, target.propertyId)))
     return toLegacyResult(failure(outOfScope()));
   const next = parsed.data.code;
   if (next === target.code) return { success: true, message: "No change." };
@@ -490,7 +490,7 @@ export async function renameUnit(unitId: string, code: string): Promise<UnitActi
         actorUserId: context.userId,
         activityType: "unit.renamed",
         summary: `Unit ${target.code} was renamed to ${next}.`,
-        propertyId: target.buildingId,
+        propertyId: target.propertyId,
         metadata: { unitId: target.id, from: target.code, to: next },
       });
       await tx.insert(auditLogs).values({
@@ -503,7 +503,7 @@ export async function renameUnit(unitId: string, code: string): Promise<UnitActi
         newValues: { code: next },
       });
     });
-    revalidateProperty(target.buildingId);
+    revalidateProperty(target.propertyId);
     return { success: true, message: `Unit renamed to ${next}.` };
   } catch (error) {
     return toLegacyResult(handleDatabaseError(error, "Unit"));
@@ -517,12 +517,12 @@ async function loadUnit(organizationId: string, unitId: string) {
       code: units.code,
       status: units.status,
       floorId: units.floorId,
-      buildingId: units.buildingId,
+      propertyId: units.propertyId,
       propertyTitle: properties.title,
       imageStorageKey: units.imageStorageKey,
     })
     .from(units)
-    .innerJoin(properties, eq(units.buildingId, properties.id))
+    .innerJoin(properties, eq(units.propertyId, properties.id))
     .where(
       and(
         eq(units.id, unitId),
@@ -547,7 +547,7 @@ const unitIdSchema = z.uuid();
 type UnitRow = {
   id: string;
   code: string;
-  buildingId: string;
+  propertyId: string;
   propertyTitle: string;
   imageStorageKey: string | null;
 };
@@ -560,12 +560,12 @@ async function loadUnitWithProperty(
     .select({
       id: units.id,
       code: units.code,
-      buildingId: properties.id,
+      propertyId: properties.id,
       propertyTitle: properties.title,
       imageStorageKey: units.imageStorageKey,
     })
     .from(units)
-    .innerJoin(properties, eq(units.buildingId, properties.id))
+    .innerJoin(properties, eq(units.propertyId, properties.id))
     .where(
       and(
         eq(units.id, unitId),
@@ -606,7 +606,7 @@ export async function saveUnitImage(formData: FormData): Promise<UnitActionResul
 
   const unit = await loadUnitWithProperty(context.organizationId, parsed.data);
   if (!unit) return { success: false, message: "Couldn't find that unit." };
-  if (!(await canWriteProperty(context, unit.buildingId)))
+  if (!(await canWriteProperty(context, unit.propertyId)))
     return {
       success: false,
       message: "You do not have permission to modify this property.",
@@ -642,7 +642,7 @@ export async function saveUnitImage(formData: FormData): Promise<UnitActionResul
         summary: `Unit ${unit.code} of ${unit.propertyTitle} ${
           unit.imageStorageKey ? "got a new photo" : "was given a photo"
         }.`,
-        propertyId: unit.buildingId,
+        propertyId: unit.propertyId,
         metadata: { unitId: unit.id, mimeType: file.type, size: file.size },
       });
       await tx.insert(auditLogs).values({
@@ -673,7 +673,7 @@ export async function saveUnitImage(formData: FormData): Promise<UnitActionResul
       }),
     );
 
-  revalidateProperty(unit.buildingId);
+  revalidateProperty(unit.propertyId);
   return { success: true, message: `Unit ${unit.code} photo saved.` };
 }
 
@@ -687,7 +687,7 @@ export async function removeUnitImage(unitId: string): Promise<UnitActionResult>
   if (!unit) return { success: false, message: "Couldn't find that unit." };
   if (!unit.imageStorageKey)
     return { success: false, message: "That unit has no photo to remove." };
-  if (!(await canWriteProperty(context, unit.buildingId)))
+  if (!(await canWriteProperty(context, unit.propertyId)))
     return {
       success: false,
       message: "You do not have permission to modify this property.",
@@ -727,6 +727,6 @@ export async function removeUnitImage(unitId: string): Promise<UnitActionResult>
       }),
     );
 
-  revalidateProperty(unit.buildingId);
+  revalidateProperty(unit.propertyId);
   return { success: true, message: `Unit ${unit.code} photo removed.` };
 }

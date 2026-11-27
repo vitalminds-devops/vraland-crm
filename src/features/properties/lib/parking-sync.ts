@@ -13,7 +13,7 @@ export async function syncParkingCount(tx: Tx, propertyId: string) {
   const [{ total }] = await tx
     .select({ total: count() })
     .from(propertyParkingSlots)
-    .where(eq(propertyParkingSlots.buildingId, propertyId));
+    .where(eq(propertyParkingSlots.propertyId, propertyId));
   await tx
     .update(properties)
     .set({ parkingSpaces: total, updatedAt: new Date() })

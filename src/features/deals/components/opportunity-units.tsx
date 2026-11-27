@@ -82,13 +82,13 @@ function ChangeUnitsDialog({ dealId, onClose }: { dealId: string; onClose: () =>
   const [draft, setDraft] = useState<OpportunityDraft | null>(null);
   const [failed, setFailed] = useState(false);
   const [developmentId, setDevelopmentId] = useState("");
-  const [buildingId, setBuildingId] = useState<string | null>(null);
+  const [propertyId, setBuildingId] = useState<string | null>(null);
   const [unitIds, setUnitIds] = useState<string[]>([]);
-  const [parking, setParking] = useState<{ buildingId: string | null; ids: string[] }>({
-    buildingId: null,
+  const [parking, setParking] = useState<{ propertyId: string | null; ids: string[] }>({
+    propertyId: null,
     ids: [],
   });
-  const parkingSlotIds = parking.buildingId === buildingId ? parking.ids : [];
+  const parkingSlotIds = parking.propertyId === propertyId ? parking.ids : [];
   const [estimate, setEstimate] = useState<{
     key: string;
     result: Awaited<ReturnType<typeof getOpportunityEstimate>>;
@@ -103,9 +103,9 @@ function ChangeUnitsDialog({ dealId, onClose }: { dealId: string; onClose: () =>
         if (!loaded) return setFailed(true);
         setDraft(loaded);
         setDevelopmentId(loaded.developmentId);
-        setBuildingId(loaded.buildingId);
+        setBuildingId(loaded.propertyId);
         setUnitIds(loaded.unitIds);
-        setParking({ buildingId: loaded.buildingId, ids: loaded.parkingSlotIds ?? [] });
+        setParking({ propertyId: loaded.propertyId, ids: loaded.parkingSlotIds ?? [] });
       })
       .catch(() => live && setFailed(true));
     return () => {
@@ -113,14 +113,14 @@ function ChangeUnitsDialog({ dealId, onClose }: { dealId: string; onClose: () =>
     };
   }, [dealId]);
 
-  const selection = { developmentId, buildingId: buildingId ?? "", unitIds, parkingSlotIds };
+  const selection = { developmentId, propertyId: propertyId ?? "", unitIds, parkingSlotIds };
   const key = JSON.stringify(selection);
   const current = estimate?.key === key ? estimate.result : null;
   const unitsFee = current?.success
     ? unitsReservationFee(current.reservationFee, current.parkingReservationFee)
     : null;
   useEffect(() => {
-    if (!buildingId || !unitIds.length) return;
+    if (!propertyId || !unitIds.length) return;
     let live = true;
     getOpportunityEstimate(JSON.parse(key), dealId)
       .then((result) => live && setEstimate({ key, result }))
@@ -135,7 +135,7 @@ function ChangeUnitsDialog({ dealId, onClose }: { dealId: string; onClose: () =>
     return () => {
       live = false;
     };
-  }, [key, buildingId, unitIds.length, dealId]);
+  }, [key, propertyId, unitIds.length, dealId]);
 
   const save = () =>
     startTransition(async () => {
@@ -195,7 +195,7 @@ function ChangeUnitsDialog({ dealId, onClose }: { dealId: string; onClose: () =>
                     developmentId={developmentId}
                     initialUnitIds={developmentId === draft.developmentId ? draft.unitIds : []}
                     initialBuildingId={
-                      developmentId === draft.developmentId ? draft.buildingId : null
+                      developmentId === draft.developmentId ? draft.propertyId : null
                     }
                     unitIds={unitIds}
                     onBuildingChange={setBuildingId}
@@ -203,15 +203,15 @@ function ChangeUnitsDialog({ dealId, onClose }: { dealId: string; onClose: () =>
                     selectClassName={field}
                     disabled={pending}
                     floorExtras={(floorId) =>
-                      buildingId && (
+                      propertyId && (
                         <OpportunityParkingSelector
-                          key={buildingId}
+                          key={propertyId}
                           developmentId={developmentId}
-                          buildingId={buildingId}
+                          propertyId={propertyId}
                           floorId={floorId}
                           selectedIds={parkingSlotIds}
                           dealId={dealId}
-                          onChange={(ids) => setParking({ buildingId, ids })}
+                          onChange={(ids) => setParking({ propertyId, ids })}
                           disabled={pending}
                         />
                       )
@@ -231,7 +231,7 @@ function ChangeUnitsDialog({ dealId, onClose }: { dealId: string; onClose: () =>
                     <span className={current ? "text-destructive" : "text-muted-foreground"}>
                       {current && !current.success
                         ? current.message
-                        : buildingId && unitIds.length
+                        : propertyId && unitIds.length
                           ? "Calculating…"
                           : "Select a unit"}
                     </span>

@@ -340,7 +340,7 @@ export async function applyStageChange(
         organizationId: context.organizationId,
         actorUserId: context.userId,
         dealId,
-        buildingId: before.propertyId,
+        propertyId: before.propertyId,
         unitIds: before.unitIds,
         parkingSlotIds: before.parkingSlotIds,
         status: inventoryStatusForDeal(

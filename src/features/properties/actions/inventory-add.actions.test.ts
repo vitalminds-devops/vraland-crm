@@ -23,7 +23,7 @@ function select(fields: Record<string, unknown> | undefined) {
       return mock.floorLevels.map((level) => ({ level }));
     if (table === floors)
       return [
-        { id, level: 3, label: "3rd Floor", buildingId: "property", developmentId: "development" },
+        { id, level: 3, label: "3rd Floor", propertyId: "property", developmentId: "development" },
       ];
     if (table === units) return mock.unitCodes.map((code) => ({ code }));
     if (table === propertyParkingSlots) return mock.parkingCodes.map((code) => ({ code }));

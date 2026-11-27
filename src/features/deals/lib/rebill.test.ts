@@ -130,12 +130,12 @@ it("finds a billed unit or slot by itself, even after a rename or a relabel in B
 it("tells a new pick from the same one, in any order", () => {
   const before = { propertyId: "p", unitIds: ["a", "b"], parkingSlotIds: ["s"] };
   expect(
-    selectionChanged(before, { buildingId: "p", unitIds: ["b", "a"], parkingSlotIds: ["s"] }),
+    selectionChanged(before, { propertyId: "p", unitIds: ["b", "a"], parkingSlotIds: ["s"] }),
   ).toBe(false);
-  expect(selectionChanged(before, { buildingId: "p", unitIds: ["a"], parkingSlotIds: ["s"] })).toBe(
+  expect(selectionChanged(before, { propertyId: "p", unitIds: ["a"], parkingSlotIds: ["s"] })).toBe(
     true,
   );
   expect(
-    selectionChanged(before, { buildingId: "q", unitIds: ["a", "b"], parkingSlotIds: ["s"] }),
+    selectionChanged(before, { propertyId: "q", unitIds: ["a", "b"], parkingSlotIds: ["s"] }),
   ).toBe(true);
 });

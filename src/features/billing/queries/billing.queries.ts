@@ -199,7 +199,7 @@ async function billLinesFor(
             price: sql<string | null>`coalesce(${units.price}, ${unitTypes.price})`,
           })
           .from(units)
-          .innerJoin(properties, eq(units.buildingId, properties.id))
+          .innerJoin(properties, eq(units.propertyId, properties.id))
           .leftJoin(unitTypes, eq(units.unitTypeId, unitTypes.id))
           .leftJoin(developments, eq(properties.developmentId, developments.id))
           .where(and(inArray(units.id, unitIds), eq(properties.organizationId, organizationId)))
@@ -212,7 +212,7 @@ async function billLinesFor(
             price: propertyParkingSlots.price,
           })
           .from(propertyParkingSlots)
-          .innerJoin(properties, eq(propertyParkingSlots.buildingId, properties.id))
+          .innerJoin(properties, eq(propertyParkingSlots.propertyId, properties.id))
           .where(
             and(
               inArray(propertyParkingSlots.id, slotIds),

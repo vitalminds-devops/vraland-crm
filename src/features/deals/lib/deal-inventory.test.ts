@@ -8,7 +8,7 @@ vi.mock("@/db", () => ({ db: {} }));
 type Row = {
   id: string;
   code: string;
-  buildingId: string;
+  propertyId: string;
   status: string;
   reservedDealId: string | null;
   propertyDeletedAt: Date | null;
@@ -21,7 +21,7 @@ const input = {
   organizationId: "organization",
   actorUserId: "actor",
   dealId: "deal",
-  buildingId: "building",
+  propertyId: "building",
   unitIds: ["unit-1", "unit-2"],
   parkingSlotIds: ["parking-1"],
   status: "deposit_paid" as const,
@@ -29,7 +29,7 @@ const input = {
 const row = (id: string): Row => ({
   id,
   code: id,
-  buildingId: "building",
+  propertyId: "building",
   status: "available",
   reservedDealId: null,
   propertyDeletedAt: null,
@@ -152,7 +152,7 @@ it("checks missing, deleted and different-building selections before writing", a
       unitRows[0].propertyDeletedAt = new Date();
     },
     () => {
-      unitRows[0].buildingId = "other-building";
+      unitRows[0].propertyId = "other-building";
     },
   ]) {
     unitRows = [row("unit-1"), row("unit-2")];
@@ -165,14 +165,14 @@ it("checks missing, deleted and different-building selections before writing", a
 });
 
 it("recovers a missing legacy building link only when all selected inventory shares one building", async () => {
-  await syncDealInventory(transaction(), { ...input, buildingId: null });
+  await syncDealInventory(transaction(), { ...input, propertyId: null });
   expect(writes).toHaveLength(2);
 });
 
 it("rejects mixed-building legacy inventory without a building link", async () => {
-  parkingRows[0].buildingId = "other-building";
+  parkingRows[0].propertyId = "other-building";
   await expect(
-    syncDealInventory(transaction(), { ...input, buildingId: null }),
+    syncDealInventory(transaction(), { ...input, propertyId: null }),
   ).rejects.toBeInstanceOf(InventoryUnavailable);
   expect(writes).toEqual([]);
 });

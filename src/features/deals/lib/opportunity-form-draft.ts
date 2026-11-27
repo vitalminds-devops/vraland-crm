@@ -6,9 +6,9 @@ export type OpportunityFormDraft = {
   budget: string;
   tinNumber: string;
   developmentId: string;
-  buildingId: string | null;
+  propertyId: string | null;
   unitIds: string[];
-  parkingSelection: { buildingId: string | null; ids: string[] };
+  parkingSelection: { propertyId: string | null; ids: string[] };
   financing: string;
   nextType: string;
   idFile: File | null;
@@ -17,7 +17,8 @@ export type OpportunityFormDraft = {
   fields: Record<string, string>;
 };
 
-type StoredDraft = { version: 1; expiresAt: number; value: OpportunityFormDraft };
+// Version 2: the property is propertyId (was buildingId); older drafts are dropped.
+type StoredDraft = { version: 2; expiresAt: number; value: OpportunityFormDraft };
 type DraftFields = Omit<OpportunityFormDraft, "idFile" | "appointmentFile" | "extras">;
 const cacheKey = (key: string) => `vraland:opportunity:${key}`;
 
@@ -29,7 +30,7 @@ export function cacheOpportunityFormDraft(key: string, value: OpportunityFormDra
   );
   sessionStorage.setItem(
     cacheKey(key),
-    JSON.stringify({ version: 1, expiresAt: Date.now() + 24 * 60 * 60 * 1000, value: fields }),
+    JSON.stringify({ version: 2, expiresAt: Date.now() + 24 * 60 * 60 * 1000, value: fields }),
   );
 }
 
@@ -65,7 +66,7 @@ export async function loadOpportunityFormDraft(key: string): Promise<Opportunity
   try {
     const value = JSON.parse(sessionStorage.getItem(cacheKey(key)) ?? "null");
     if (
-      value?.version === 1 &&
+      value?.version === 2 &&
       value.expiresAt > Date.now() &&
       [1, 2, 3, 4].includes(value.value?.step)
     )
@@ -83,7 +84,7 @@ export async function loadOpportunityFormDraft(key: string): Promise<Opportunity
     };
     return store.get(key);
   });
-  const stored = saved?.version === 1 && saved.expiresAt > Date.now() ? saved.value : null;
+  const stored = saved?.version === 2 && saved.expiresAt > Date.now() ? saved.value : null;
   return cached
     ? { ...(stored ?? { idFile: null, appointmentFile: null, extras: [] }), ...cached.value }
     : stored;
@@ -92,7 +93,7 @@ export async function loadOpportunityFormDraft(key: string): Promise<Opportunity
 export async function saveOpportunityFormDraft(key: string, value: OpportunityFormDraft) {
   await transaction("readwrite", (store) =>
     store.put(
-      { version: 1, expiresAt: Date.now() + 24 * 60 * 60 * 1000, value } satisfies StoredDraft,
+      { version: 2, expiresAt: Date.now() + 24 * 60 * 60 * 1000, value } satisfies StoredDraft,
       key,
     ),
   );

@@ -27,12 +27,12 @@ it("requires every unit and slot to be priced and rejects unsafe totals", () => 
 
 it("requires a building and unique unit and parking IDs", () => {
   const id = "12345678-1234-4234-8234-123456789abc";
-  const selection = { developmentId: id, buildingId: id, unitIds: [id], parkingSlotIds: [id] };
+  const selection = { developmentId: id, propertyId: id, unitIds: [id], parkingSlotIds: [id] };
   expect(opportunitySelectionSchema.safeParse(selection).success).toBe(true);
   for (const invalid of [
     { unitIds: [] },
     { unitIds: [id, id] },
-    { buildingId: "" },
+    { propertyId: "" },
     { parkingSlotIds: ["invalid"] },
     { parkingSlotIds: [id, id] },
   ]) {

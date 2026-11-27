@@ -117,7 +117,7 @@ export function DevelopmentBuildingCard({
                     Show {hiddenFloors.length} more empty floors
                   </button>
                 )}
-                <FloorRow floor={floor} buildingId={building.id} />
+                <FloorRow floor={floor} propertyId={building.id} />
               </div>
             ))}
             {foldEmptyFloors && showAllFloors && (
@@ -143,10 +143,10 @@ export function DevelopmentBuildingCard({
 
 function FloorRow({
   floor,
-  buildingId,
+  propertyId,
 }: {
   floor: Building["floors"][number];
-  buildingId: string;
+  propertyId: string;
 }) {
   const [expanded, setExpanded] = useState(true);
   const regionId = `development-floor-${floor.id}`;
@@ -184,7 +184,7 @@ function FloorRow({
             floor.units.map((unit) => (
               <Link
                 key={unit.id}
-                href={`/properties/${buildingId}#floors-units`}
+                href={`/properties/${propertyId}#floors-units`}
                 title={`Unit ${unit.code}: ${unitStatusLabel(unit.status)}`}
                 aria-label={`Unit ${unit.code}, ${unitStatusLabel(unit.status)}`}
                 className={cn(

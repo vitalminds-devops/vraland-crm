@@ -175,7 +175,7 @@ async function checkContactReferences(
     const found = await db
       .select({ id: units.id })
       .from(units)
-      .innerJoin(properties, eq(units.buildingId, properties.id))
+      .innerJoin(properties, eq(units.propertyId, properties.id))
       .where(
         and(
           inArray(units.id, unitIds),

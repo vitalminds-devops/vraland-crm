@@ -138,9 +138,9 @@ export async function exportPropertyUnits(input: PropertyListFilters) {
       .leftJoin(
         units,
         and(
-          eq(units.buildingId, properties.id),
+          eq(units.propertyId, properties.id),
           grantedUnitsCondition(context, {
-            propertyId: units.buildingId,
+            propertyId: units.propertyId,
             floorId: units.floorId,
             unitId: units.id,
           }),
@@ -162,7 +162,7 @@ async function grantedCountsForProperties(context: AuthorizationContext, propert
   const [unitRows, floorRows] = await Promise.all([
     db
       .select({
-        propertyId: units.buildingId,
+        propertyId: units.propertyId,
         visible: count(),
         available: sql<number>`count(*) filter (where ${eq(units.status, "available")})`.mapWith(
           Number,
@@ -171,28 +171,28 @@ async function grantedCountsForProperties(context: AuthorizationContext, propert
       .from(units)
       .where(
         and(
-          inArray(units.buildingId, propertyIds),
+          inArray(units.propertyId, propertyIds),
           grantedUnitsCondition(context, {
-            propertyId: units.buildingId,
+            propertyId: units.propertyId,
             floorId: units.floorId,
             unitId: units.id,
           }),
         ),
       )
-      .groupBy(units.buildingId),
+      .groupBy(units.propertyId),
     db
-      .select({ propertyId: floors.buildingId, floors: count() })
+      .select({ propertyId: floors.propertyId, floors: count() })
       .from(floors)
       .where(
         and(
-          inArray(floors.buildingId, propertyIds),
+          inArray(floors.propertyId, propertyIds),
           grantedFloorsCondition(context, {
-            propertyId: floors.buildingId,
+            propertyId: floors.propertyId,
             floorId: floors.id,
           }),
         ),
       )
-      .groupBy(floors.buildingId),
+      .groupBy(floors.propertyId),
   ]);
 
   for (const row of unitRows)

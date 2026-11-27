@@ -100,7 +100,7 @@ export async function saveUnitType(
             .where(
               and(
                 eq(units.unitTypeId, value.id),
-                eq(units.buildingId, property.id),
+                eq(units.propertyId, property.id),
                 isNull(units.price),
                 notInArray(units.status, [...REPRICED_STATUSES]),
               ),
@@ -128,7 +128,7 @@ export async function saveUnitType(
               .where(
                 and(
                   eq(units.unitTypeId, row.id),
-                  eq(units.buildingId, property.id),
+                  eq(units.propertyId, property.id),
                   inArray(units.status, [...REPRICED_STATUSES]),
                 ),
               )
@@ -222,7 +222,7 @@ export async function saveUnitDetails(input: unknown): Promise<ActionResult> {
   const [unit] = await db
     .select({
       id: units.id,
-      propertyId: units.buildingId,
+      propertyId: units.propertyId,
       unitTypeId: units.unitTypeId,
       floorArea: units.floorArea,
       price: units.price,
@@ -231,7 +231,7 @@ export async function saveUnitDetails(input: unknown): Promise<ActionResult> {
       typePrice: unitTypes.price,
     })
     .from(units)
-    .innerJoin(properties, eq(units.buildingId, properties.id))
+    .innerJoin(properties, eq(units.propertyId, properties.id))
     .leftJoin(unitTypes, eq(units.unitTypeId, unitTypes.id))
     .where(
       and(

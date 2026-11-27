@@ -85,7 +85,7 @@ async function loadDeal(dealId: string) {
       unitIds: deals.unitIds,
       amount: deals.amount,
       developmentId: deals.developmentId,
-      buildingId: deals.propertyId,
+      propertyId: deals.propertyId,
       parkingSlotIds: deals.parkingSlotIds,
       contactId: contacts.id,
       firstName: contacts.firstName,
@@ -123,7 +123,7 @@ async function loadDeal(dealId: string) {
 }
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
-type Selection = { buildingId: string; unitIds: string[]; parkingSlotIds: string[] };
+type Selection = { propertyId: string; unitIds: string[]; parkingSlotIds: string[] };
 
 /**
  * Rebuilds the opportunity's bill for a new pick, keeping its miscellaneous fee rate and payments.
@@ -265,7 +265,7 @@ export async function getOpportunityDraft(dealId: string) {
     developments: developmentRows,
     draftKey: `${context.organizationId}:${context.userId}:${row.dealId}`,
     developmentId: row.developmentId ?? (row.firstDeal ? row.preferredDevelopmentId : null) ?? "",
-    buildingId: row.buildingId,
+    propertyId: row.propertyId,
     parkingSlotIds: row.parkingSlotIds,
     unitIds: row.unitIds?.length ? row.unitIds : row.firstDeal ? (row.preferredUnitIds ?? []) : [],
     financingPreference: row.financingPreference ?? "",
@@ -337,7 +337,7 @@ async function estimateSelection(
   if (!context.permissions.has("properties.view"))
     return { success: false as const, message: "You cannot select units in this property." };
   const buildings = await getPropertiesForDevelopment(context, input.developmentId);
-  const building = buildings.find((row) => row.id === input.buildingId);
+  const building = buildings.find((row) => row.id === input.propertyId);
   if (!building)
     return {
       success: false as const,
@@ -356,12 +356,12 @@ async function estimateSelection(
     .where(
       and(
         inArray(units.id, input.unitIds),
-        eq(units.buildingId, building.id),
+        eq(units.propertyId, building.id),
         held
           ? or(eq(units.status, "available"), eq(units.reservedDealId, held.dealId))
           : eq(units.status, "available"),
         grantedUnitsCondition(context, {
-          propertyId: units.buildingId,
+          propertyId: units.propertyId,
           floorId: units.floorId,
           unitId: units.id,
         }),
@@ -483,15 +483,15 @@ export async function getOpportunityEstimate(input: unknown, dealId?: string) {
 export async function getOpportunityParking(input: unknown, dealId?: string) {
   const context = await requirePermission("deals.change_stage");
   const parsed = opportunitySelectionSchema
-    .pick({ developmentId: true, buildingId: true })
+    .pick({ developmentId: true, propertyId: true })
     .safeParse(input);
   if (!parsed.success || !context.permissions.has("properties.view")) return null;
-  const { developmentId, buildingId } = parsed.data;
+  const { developmentId, propertyId } = parsed.data;
   const buildings = await getPropertiesForDevelopment(context, developmentId);
-  if (!buildings.some((building) => building.id === buildingId)) return null;
+  if (!buildings.some((building) => building.id === propertyId)) return null;
   // Slots this opportunity holds show as available to it, and only to it.
   const holder = dealId ? (await loadDeal(dealId))?.row.dealId : undefined;
-  const slots = (await listParkingSlots(context, buildingId)).map((slot) =>
+  const slots = (await listParkingSlots(context, propertyId)).map((slot) =>
     isSlotFreeFor(slot, holder) ? { ...slot, status: "available" } : slot,
   );
   const floorIds = [...new Set(slots.flatMap((slot) => (slot.floorId ? [slot.floorId] : [])))];
@@ -499,7 +499,7 @@ export async function getOpportunityParking(input: unknown, dealId?: string) {
     ? await db
         .select({ id: floors.id, label: floors.label })
         .from(floors)
-        .where(and(eq(floors.buildingId, buildingId), inArray(floors.id, floorIds)))
+        .where(and(eq(floors.propertyId, propertyId), inArray(floors.id, floorIds)))
         .orderBy(asc(floors.level))
     : [];
   return { slots, floors: parkingFloors };
@@ -541,7 +541,7 @@ export async function openOpportunity(formData: FormData): Promise<DealActionRes
     tinNumber: formData.get("tinNumber"),
     prcLicenseNumber: formData.get("prcLicenseNumber") ?? "",
     developmentId: formData.get("developmentId"),
-    buildingId: formData.get("buildingId"),
+    propertyId: formData.get("propertyId"),
     parkingSlotIds: formData.getAll("parkingSlotIds").map(String),
     unitIds: formData.getAll("unitIds").map(String),
     financingPreference: formData.get("financingPreference"),
@@ -690,7 +690,7 @@ export async function openOpportunity(formData: FormData): Promise<DealActionRes
         estimate,
         developmentName: development.name,
         before: {
-          propertyId: row.buildingId,
+          propertyId: row.propertyId,
           unitIds: row.unitIds ?? [],
           parkingSlotIds: row.parkingSlotIds ?? [],
         },
@@ -728,7 +728,7 @@ export async function openOpportunity(formData: FormData): Promise<DealActionRes
         .set({
           amount: estimate.total,
           currency: estimate.currency,
-          propertyId: v.buildingId,
+          propertyId: v.propertyId,
           parkingSlots: v.parkingSlotIds.length,
           parkingSlotIds: v.parkingSlotIds,
           parkingAmount: estimate.parking,
@@ -799,7 +799,7 @@ export async function openOpportunity(formData: FormData): Promise<DealActionRes
             unitIds: v.unitIds,
             financingPreference: v.financingPreference,
             amount: estimate.total,
-            buildingId: v.buildingId,
+            propertyId: v.propertyId,
             parkingSlots: v.parkingSlotIds.length,
             parkingSlotIds: v.parkingSlotIds,
             parkingAmount: estimate.parking,
@@ -903,7 +903,7 @@ export async function changeOpportunityUnits(input: unknown): Promise<DealAction
         .update(deals)
         .set({
           developmentId: v.developmentId,
-          propertyId: v.buildingId,
+          propertyId: v.propertyId,
           unitIds: v.unitIds,
           parkingSlots: v.parkingSlotIds.length,
           parkingSlotIds: v.parkingSlotIds,
@@ -927,7 +927,7 @@ export async function changeOpportunityUnits(input: unknown): Promise<DealAction
         .where(eq(deals.id, v.dealId));
       const propertyIds = await syncBillingInventory(tx, context, {
         ...deal,
-        propertyId: v.buildingId,
+        propertyId: v.propertyId,
         unitIds: v.unitIds,
         parkingSlotIds: v.parkingSlotIds,
       });
@@ -946,13 +946,13 @@ export async function changeOpportunityUnits(input: unknown): Promise<DealAction
         entityId: v.dealId,
         oldValues: {
           developmentId: row.developmentId,
-          buildingId: row.buildingId,
+          propertyId: row.propertyId,
           unitIds: row.unitIds,
           parkingSlotIds: row.parkingSlotIds,
         },
         newValues: {
           developmentId: v.developmentId,
-          buildingId: v.buildingId,
+          propertyId: v.propertyId,
           unitIds: v.unitIds,
           parkingSlotIds: v.parkingSlotIds,
           amount: estimate.total,
@@ -960,7 +960,7 @@ export async function changeOpportunityUnits(input: unknown): Promise<DealAction
       });
       return {
         kind: "changed" as const,
-        propertyIds: [...propertyIds, ...(row.buildingId ? [row.buildingId] : [])],
+        propertyIds: [...propertyIds, ...(row.propertyId ? [row.propertyId] : [])],
       };
     });
     if (outcome.kind === "missing") return notFoundFailure("Opportunity");

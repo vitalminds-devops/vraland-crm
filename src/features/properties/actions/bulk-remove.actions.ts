@@ -68,7 +68,7 @@ export async function deleteUnits(input: unknown): Promise<ActionResult<{ remove
       const targets = await tx
         .select({ id: units.id, code: units.code, status: units.status, floorId: units.floorId })
         .from(units)
-        .where(and(inArray(units.id, ids), eq(units.buildingId, property.id)))
+        .where(and(inArray(units.id, ids), eq(units.propertyId, property.id)))
         .for("update");
       if (targets.length !== new Set(ids).size)
         throw new Blocked("Some of these units are not on this property.");
@@ -143,7 +143,7 @@ export async function deleteParkingSlots(
         .where(
           and(
             inArray(propertyParkingSlots.id, ids),
-            eq(propertyParkingSlots.buildingId, property.id),
+            eq(propertyParkingSlots.propertyId, property.id),
           ),
         )
         .for("update");

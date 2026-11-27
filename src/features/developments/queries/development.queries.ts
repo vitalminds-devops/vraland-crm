@@ -118,16 +118,16 @@ export async function getDevelopment(id: string) {
         db
           .select({
             id: floors.id,
-            buildingId: floors.buildingId,
+            propertyId: floors.propertyId,
             level: floors.level,
             label: floors.label,
           })
           .from(floors)
           .where(
             and(
-              inArray(floors.buildingId, buildingIds),
+              inArray(floors.propertyId, buildingIds),
               grantedFloorsCondition(context, {
-                propertyId: floors.buildingId,
+                propertyId: floors.propertyId,
                 floorId: floors.id,
               }),
             ),
@@ -136,7 +136,7 @@ export async function getDevelopment(id: string) {
         db
           .select({
             id: units.id,
-            buildingId: units.buildingId,
+            propertyId: units.propertyId,
             floorId: units.floorId,
             code: units.code,
             status: units.status,
@@ -145,9 +145,9 @@ export async function getDevelopment(id: string) {
           .innerJoin(floors, eq(units.floorId, floors.id))
           .where(
             and(
-              inArray(units.buildingId, buildingIds),
+              inArray(units.propertyId, buildingIds),
               grantedUnitsCondition(context, {
-                propertyId: units.buildingId,
+                propertyId: units.propertyId,
                 floorId: units.floorId,
                 unitId: units.id,
               }),
@@ -162,7 +162,7 @@ export async function getDevelopment(id: string) {
     buildings: buildings.map((building) => ({
       ...building,
       floors: floorRows
-        .filter((floor) => floor.buildingId === building.id)
+        .filter((floor) => floor.propertyId === building.id)
         .map((floor) => ({
           ...floor,
           units: unitRows.filter((unit) => unit.floorId === floor.id),

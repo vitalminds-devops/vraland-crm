@@ -112,7 +112,7 @@ export async function syncBillingInventory(
     organizationId: context.organizationId,
     actorUserId: context.userId,
     dealId: deal.id,
-    buildingId: deal.propertyId,
+    propertyId: deal.propertyId,
     unitIds: deal.unitIds,
     parkingSlotIds: deal.parkingSlotIds,
     status: inventoryStatusForDeal(

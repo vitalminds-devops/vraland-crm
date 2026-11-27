@@ -97,7 +97,7 @@ export async function saveParkingType(input: unknown): Promise<ActionResult<{ id
               .set({ [field]: next[field], updatedAt: new Date() })
               .where(
                 and(
-                  eq(propertyParkingSlots.buildingId, propertyId),
+                  eq(propertyParkingSlots.propertyId, propertyId),
                   eq(propertyParkingSlots.parkingTypeId, next.id),
                   eq(propertyParkingSlots.status, "available"),
                   sql`${column} is not distinct from ${before[field]}::numeric`,
@@ -144,7 +144,7 @@ export async function deleteParkingType(propertyId: string, typeId: string): Pro
         .set({ parkingTypeId: null, updatedAt: new Date() })
         .where(
           and(
-            eq(propertyParkingSlots.buildingId, propertyId),
+            eq(propertyParkingSlots.propertyId, propertyId),
             eq(propertyParkingSlots.parkingTypeId, typeId),
           ),
         );

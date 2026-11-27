@@ -56,7 +56,7 @@ export async function missingOpportunityDetails(
     .select({
       amount: deals.amount,
       developmentId: deals.developmentId,
-      buildingId: deals.propertyId,
+      propertyId: deals.propertyId,
       unitCount: sql<number>`cardinality(${deals.unitIds})`,
       contactId: contacts.id,
       financing: contacts.financingPreference,
@@ -79,7 +79,7 @@ export async function missingOpportunityDetails(
   if (!opportunityAddressSchema.safeParse(row).success) missing.push("address");
   if (!opportunityInterestSchema.safeParse(row).success) missing.push("budget range");
   if (!row?.developmentId) missing.push("development");
-  if (!row?.buildingId) missing.push("property");
+  if (!row?.propertyId) missing.push("property");
   if (!row?.unitCount) missing.push("unit");
   if (!row?.financing) missing.push("financing");
   if (!(Number(row?.amount) > 0)) missing.push("amount");

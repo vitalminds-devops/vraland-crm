@@ -141,7 +141,7 @@ vi.mock("@/features/properties/queries/property-floor-unit.queries", () => ({
 }));
 
 const id = "12345678-1234-4234-8234-123456789abc";
-const selection = { developmentId: id, buildingId: id, unitIds: [id], parkingSlotIds: [id] };
+const selection = { developmentId: id, propertyId: id, unitIds: [id], parkingSlotIds: [id] };
 beforeEach(() => {
   inventory.moveDeal = [];
   inventory.contactArchived = false;
@@ -168,7 +168,7 @@ function leadForm() {
     [{ name: "Development" }],
   ];
   const form = new FormData();
-  for (const key of ["dealId", "stageId", "developmentId", "buildingId", "unitIds"])
+  for (const key of ["dealId", "stageId", "developmentId", "propertyId", "unitIds"])
     form.set(key, id);
   form.set("tinNumber", "123-456-789");
   form.set("financingPreference", "cash");
@@ -343,7 +343,7 @@ it("rejects inaccessible buildings and unavailable units", async () => {
   expect(
     await getOpportunityEstimate({
       ...selection,
-      buildingId: "22345678-1234-4234-8234-123456789abc",
+      propertyId: "22345678-1234-4234-8234-123456789abc",
     }),
   ).toMatchObject({ success: false });
   inventory.units = [];
@@ -377,7 +377,7 @@ it.each([null, "", "   ", "1".repeat(51)])(
   "rejects an invalid TIN before saving (%s)",
   async (tin) => {
     const form = new FormData();
-    for (const key of ["dealId", "stageId", "developmentId", "buildingId"]) {
+    for (const key of ["dealId", "stageId", "developmentId", "propertyId"]) {
       form.set(key, "12345678-1234-4234-8234-123456789abc");
     }
     form.set("financingPreference", "cash");
@@ -413,18 +413,18 @@ it("rejects inaccessible parking IDs and parking from another building", async (
 });
 
 it("limits the parking picker to an accessible building in the selected development", async () => {
-  expect(await getOpportunityParking({ developmentId: id, buildingId: id })).toMatchObject({
+  expect(await getOpportunityParking({ developmentId: id, propertyId: id })).toMatchObject({
     slots: [{ id, code: "P1" }],
     floors: [],
   });
   expect(
     await getOpportunityParking({
       developmentId: id,
-      buildingId: "22345678-1234-4234-8234-123456789abc",
+      propertyId: "22345678-1234-4234-8234-123456789abc",
     }),
   ).toBeNull();
   inventory.permissions.delete("properties.view");
-  expect(await getOpportunityParking({ developmentId: id, buildingId: id })).toBeNull();
+  expect(await getOpportunityParking({ developmentId: id, propertyId: id })).toBeNull();
 });
 
 it("rebuilds a lead's old bill when it re-enters Opportunity with another pick", async () => {

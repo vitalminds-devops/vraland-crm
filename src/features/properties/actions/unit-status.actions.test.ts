@@ -26,7 +26,7 @@ vi.mock("@/db", () => ({
   db: {
     // loadUnit
     select: () =>
-      chain(() => [{ id: unitId, code: "5A", status: "deposit_paid", buildingId: "building" }]),
+      chain(() => [{ id: unitId, code: "5A", status: "deposit_paid", propertyId: "building" }]),
     transaction: async (work: (tx: unknown) => unknown) => {
       let reads = 0;
       return work({

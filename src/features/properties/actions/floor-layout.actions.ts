@@ -59,13 +59,13 @@ export async function saveFloorLayout(
   const [source] = await db
     .select({
       id: floors.id,
-      propertyId: floors.buildingId,
+      propertyId: floors.propertyId,
       developmentId: properties.developmentId,
       numbering: properties.unitNumbering,
       parkingTypes: properties.parkingTypes,
     })
     .from(floors)
-    .innerJoin(properties, eq(floors.buildingId, properties.id))
+    .innerJoin(properties, eq(floors.propertyId, properties.id))
     .where(
       and(
         eq(floors.id, floorId),
@@ -101,7 +101,7 @@ export async function saveFloorLayout(
       const targets = await tx
         .select({ id: floors.id, level: floors.level, label: floors.label, layout: floors.layout })
         .from(floors)
-        .where(and(inArray(floors.id, floorIds), eq(floors.buildingId, source.propertyId)))
+        .where(and(inArray(floors.id, floorIds), eq(floors.propertyId, source.propertyId)))
         .orderBy(asc(floors.level))
         .for("update");
       if (targets.length !== floorIds.length)
@@ -168,7 +168,7 @@ export async function saveFloorLayout(
               .values(
                 fresh.map((entry) => ({
                   developmentId: source.developmentId,
-                  buildingId: source.propertyId,
+                  propertyId: source.propertyId,
                   floorId: floor.id,
                   code: entry.code,
                   unitTypeId: typeOf.get(entry.placementId)!,
@@ -254,7 +254,7 @@ export async function saveFloorLayout(
             parkingTypeId: propertyParkingSlots.parkingTypeId,
           })
           .from(propertyParkingSlots)
-          .where(eq(propertyParkingSlots.buildingId, source.propertyId))
+          .where(eq(propertyParkingSlots.propertyId, source.propertyId))
           .for("update");
         const floorSlots = propertySlots.filter((slot) => slot.floorId === floor.id);
         const otherCodes = propertySlots
@@ -300,7 +300,7 @@ export async function saveFloorLayout(
                   )?.typeId;
                   const type = source.parkingTypes.find((option) => option.id === typeId);
                   return {
-                    buildingId: source.propertyId,
+                    propertyId: source.propertyId,
                     floorId: floor.id,
                     code: entry.code,
                     parkingTypeId: type?.id ?? null,

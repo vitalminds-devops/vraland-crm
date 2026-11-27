@@ -298,19 +298,19 @@ export function OpportunityDialog({
   const [tinNumber, setTinNumber] = useState("");
   const [developmentId, setDevelopmentId] = useState("");
   const [unitIds, setUnitIds] = useState<string[]>([]);
-  const [buildingId, setBuildingId] = useState<string | null>(null);
+  const [propertyId, setBuildingId] = useState<string | null>(null);
   const [parkingSelection, setParkingSelection] = useState<{
-    buildingId: string | null;
+    propertyId: string | null;
     ids: string[];
-  }>({ buildingId: null, ids: [] });
+  }>({ propertyId: null, ids: [] });
   const parkingSlotIds = useMemo(
-    () => (parkingSelection.buildingId === buildingId ? parkingSelection.ids : []),
-    [parkingSelection, buildingId],
+    () => (parkingSelection.propertyId === propertyId ? parkingSelection.ids : []),
+    [parkingSelection, propertyId],
   );
   const changeBuilding = useCallback((id: string | null) => {
     setBuildingId(id);
     setParkingSelection((current) =>
-      current.buildingId === id ? current : { buildingId: id, ids: [] },
+      current.propertyId === id ? current : { propertyId: id, ids: [] },
     );
   }, []);
   const [estimate, setEstimate] = useState<{
@@ -349,11 +349,11 @@ export function OpportunityDialog({
         setDraft(loaded);
         setTinNumber(saved?.tinNumber ?? loaded.tinNumber);
         setDevelopmentId(saved?.developmentId ?? loaded.developmentId);
-        setBuildingId(saved?.buildingId ?? loaded.buildingId);
+        setBuildingId(saved?.propertyId ?? loaded.propertyId);
         setUnitIds(saved?.unitIds ?? loaded.unitIds);
         setParkingSelection(
           saved?.parkingSelection ?? {
-            buildingId: loaded.buildingId,
+            propertyId: loaded.propertyId,
             ids: loaded.parkingSlotIds ?? [],
           },
         );
@@ -391,7 +391,7 @@ export function OpportunityDialog({
       budget,
       tinNumber,
       developmentId,
-      buildingId,
+      propertyId,
       unitIds,
       parkingSelection,
       financing,
@@ -406,7 +406,7 @@ export function OpportunityDialog({
       budget,
       tinNumber,
       developmentId,
-      buildingId,
+      propertyId,
       unitIds,
       parkingSelection,
       financing,
@@ -477,12 +477,12 @@ export function OpportunityDialog({
     };
   }, [draft]);
 
-  const selectionKey = JSON.stringify([developmentId, buildingId, unitIds, parkingSlotIds]);
+  const selectionKey = JSON.stringify([developmentId, propertyId, unitIds, parkingSlotIds]);
   const currentEstimate = estimate?.key === selectionKey ? estimate.result : null;
   useEffect(() => {
-    if (step !== 4 || !buildingId || !unitIds.length) return;
+    if (step !== 4 || !propertyId || !unitIds.length) return;
     let live = true;
-    getOpportunityEstimate({ developmentId, buildingId, unitIds, parkingSlotIds }, dealId)
+    getOpportunityEstimate({ developmentId, propertyId, unitIds, parkingSlotIds }, dealId)
       .then((result) => {
         if (!live) return;
         const staleUnits = "unavailableUnitIds" in result ? (result.unavailableUnitIds ?? []) : [];
@@ -493,7 +493,7 @@ export function OpportunityDialog({
           if (staleUnits.length) setUnitIds(unitIds.filter((id) => !staleUnits.includes(id)));
           if (staleSlots.length)
             setParkingSelection({
-              buildingId,
+              propertyId,
               ids: parkingSlotIds.filter((id) => !staleSlots.includes(id)),
             });
           return;
@@ -513,7 +513,7 @@ export function OpportunityDialog({
     return () => {
       live = false;
     };
-  }, [step, developmentId, buildingId, unitIds, parkingSlotIds, selectionKey, dealId]);
+  }, [step, developmentId, propertyId, unitIds, parkingSlotIds, selectionKey, dealId]);
 
   const documentsReady =
     Boolean(draft) &&
@@ -545,7 +545,7 @@ export function OpportunityDialog({
       if (budget) setStep(4);
       return;
     }
-    if (!buildingId || !unitIds.length || !currentEstimate?.success) {
+    if (!propertyId || !unitIds.length || !currentEstimate?.success) {
       showMoveError(
         "Select a unit",
         "Choose an available unit before moving this lead to Opportunity.",
@@ -564,7 +564,7 @@ export function OpportunityDialog({
     if (appointmentFile) form.set("appointmentForm", appointmentFile);
     form.set("dealId", dealId);
     form.set("stageId", stageId);
-    form.set("buildingId", buildingId ?? "");
+    form.set("propertyId", propertyId ?? "");
     for (const id of parkingSlotIds) form.append("parkingSlotIds", id);
     for (const id of unitIds) form.append("unitIds", id);
     for (const extra of extras) {
@@ -948,7 +948,7 @@ export function OpportunityDialog({
                           setDevelopmentId(event.target.value);
                           setUnitIds([]);
                           setBuildingId(null);
-                          setParkingSelection({ buildingId: null, ids: [] });
+                          setParkingSelection({ propertyId: null, ids: [] });
                         }}
                         className={cn(fieldClass, "pr-9")}
                       >
@@ -966,8 +966,8 @@ export function OpportunityDialog({
                         developmentId={developmentId}
                         initialUnitIds={developmentId === draft.developmentId ? unitIds : []}
                         initialBuildingId={
-                          buildingId ??
-                          (developmentId === draft.developmentId ? draft.buildingId : null)
+                          propertyId ??
+                          (developmentId === draft.developmentId ? draft.propertyId : null)
                         }
                         unitIds={unitIds}
                         onBuildingChange={changeBuilding}
@@ -978,17 +978,17 @@ export function OpportunityDialog({
                         selectClassName={cn(fieldClass, "pr-9")}
                         disabled={pending}
                         floorExtras={(floorId) =>
-                          buildingId && (
+                          propertyId && (
                             <OpportunityParkingSelector
-                              key={buildingId}
+                              key={propertyId}
                               developmentId={developmentId}
-                              buildingId={buildingId}
+                              propertyId={propertyId}
                               floorId={floorId}
                               selectedIds={parkingSlotIds}
                               dealId={dealId}
                               onChange={(ids) => {
                                 restoredPicks.current = false;
-                                setParkingSelection({ buildingId, ids });
+                                setParkingSelection({ propertyId, ids });
                               }}
                               disabled={pending}
                             />
@@ -1134,7 +1134,7 @@ export function OpportunityDialog({
                                 </button>
                               )}
                           </>
-                        ) : buildingId && unitIds.length ? (
+                        ) : propertyId && unitIds.length ? (
                           "Calculating…"
                         ) : (
                           "Select a property and unit to see the total."

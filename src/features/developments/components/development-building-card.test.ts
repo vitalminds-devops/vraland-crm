@@ -21,7 +21,7 @@ function building(): ComponentProps<typeof DevelopmentBuildingCard>["building"] 
     unitIdentifierStyle: "letter",
     floors: Array.from({ length: 20 }, (_, index) => ({
       id: `floor-${index + 1}`,
-      buildingId: "building",
+      propertyId: "building",
       level: index + 1,
       label: `Floor ${index + 1}`,
       units:
@@ -29,12 +29,12 @@ function building(): ComponentProps<typeof DevelopmentBuildingCard>["building"] 
           ? [
               {
                 id: "a",
-                buildingId: "building",
+                propertyId: "building",
                 floorId: "floor-1",
                 code: "1A",
                 status: "available",
               },
-              { id: "b", buildingId: "building", floorId: "floor-1", code: "1B", status: "sold" },
+              { id: "b", propertyId: "building", floorId: "floor-1", code: "1B", status: "sold" },
             ]
           : [],
     })),
@@ -63,7 +63,7 @@ it("shows actual totals, shared unit statuses, and descending floors without dup
 it("never folds a middle floor containing inventory", () => {
   const data = building();
   data.floors[9].units = [
-    { id: "mid", buildingId: "building", floorId: "floor-10", code: "10A", status: "available" },
+    { id: "mid", propertyId: "building", floorId: "floor-10", code: "10A", status: "available" },
   ];
   const html = renderToStaticMarkup(
     createElement(DevelopmentBuildingCard, { building: data, canEdit: false, canAccess: false }),

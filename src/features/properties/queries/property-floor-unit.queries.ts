@@ -80,13 +80,13 @@ export async function getFloorsForProperty(context: AuthorizationContext, proper
       imageStorageKey: floors.imageStorageKey,
     })
     .from(floors)
-    .innerJoin(properties, eq(floors.buildingId, properties.id))
+    .innerJoin(properties, eq(floors.propertyId, properties.id))
     .where(
       and(
-        eq(floors.buildingId, propertyId),
+        eq(floors.propertyId, propertyId),
         propertyAccessCondition(context),
         grantedFloorsCondition(context, {
-          propertyId: floors.buildingId,
+          propertyId: floors.propertyId,
           floorId: floors.id,
         }),
       ),
@@ -106,7 +106,7 @@ export async function getFloorImageRecord(floorId: string) {
       label: floors.label,
     })
     .from(floors)
-    .innerJoin(properties, eq(floors.buildingId, properties.id))
+    .innerJoin(properties, eq(floors.propertyId, properties.id))
     .where(
       and(
         eq(floors.id, floorId),
@@ -114,7 +114,7 @@ export async function getFloorImageRecord(floorId: string) {
         isNull(properties.deletedAt),
         // The image is served only where the floor itself would be listed.
         propertyAccessCondition(context),
-        grantedFloorsCondition(context, { propertyId: floors.buildingId, floorId: floors.id }),
+        grantedFloorsCondition(context, { propertyId: floors.propertyId, floorId: floors.id }),
       ),
     )
     .limit(1);
@@ -131,7 +131,7 @@ export async function getUnitImageRecord(unitId: string) {
       code: units.code,
     })
     .from(units)
-    .innerJoin(properties, eq(units.buildingId, properties.id))
+    .innerJoin(properties, eq(units.propertyId, properties.id))
     .where(
       and(
         eq(units.id, unitId),
@@ -140,7 +140,7 @@ export async function getUnitImageRecord(unitId: string) {
         // The image is served only where the unit itself would be listed.
         propertyAccessCondition(context),
         grantedUnitsCondition(context, {
-          propertyId: units.buildingId,
+          propertyId: units.propertyId,
           floorId: units.floorId,
           unitId: units.id,
         }),
@@ -166,14 +166,14 @@ export async function getUnitsForFloor(context: AuthorizationContext, floorId: s
     })
     .from(units)
     .innerJoin(floors, eq(units.floorId, floors.id))
-    .innerJoin(properties, eq(units.buildingId, properties.id))
+    .innerJoin(properties, eq(units.propertyId, properties.id))
     .leftJoin(unitTypes, eq(units.unitTypeId, unitTypes.id))
     .where(
       and(
         eq(units.floorId, floorId),
         propertyAccessCondition(context),
         grantedUnitsCondition(context, {
-          propertyId: units.buildingId,
+          propertyId: units.propertyId,
           floorId: units.floorId,
           unitId: units.id,
         }),
@@ -249,11 +249,11 @@ async function loadInventory(
     };
 
   const floorFilter = grantedFloorsCondition(context, {
-    propertyId: floors.buildingId,
+    propertyId: floors.propertyId,
     floorId: floors.id,
   });
   const unitFilter = grantedUnitsCondition(context, {
-    propertyId: units.buildingId,
+    propertyId: units.propertyId,
     floorId: units.floorId,
     unitId: units.id,
   });
@@ -269,7 +269,7 @@ async function loadInventory(
         parkingLayout: floors.parkingLayout,
       })
       .from(floors)
-      .where(and(eq(floors.buildingId, propertyId), floorFilter))
+      .where(and(eq(floors.propertyId, propertyId), floorFilter))
       .orderBy(asc(floors.level)),
     db
       .select({
@@ -284,7 +284,7 @@ async function loadInventory(
       })
       .from(units)
       .innerJoin(floors, eq(units.floorId, floors.id))
-      .where(and(eq(units.buildingId, propertyId), unitFilter))
+      .where(and(eq(units.propertyId, propertyId), unitFilter))
       .orderBy(asc(floors.level), asc(units.code)),
     db
       .select({

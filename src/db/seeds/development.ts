@@ -66,17 +66,17 @@ async function seedFloorsAndUnits(
     .insert(floors)
     .values(
       floorLevelSequence(building.floorCount).map((level) => ({
-        buildingId: building.id,
+        propertyId: building.id,
         level,
         label: floorLabel(level),
       })),
     )
-    .onConflictDoNothing({ target: [floors.buildingId, floors.level] });
+    .onConflictDoNothing({ target: [floors.propertyId, floors.level] });
 
   const allFloors = await tx
     .select({ id: floors.id, level: floors.level })
     .from(floors)
-    .where(eq(floors.buildingId, building.id))
+    .where(eq(floors.propertyId, building.id))
     .orderBy(asc(floors.level));
 
   await tx
@@ -85,7 +85,7 @@ async function seedFloorsAndUnits(
       allFloors.flatMap((floor) =>
         Array.from({ length: building.unitsPerFloor }, (_, index) => ({
           developmentId: building.developmentId,
-          buildingId: building.id,
+          propertyId: building.id,
           floorId: floor.id,
           code: unitCode(floor.level, index + 1),
         })),
@@ -96,7 +96,7 @@ async function seedFloorsAndUnits(
   const rows = await tx
     .select({ id: units.id, code: units.code })
     .from(units)
-    .where(eq(units.buildingId, building.id));
+    .where(eq(units.propertyId, building.id));
   return new Map(rows.map((row) => [row.code, row.id]));
 }
 

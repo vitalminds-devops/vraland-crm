@@ -39,10 +39,10 @@ async function loadWritableSlot(slotId: string) {
       code: propertyParkingSlots.code,
       status: propertyParkingSlots.status,
       floorId: propertyParkingSlots.floorId,
-      buildingId: propertyParkingSlots.buildingId,
+      propertyId: propertyParkingSlots.propertyId,
     })
     .from(propertyParkingSlots)
-    .innerJoin(properties, eq(propertyParkingSlots.buildingId, properties.id))
+    .innerJoin(properties, eq(propertyParkingSlots.propertyId, properties.id))
     .where(
       and(
         eq(propertyParkingSlots.id, slotId),
@@ -51,7 +51,7 @@ async function loadWritableSlot(slotId: string) {
       ),
     )
     .limit(1);
-  if (!slot || !(await canWriteProperty(context, slot.buildingId))) return { context, slot: null };
+  if (!slot || !(await canWriteProperty(context, slot.propertyId))) return { context, slot: null };
   return { context, slot };
 }
 
@@ -72,7 +72,7 @@ export async function addParkingSlot(
       ? await db
           .select({ id: floors.id, level: floors.level })
           .from(floors)
-          .where(and(eq(floors.id, floorId), eq(floors.buildingId, propertyId)))
+          .where(and(eq(floors.id, floorId), eq(floors.propertyId, propertyId)))
           .limit(1)
       : [];
     if (!floor) return { success: false, message: "That floor is not on this property." };
@@ -85,7 +85,7 @@ export async function addParkingSlot(
         await tx
           .select({ code: propertyParkingSlots.code })
           .from(propertyParkingSlots)
-          .where(eq(propertyParkingSlots.buildingId, propertyId))
+          .where(eq(propertyParkingSlots.propertyId, propertyId))
       ).map((slot) => slot.code);
       const [property] = await tx
         .select({ numbering: properties.unitNumbering })
@@ -99,7 +99,7 @@ export async function addParkingSlot(
         taken.push(next);
         const [slot] = await tx
           .insert(propertyParkingSlots)
-          .values({ buildingId: propertyId, floorId, code: next })
+          .values({ propertyId: propertyId, floorId, code: next })
           .returning({ id: propertyParkingSlots.id });
         added.push(slot.id);
         await tx.insert(auditLogs).values({
@@ -163,7 +163,7 @@ export async function setParkingSlotStatus(
         newValues: { status: parsed.data },
       });
     });
-    revalidateProperty(slot.buildingId);
+    revalidateProperty(slot.propertyId);
     return { success: true, message: `Parking ${slot.code} updated.` };
   } catch (error) {
     if (error instanceof InventoryHeldError) return { success: false, message: error.message };
@@ -188,7 +188,7 @@ export async function renameParkingSlot(
     .from(propertyParkingSlots)
     .where(
       and(
-        eq(propertyParkingSlots.buildingId, slot.buildingId),
+        eq(propertyParkingSlots.propertyId, slot.propertyId),
         eq(propertyParkingSlots.code, next),
       ),
     )
@@ -211,7 +211,7 @@ export async function renameParkingSlot(
         newValues: { code: next },
       });
     });
-    revalidateProperty(slot.buildingId);
+    revalidateProperty(slot.propertyId);
     return { success: true, message: `Parking renamed to ${next}.` };
   } catch (error) {
     return failed(error);
@@ -234,7 +234,7 @@ export async function assignParkingSlotFloor(
     const [floor] = await db
       .select({ label: floors.label })
       .from(floors)
-      .where(and(eq(floors.id, floorId), eq(floors.buildingId, slot.buildingId)))
+      .where(and(eq(floors.id, floorId), eq(floors.propertyId, slot.propertyId)))
       .limit(1);
     if (!floor) return { success: false, message: "That floor is not on this property." };
     floorLabel = floor.label;
@@ -257,7 +257,7 @@ export async function assignParkingSlotFloor(
         newValues: { floorId },
       });
     });
-    revalidateProperty(slot.buildingId);
+    revalidateProperty(slot.propertyId);
     return {
       success: true,
       message: floorLabel
@@ -279,7 +279,7 @@ export async function deleteParkingSlot(slotId: string): Promise<ParkingActionRe
       if (blocked) return blocked;
       await dropFromFloorPlans(tx, [slot.floorId], { slotIds: [slot.id] });
       await tx.delete(propertyParkingSlots).where(eq(propertyParkingSlots.id, slot.id));
-      await syncParkingCount(tx, slot.buildingId);
+      await syncParkingCount(tx, slot.propertyId);
       await tx.insert(auditLogs).values({
         organizationId: context.organizationId,
         actorUserId: context.userId,
@@ -291,7 +291,7 @@ export async function deleteParkingSlot(slotId: string): Promise<ParkingActionRe
       return null;
     });
     if (blocker) return { success: false, message: blocker };
-    revalidateProperty(slot.buildingId);
+    revalidateProperty(slot.propertyId);
     return { success: true, message: `Parking ${slot.code} removed.` };
   } catch (error) {
     return failed(error);

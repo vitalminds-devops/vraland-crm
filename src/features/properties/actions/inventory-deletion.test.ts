@@ -26,7 +26,7 @@ vi.mock("../queries/property-scope.queries", () => ({ canWriteProperty: async ()
 vi.mock("../lib/parking-sync", () => ({ syncParkingCount: vi.fn() }));
 
 const id = "10000000-0000-4000-8000-000000000001";
-const loaded = { id, code: "1B", status: "available", buildingId: "building", label: "1st Floor" };
+const loaded = { id, code: "1B", status: "available", propertyId: "building", label: "1st Floor" };
 function query(transaction = false) {
   let table: unknown;
   const rows = () => {

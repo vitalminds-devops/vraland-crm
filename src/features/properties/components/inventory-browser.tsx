@@ -28,7 +28,7 @@ export type InventoryBuildingData = {
 export type InventoryFloorData = {
   id: string;
   label: string;
-  buildingId: string;
+  propertyId: string;
   unitCount: number;
 };
 
@@ -56,7 +56,7 @@ type InventoryBrowserProps = {
   excludedUnitIds: string[];
   onToggleUnit: (unitId: string) => void;
   onToggleFloor: (floorId: string) => void;
-  onToggleBuilding: (buildingId: string) => void;
+  onToggleBuilding: (propertyId: string) => void;
   onSetUnitsSelected: (unitIds: string[], selected: boolean) => void;
   disabled?: boolean;
   emptyLabel?: string;

@@ -20,7 +20,7 @@ export async function createFloors(
   const [{ existing }] = await tx
     .select({ existing: sql<number>`count(*)::int` })
     .from(floors)
-    .where(eq(floors.buildingId, propertyId));
+    .where(eq(floors.propertyId, propertyId));
   if (existing > 0) throw new HasFloorsError();
   const numbering: UnitNumbering = {
     style: setup.style,
@@ -32,7 +32,7 @@ export async function createFloors(
   const levels = floorLevels(setup.fromLevel, setup.toLevel, setup.skipFloors);
   await tx
     .insert(floors)
-    .values(levels.map((level) => ({ buildingId: propertyId, level, label: floorLabel(level) })));
+    .values(levels.map((level) => ({ propertyId: propertyId, level, label: floorLabel(level) })));
   await tx
     .update(properties)
     .set({ unitNumbering: numbering, floorCount: levels.length, updatedAt: new Date() })

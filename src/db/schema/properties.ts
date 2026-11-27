@@ -177,7 +177,7 @@ export const floors = pgTable(
   "floors",
   {
     id: uuid().defaultRandom().primaryKey(),
-    buildingId: uuid("building_id")
+    propertyId: uuid("building_id")
       .notNull()
       .references(() => properties.id, { onDelete: "cascade" }),
     level: smallint().notNull(),
@@ -191,7 +191,7 @@ export const floors = pgTable(
     createdAt,
     updatedAt,
   },
-  (t) => [unique().on(t.buildingId, t.level)],
+  (t) => [unique().on(t.propertyId, t.level)],
 );
 
 export const units = pgTable(
@@ -201,7 +201,7 @@ export const units = pgTable(
     developmentId: uuid("development_id").references(() => developments.id, {
       onDelete: "set null",
     }),
-    buildingId: uuid("building_id")
+    propertyId: uuid("building_id")
       .notNull()
       .references(() => properties.id, { onDelete: "cascade" }),
     floorId: uuid("floor_id")
@@ -224,7 +224,7 @@ export const units = pgTable(
   (t) => [
     unique().on(t.floorId, t.code),
     index("units_unit_type_idx").on(t.unitTypeId),
-    index("units_building_status_idx").on(t.buildingId, t.status),
+    index("units_building_status_idx").on(t.propertyId, t.status),
     index("units_development_idx").on(t.developmentId),
     index("units_reserved_deal_id_idx").on(t.reservedDealId),
   ],
@@ -235,7 +235,7 @@ export const propertyParkingSlots = pgTable(
   "parking_slots",
   {
     id: uuid().defaultRandom().primaryKey(),
-    buildingId: uuid("building_id")
+    propertyId: uuid("building_id")
       .notNull()
       .references(() => properties.id, { onDelete: "cascade" }),
     /** The floor this slot belongs to, when it is assigned to one. */
@@ -254,7 +254,7 @@ export const propertyParkingSlots = pgTable(
     updatedAt,
   },
   (t) => [
-    unique().on(t.buildingId, t.code),
+    unique().on(t.propertyId, t.code),
     index("parking_slots_reserved_deal_id_idx").on(t.reservedDealId),
   ],
 );

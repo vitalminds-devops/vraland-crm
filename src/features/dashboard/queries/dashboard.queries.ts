@@ -518,16 +518,16 @@ export async function getDashboardData() {
     db
       .select({
         floors: count(),
-        properties: sql<number>`count(distinct ${floors.buildingId})::int`,
+        properties: sql<number>`count(distinct ${floors.propertyId})::int`,
       })
       .from(floors)
-      .innerJoin(properties, eq(floors.buildingId, properties.id))
+      .innerJoin(properties, eq(floors.propertyId, properties.id))
       .where(
         and(
           eq(properties.organizationId, context.organizationId),
           isNull(properties.deletedAt),
           // Floor by floor: an agent given 2 floors of a tower counts 2, like the unit meters.
-          grantedFloorsCondition(context, { propertyId: floors.buildingId, floorId: floors.id }),
+          grantedFloorsCondition(context, { propertyId: floors.propertyId, floorId: floors.id }),
           propertyScope,
         ),
       ),
@@ -580,13 +580,13 @@ export async function getDashboardData() {
         available: sql<number>`(count(*) filter (where ${units.status} = 'available'))::int`,
       })
       .from(units)
-      .innerJoin(properties, eq(units.buildingId, properties.id))
+      .innerJoin(properties, eq(units.propertyId, properties.id))
       .where(
         and(
           eq(properties.organizationId, context.organizationId),
           isNull(properties.deletedAt),
           grantedUnitsCondition(context, {
-            propertyId: units.buildingId,
+            propertyId: units.propertyId,
             floorId: units.floorId,
             unitId: units.id,
           }),
@@ -600,13 +600,13 @@ export async function getDashboardData() {
         available: sql<number>`(count(*) filter (where ${propertyParkingSlots.status} = 'available'))::int`,
       })
       .from(propertyParkingSlots)
-      .innerJoin(properties, eq(propertyParkingSlots.buildingId, properties.id))
+      .innerJoin(properties, eq(propertyParkingSlots.propertyId, properties.id))
       .where(
         and(
           eq(properties.organizationId, context.organizationId),
           isNull(properties.deletedAt),
           grantedParkingCondition(context, {
-            propertyId: propertyParkingSlots.buildingId,
+            propertyId: propertyParkingSlots.propertyId,
             parkingSlotId: propertyParkingSlots.id,
           }),
           propertyScope,

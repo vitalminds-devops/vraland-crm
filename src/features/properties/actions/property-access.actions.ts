@@ -87,7 +87,7 @@ export async function setPropertyGrant(input: unknown): Promise<PropertyAccessRe
       .from(propertyParkingSlots)
       .where(
         and(
-          eq(propertyParkingSlots.buildingId, v.propertyId),
+          eq(propertyParkingSlots.propertyId, v.propertyId),
           inArray(propertyParkingSlots.id, v.parkingSlotIds),
         ),
       );
@@ -138,7 +138,7 @@ export async function setPropertyGrant(input: unknown): Promise<PropertyAccessRe
               .from(units)
               .where(
                 and(
-                  eq(units.buildingId, v.propertyId),
+                  eq(units.propertyId, v.propertyId),
                   ne(units.status, "available"),
                   or(
                     v.unitIds.length ? inArray(units.id, v.unitIds) : undefined,
@@ -177,7 +177,7 @@ export async function setPropertyGrant(input: unknown): Promise<PropertyAccessRe
             .from(propertyParkingSlots)
             .where(
               and(
-                eq(propertyParkingSlots.buildingId, v.propertyId),
+                eq(propertyParkingSlots.propertyId, v.propertyId),
                 inArray(propertyParkingSlots.id, v.parkingSlotIds),
                 ne(propertyParkingSlots.status, "available"),
               ),
@@ -528,7 +528,7 @@ async function readTargets(
     const found = await db
       .select({ id: floors.id })
       .from(floors)
-      .where(and(eq(floors.buildingId, propertyId), inArray(floors.id, floorIds)));
+      .where(and(eq(floors.propertyId, propertyId), inArray(floors.id, floorIds)));
     if (found.length !== new Set(floorIds).size)
       return {
         error: "Every floor you name must belong to this property.",
@@ -539,7 +539,7 @@ async function readTargets(
     ? await db
         .select({ id: units.id, floorId: units.floorId })
         .from(units)
-        .where(and(eq(units.buildingId, propertyId), inArray(units.id, unitIds)))
+        .where(and(eq(units.propertyId, propertyId), inArray(units.id, unitIds)))
     : [];
   if (unitsOnProperty.length !== new Set(unitIds).size)
     return { error: "Every unit you name must belong to this property." };
@@ -548,7 +548,7 @@ async function readTargets(
     ? await db
         .select({ id: units.id, floorId: units.floorId })
         .from(units)
-        .where(and(eq(units.buildingId, propertyId), inArray(units.id, excludedUnitIds)))
+        .where(and(eq(units.propertyId, propertyId), inArray(units.id, excludedUnitIds)))
     : [];
   if (excludedOnProperty.length !== new Set(excludedUnitIds).size)
     return { error: "Every unit you switch off must belong to this property." };
@@ -620,7 +620,7 @@ async function checkSubset(
     const heldBackUnits = await db
       .select({ id: units.id, floorId: units.floorId })
       .from(units)
-      .where(and(eq(units.buildingId, input.propertyId), inArray(units.id, [...heldBack])));
+      .where(and(eq(units.propertyId, input.propertyId), inArray(units.id, [...heldBack])));
     const givenFloors = new Set(input.floorIds);
     // Preserve exclusions without sending hidden inventory to the browser.
     input.excludedUnitIds = [

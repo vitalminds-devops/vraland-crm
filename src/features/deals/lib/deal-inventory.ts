@@ -9,7 +9,7 @@ type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type InventoryStatus = "available" | "deposit_paid" | "sold";
 type InventoryRow = {
   id: string;
-  buildingId: string;
+  propertyId: string;
   code: string;
   status: string;
   reservedDealId: string | null;
@@ -55,7 +55,7 @@ export async function syncDealInventory(
     organizationId: string;
     actorUserId: string;
     dealId: string;
-    buildingId: string | null;
+    propertyId: string | null;
     unitIds: string[];
     parkingSlotIds: string[];
     status: InventoryStatus;
@@ -67,14 +67,14 @@ export async function syncDealInventory(
   const unitRows = await tx
     .select({
       id: units.id,
-      buildingId: units.buildingId,
+      propertyId: units.propertyId,
       code: units.code,
       status: units.status,
       reservedDealId: units.reservedDealId,
       propertyDeletedAt: properties.deletedAt,
     })
     .from(units)
-    .innerJoin(properties, eq(units.buildingId, properties.id))
+    .innerJoin(properties, eq(units.propertyId, properties.id))
     .where(
       and(
         eq(properties.organizationId, input.organizationId),
@@ -89,14 +89,14 @@ export async function syncDealInventory(
   const parkingRows = await tx
     .select({
       id: propertyParkingSlots.id,
-      buildingId: propertyParkingSlots.buildingId,
+      propertyId: propertyParkingSlots.propertyId,
       code: propertyParkingSlots.code,
       status: propertyParkingSlots.status,
       reservedDealId: propertyParkingSlots.reservedDealId,
       propertyDeletedAt: properties.deletedAt,
     })
     .from(propertyParkingSlots)
-    .innerJoin(properties, eq(propertyParkingSlots.buildingId, properties.id))
+    .innerJoin(properties, eq(propertyParkingSlots.propertyId, properties.id))
     .where(
       and(
         eq(properties.organizationId, input.organizationId),
@@ -111,12 +111,12 @@ export async function syncDealInventory(
 
   if (input.status !== "available") {
     const selectedBuildings = new Set([
-      ...unitRows.filter((row) => unitIds.includes(row.id)).map((row) => row.buildingId),
-      ...parkingRows.filter((row) => parkingIds.includes(row.id)).map((row) => row.buildingId),
+      ...unitRows.filter((row) => unitIds.includes(row.id)).map((row) => row.propertyId),
+      ...parkingRows.filter((row) => parkingIds.includes(row.id)).map((row) => row.propertyId),
     ]);
     // Older deals saved unit IDs without a building link.
-    const buildingId =
-      input.buildingId ?? (selectedBuildings.size === 1 ? [...selectedBuildings][0] : null);
+    const propertyId =
+      input.propertyId ?? (selectedBuildings.size === 1 ? [...selectedBuildings][0] : null);
     for (const [ids, rows, label] of [
       [unitIds, unitRows, "unit"],
       [parkingIds, parkingRows, "parking slot"],
@@ -127,7 +127,7 @@ export async function syncDealInventory(
           !row ||
           // An archived building's inventory can't be newly taken; a deal that owns it keeps it.
           (row.propertyDeletedAt && row.reservedDealId !== input.dealId) ||
-          row.buildingId !== buildingId ||
+          row.propertyId !== propertyId ||
           !(
             (row.status === "available" && !row.reservedDealId) ||
             (row.reservedDealId === input.dealId && isHeld(row.status))
@@ -202,5 +202,5 @@ export async function syncDealInventory(
       metadata: { status: input.status, unitIds, parkingSlotIds: parkingIds },
     });
   }
-  return [...new Set(changes.map((change) => change.row.buildingId))];
+  return [...new Set(changes.map((change) => change.row.propertyId))];
 }

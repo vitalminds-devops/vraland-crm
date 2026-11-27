@@ -10,7 +10,7 @@ const UNASSIGNED = "unassigned";
 
 export function OpportunityParkingSelector({
   developmentId,
-  buildingId,
+  propertyId,
   selectedIds,
   onChange,
   disabled,
@@ -18,7 +18,7 @@ export function OpportunityParkingSelector({
   floorId: chosenFloor,
 }: {
   developmentId: string;
-  buildingId: string;
+  propertyId: string;
   selectedIds: string[];
   onChange: (ids: string[]) => void;
   disabled: boolean;
@@ -33,7 +33,7 @@ export function OpportunityParkingSelector({
   const [floorId, setFloorId] = useState("");
   useEffect(() => {
     let live = true;
-    getOpportunityParking({ developmentId, buildingId }, dealId)
+    getOpportunityParking({ developmentId, propertyId }, dealId)
       .then((result) => {
         if (!live) return;
         setData(result);
@@ -50,7 +50,7 @@ export function OpportunityParkingSelector({
     return () => {
       live = false;
     };
-  }, [developmentId, buildingId, dealId, retry]);
+  }, [developmentId, propertyId, dealId, retry]);
 
   if (failed)
     return (

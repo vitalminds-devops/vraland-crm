@@ -9,12 +9,12 @@ import { logError } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
-  const buildingId = searchParams.get("buildingId");
+  const propertyId = searchParams.get("buildingId");
 
-  if (!buildingId) {
+  if (!propertyId) {
     return NextResponse.json({ error: "buildingId is required" }, { status: 400 });
   }
-  if (!z.uuid().safeParse(buildingId).success) {
+  if (!z.uuid().safeParse(propertyId).success) {
     return NextResponse.json({ error: "buildingId must be a valid UUID" }, { status: 400 });
   }
 
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const floorsData = await getFloorsForProperty(context, buildingId);
+    const floorsData = await getFloorsForProperty(context, propertyId);
 
     return NextResponse.json(
       floorsData.map((floor) => ({
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     logError("Floor list read failed", error, {
       operation: "api_property_floors",
-      propertyId: buildingId,
+      propertyId: propertyId,
     });
     return NextResponse.json({ error: "Couldn't load floors." }, { status: 500 });
   }

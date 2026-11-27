@@ -57,7 +57,7 @@ export async function applyIdentifiersToAllFloors(
       const floorRows = await tx
         .select({ id: floors.id, level: floors.level, label: floors.label })
         .from(floors)
-        .where(eq(floors.buildingId, propertyId));
+        .where(eq(floors.propertyId, propertyId));
       const unitRows = floorRows.length
         ? await tx
             .select({ id: units.id, code: units.code, floorId: units.floorId })
@@ -89,7 +89,7 @@ export async function applyIdentifiersToAllFloors(
           floorId: propertyParkingSlots.floorId,
         })
         .from(propertyParkingSlots)
-        .where(eq(propertyParkingSlots.buildingId, propertyId))
+        .where(eq(propertyParkingSlots.propertyId, propertyId))
         .for("update");
       const levelOf = new Map(floorRows.map((floor) => [floor.id, floor.level]));
       const slotChanges =

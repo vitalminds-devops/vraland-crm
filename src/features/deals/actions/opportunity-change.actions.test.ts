@@ -7,7 +7,7 @@ import { listParkingSlots } from "@/features/properties/queries/parking.queries"
 const uuid = (n: number) => `12345678-1234-4234-8234-${String(n).padStart(12, "0")}`;
 const dealId = uuid(1);
 const developmentId = uuid(2);
-const buildingId = uuid(3);
+const propertyId = uuid(3);
 const unitA = uuid(4);
 const unitB = uuid(5);
 const heldSlot = uuid(6);
@@ -101,7 +101,7 @@ vi.mock("../lib/open-deal", () => ({
 vi.mock("@/features/properties/queries/property-floor-unit.queries", () => ({
   getPropertiesForDevelopment: async () => [
     {
-      id: buildingId,
+      id: propertyId,
       title: "Tower 2",
       parkingPrice: "500000",
       parkingSpaces: 10,
@@ -147,7 +147,7 @@ const reserved = {
   stageSlug: "reservation",
   unitIds: [unitA],
   developmentId,
-  buildingId,
+  propertyId,
   parkingSlotIds: [heldSlot],
   firstName: "Juan",
   lastName: "Dela Cruz",
@@ -155,7 +155,7 @@ const reserved = {
 const selection = {
   dealId,
   developmentId,
-  buildingId,
+  propertyId,
   unitIds: [unitA, unitB],
   parkingSlotIds: [heldSlot],
 };
@@ -199,7 +199,7 @@ it("moves an open opportunity to new units and reprices it", async () => {
   expect(update).not.toHaveProperty("unitId");
   expect(update).toMatchObject({
     developmentId,
-    propertyId: buildingId,
+    propertyId: propertyId,
     unitIds: [unitA, unitB],
     parkingSlots: 1,
     parkingSlotIds: [heldSlot],
@@ -221,7 +221,7 @@ it("keeps the slots the opportunity already holds selectable but refuses someone
 it("keeps hand-set bill prices when the same selection is saved again", async () => {
   mock.deal = {
     ...mock.deal,
-    propertyId: buildingId,
+    propertyId: propertyId,
     unitIds: [unitB, unitA],
     parkingSlotIds: [heldSlot],
   };
@@ -235,7 +235,7 @@ it("keeps hand-set bill prices when the same selection is saved again", async ()
 });
 
 it("keeps a held unit's billed price when another is added", async () => {
-  mock.deal = { ...mock.deal, propertyId: buildingId, unitIds: [unitA], parkingSlotIds: [] };
+  mock.deal = { ...mock.deal, propertyId: propertyId, unitIds: [unitA], parkingSlotIds: [] };
   mock.bill = {
     id: "bill",
     itemsTotal: "3000000",

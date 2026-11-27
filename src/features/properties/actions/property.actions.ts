@@ -296,11 +296,11 @@ export async function archiveProperty(id: string): Promise<PropertyActionResult>
   try {
     const result = await db.transaction(async (tx) => {
       // Locked so no deal can reserve a unit or slot here between this check and the archive.
-      await tx.select({ id: units.id }).from(units).where(eq(units.buildingId, id)).for("update");
+      await tx.select({ id: units.id }).from(units).where(eq(units.propertyId, id)).for("update");
       await tx
         .select({ id: propertyParkingSlots.id })
         .from(propertyParkingSlots)
-        .where(eq(propertyParkingSlots.buildingId, id))
+        .where(eq(propertyParkingSlots.propertyId, id))
         .for("update");
       // An open deal still reserves this property's units, which archiving would make unavailable.
       // Older deals have no building link, so their held units and slots count too.
