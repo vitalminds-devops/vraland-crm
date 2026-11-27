@@ -458,20 +458,20 @@ export function ContactForm({
       <div className="min-w-0 space-y-6 sm:space-y-10">
         <FormSection id="section-1" number={1} title="Details">
           <FormRow>
-            <FormField label="First name" required error={errors.firstName?.message}>
-              <Input
-                {...register("firstName")}
-                className={`${formInputClass} uppercase placeholder:normal-case`}
-                autoCapitalize="characters"
-                placeholder="Enter first name"
-              />
-            </FormField>
             <FormField label="Last name" required error={errors.lastName?.message}>
               <Input
                 {...register("lastName")}
                 className={`${formInputClass} uppercase placeholder:normal-case`}
                 autoCapitalize="characters"
                 placeholder="Enter last name"
+              />
+            </FormField>
+            <FormField label="First name" required error={errors.firstName?.message}>
+              <Input
+                {...register("firstName")}
+                className={`${formInputClass} uppercase placeholder:normal-case`}
+                autoCapitalize="characters"
+                placeholder="Enter first name"
               />
             </FormField>
           </FormRow>

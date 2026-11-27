@@ -6,6 +6,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Changed
+- The contact form asks for the last name first, then first name and middle name, as Billing's applicant details do.
 - Sections are called sections in the code too, not floor groups; nothing changes on screen.
 - Unit identifiers are called identifiers in the code, not numbering or code; nothing changes on screen.
 - Parking slots, a property's parking slot limit, and a development's properties use those names in the code too; nothing changes on screen or in the API.
