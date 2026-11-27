@@ -37,7 +37,7 @@ import {
   contactStagePosition,
   contactStageProbability,
 } from "../lib/contact-stage-sql";
-import { dataScopeCondition, scopedAgentCondition } from "@/lib/permissions/scope";
+import { scopedAgentCondition, contactScopeCondition } from "@/lib/permissions/scope";
 import { grantedPropertyCondition } from "@/lib/permissions/property-access";
 import type { MoveStage } from "@/features/deals/lib/stage-move";
 import { ensurePipelineStages } from "@/features/deals/lib/ensure-pipeline-stages";
@@ -93,11 +93,7 @@ export async function listContacts(input: {
   const context = await requirePermission("contacts.view");
   const limit = [10, 25, 50, 100].includes(input.pageSize ?? 0) ? input.pageSize! : 20;
   const offset = (input.page - 1) * limit;
-  const scope = dataScopeCondition(context, {
-    organizationId: contacts.organizationId,
-    ownerUserId: contacts.assignedUserId,
-    brokerUserId: contacts.brokerUserId,
-  });
+  const scope = contactScopeCondition(context);
   const brokerUser = alias(users, "broker_user");
   const search = input.search
     ? or(
@@ -194,11 +190,7 @@ export async function listArchivedContacts(input: {
   const context = await requirePermission("contacts.delete");
   const limit = [10, 25, 50, 100].includes(input.pageSize ?? 0) ? input.pageSize! : 20;
   const offset = (input.page - 1) * limit;
-  const scope = dataScopeCondition(context, {
-    organizationId: contacts.organizationId,
-    ownerUserId: contacts.assignedUserId,
-    brokerUserId: contacts.brokerUserId,
-  });
+  const scope = contactScopeCondition(context);
   const search = input.search
     ? or(
         ilike(contacts.firstName, `%${input.search}%`),
@@ -279,67 +271,66 @@ export async function getContactOptions() {
   await ensurePipelineStages(context.organizationId);
   const canCreateDeal = context.permissions.has("deals.create");
   const brokerUser = alias(users, "broker_user");
-  const [assignees, dealStages, developmentOptions, propertyOptions] =
-    await Promise.all([
-      db
-        .select({
-          id: users.id,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          brokerId: users.brokerId,
-          brokerFirstName: brokerUser.firstName,
-          brokerLastName: brokerUser.lastName,
-        })
-        .from(users)
-        .leftJoin(brokerUser, eq(users.brokerId, brokerUser.id))
-        .where(contactAssigneeCondition(context))
-        .orderBy(asc(users.firstName)),
-      canCreateDeal
-        ? db
-            .select({
-              id: pipelineStages.id,
-              name: pipelineStages.name,
-              slug: pipelineStages.slug,
-              position: pipelineStages.position,
-              isWonStage: pipelineStages.isWonStage,
-              isLostStage: pipelineStages.isLostStage,
-              isCancelledStage: pipelineStages.isCancelledStage,
-              requiresApproval: pipelineStages.requiresApproval,
-            })
-            .from(pipelineStages)
-            .where(
-              and(
-                eq(pipelineStages.organizationId, context.organizationId),
-                eq(pipelineStages.isActive, true),
-              ),
-            )
-            .orderBy(asc(pipelineStages.position))
-        : Promise.resolve([] as MoveStage[]),
-      db
-        .select({ id: developments.id, name: developments.name })
-        .from(developments)
-        .where(
-          and(
-            eq(developments.organizationId, context.organizationId),
-            inArray(developments.status, ["active", "pre_selling"]),
-          ),
-        )
-        .orderBy(asc(developments.name))
-        .limit(500),
-      // Properties for the deal section
-      db
-        .select({ id: properties.id, title: properties.title })
-        .from(properties)
-        .where(
-          and(
-            eq(properties.organizationId, context.organizationId),
-            isNull(properties.deletedAt),
-            grantedPropertyCondition(context, { propertyId: properties.id }),
-          ),
-        )
-        .orderBy(asc(properties.title))
-        .limit(500),
-    ]);
+  const [assignees, dealStages, developmentOptions, propertyOptions] = await Promise.all([
+    db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        brokerId: users.brokerId,
+        brokerFirstName: brokerUser.firstName,
+        brokerLastName: brokerUser.lastName,
+      })
+      .from(users)
+      .leftJoin(brokerUser, eq(users.brokerId, brokerUser.id))
+      .where(contactAssigneeCondition(context))
+      .orderBy(asc(users.firstName)),
+    canCreateDeal
+      ? db
+          .select({
+            id: pipelineStages.id,
+            name: pipelineStages.name,
+            slug: pipelineStages.slug,
+            position: pipelineStages.position,
+            isWonStage: pipelineStages.isWonStage,
+            isLostStage: pipelineStages.isLostStage,
+            isCancelledStage: pipelineStages.isCancelledStage,
+            requiresApproval: pipelineStages.requiresApproval,
+          })
+          .from(pipelineStages)
+          .where(
+            and(
+              eq(pipelineStages.organizationId, context.organizationId),
+              eq(pipelineStages.isActive, true),
+            ),
+          )
+          .orderBy(asc(pipelineStages.position))
+      : Promise.resolve([] as MoveStage[]),
+    db
+      .select({ id: developments.id, name: developments.name })
+      .from(developments)
+      .where(
+        and(
+          eq(developments.organizationId, context.organizationId),
+          inArray(developments.status, ["active", "pre_selling"]),
+        ),
+      )
+      .orderBy(asc(developments.name))
+      .limit(500),
+    // Properties for the deal section
+    db
+      .select({ id: properties.id, title: properties.title })
+      .from(properties)
+      .where(
+        and(
+          eq(properties.organizationId, context.organizationId),
+          isNull(properties.deletedAt),
+          grantedPropertyCondition(context, { propertyId: properties.id }),
+        ),
+      )
+      .orderBy(asc(properties.title))
+      .limit(500),
+  ]);
   return {
     assignees,
     dealStages,
@@ -430,11 +421,7 @@ const EXPORT_PAGE = 5000;
 
 export async function exportContacts() {
   const context = await requirePermission("contacts.export");
-  const scope = dataScopeCondition(context, {
-    organizationId: contacts.organizationId,
-    ownerUserId: contacts.assignedUserId,
-    brokerUserId: contacts.brokerUserId,
-  });
+  const scope = contactScopeCondition(context);
   const brokerUser = alias(users, "broker_user");
   const page = (tx: Pick<typeof db, "select">, offset: number) =>
     tx

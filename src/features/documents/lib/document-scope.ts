@@ -1,29 +1,19 @@
 import "server-only";
 import { and, eq, inArray, isNull, not, or, sql } from "drizzle-orm";
-import { contacts, dealAgents, deals, documents, properties } from "@/db/schema";
+import { dealAgents, deals, documents, properties } from "@/db/schema";
 import type { AuthorizationContext } from "@/lib/permissions/policy";
 import { grantedPropertyCondition } from "@/lib/permissions/property-access";
-import { dataScopeCondition } from "@/lib/permissions/scope";
+import {
+  dataScopeCondition,
+  contactScopeCondition,
+  dealScopeCondition,
+} from "@/lib/permissions/scope";
 import { sharedFileCategory } from "./shared-files";
 
 export function documentScope(context: AuthorizationContext) {
-  const linkedToContact = and(
-    not(isNull(documents.contactId)),
-    dataScopeCondition(context, {
-      organizationId: contacts.organizationId,
-      ownerUserId: contacts.assignedUserId,
-      brokerUserId: contacts.brokerUserId,
-    }),
-  )!;
+  const linkedToContact = and(not(isNull(documents.contactId)), contactScopeCondition(context))!;
 
-  const linkedToDeal = and(
-    not(isNull(documents.dealId)),
-    dataScopeCondition(context, {
-      organizationId: deals.organizationId,
-      ownerUserId: deals.primaryAgentUserId,
-      brokerUserId: deals.brokerUserId,
-    }),
-  )!;
+  const linkedToDeal = and(not(isNull(documents.dealId)), dealScopeCondition(context))!;
 
   // Property documents follow the property-access grants, like the property itself.
   const linkedToProperty = and(

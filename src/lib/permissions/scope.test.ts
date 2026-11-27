@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { PgDialect } from "drizzle-orm/pg-core";
-import { deals } from "@/db/schema";
+import { contacts, deals } from "@/db/schema";
 import { dataScopePermissions, type DataScope } from "./catalog";
 import type { AuthorizationContext } from "./policy";
-import { dataScopeCondition } from "./scope";
+import { contactScopeCondition, dataScopeCondition, dealScopeCondition } from "./scope";
 
 const render = (role: DataScope, roles = ["agent"]) => {
   const context: AuthorizationContext = {
@@ -47,5 +47,38 @@ describe("dataScopeCondition", () => {
 
   it("gives administrators no shortcut: their data access permission applies", () => {
     expect(render("own", ["administrator"]).sql).not.toBe('"deals"."organization_id" = $1');
+  });
+});
+
+describe("contact and opportunity scopes", () => {
+  const context: AuthorizationContext = {
+    authUserId: "auth",
+    userId: "me",
+    organizationId: "org",
+    roles: ["agent"],
+    permissions: new Set([dataScopePermissions.broker_team]),
+  };
+  const query = (condition: Parameters<PgDialect["sqlToQuery"]>[0]) =>
+    new PgDialect().sqlToQuery(condition);
+
+  it("match the agent and broker columns they replaced", () => {
+    expect(query(dealScopeCondition(context))).toEqual(
+      query(
+        dataScopeCondition(context, {
+          organizationId: deals.organizationId,
+          ownerUserId: deals.primaryAgentUserId,
+          brokerUserId: deals.brokerUserId,
+        }),
+      ),
+    );
+    expect(query(contactScopeCondition(context))).toEqual(
+      query(
+        dataScopeCondition(context, {
+          organizationId: contacts.organizationId,
+          ownerUserId: contacts.assignedUserId,
+          brokerUserId: contacts.brokerUserId,
+        }),
+      ),
+    );
   });
 });

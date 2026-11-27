@@ -46,7 +46,11 @@ import {
   grantedUnitsCondition,
 } from "@/lib/permissions/property-access";
 import { hasOrganizationWideAccess, resolveDataScope } from "@/lib/permissions/policy";
-import { dataScopeCondition } from "@/lib/permissions/scope";
+import {
+  dataScopeCondition,
+  contactScopeCondition,
+  dealScopeCondition,
+} from "@/lib/permissions/scope";
 import { rankPriorities, revenueSeries } from "../lib/dashboard-shaping";
 import {
   manilaDate,
@@ -93,25 +97,13 @@ export async function getDashboardData() {
   const canViewTasks = context.permissions.has("tasks.view");
   const canViewCalendar = context.permissions.has("calendar.view");
 
-  const contactScope = organizationWide
-    ? undefined
-    : dataScopeCondition(context, {
-        organizationId: contacts.organizationId,
-        ownerUserId: contacts.assignedUserId,
-        brokerUserId: contacts.brokerUserId,
-      });
+  const contactScope = organizationWide ? undefined : contactScopeCondition(context);
   const propertyScope = organizationWide
     ? undefined
     : dataScopeCondition(context, {
         organizationId: properties.organizationId,
       });
-  const dealAccess = organizationWide
-    ? undefined
-    : dataScopeCondition(context, {
-        organizationId: deals.organizationId,
-        ownerUserId: deals.primaryAgentUserId,
-        brokerUserId: deals.brokerUserId,
-      });
+  const dealAccess = organizationWide ? undefined : dealScopeCondition(context);
   const dealScope = and(dealAccess, leadNotArchived);
   // Closed outcomes count whatever became of the contact: lead expiry archives it, and archiving
   // must not rewrite how many were won or lost in a past month.

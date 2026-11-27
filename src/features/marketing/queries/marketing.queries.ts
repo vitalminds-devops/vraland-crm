@@ -28,7 +28,7 @@ import {
   users,
 } from "@/db/schema";
 import { requirePermission } from "@/lib/permissions/authorization";
-import { dataScopeCondition } from "@/lib/permissions/scope";
+import { contactScopeCondition, dealScopeCondition } from "@/lib/permissions/scope";
 import { getMessagingStatus } from "@/lib/messaging/providers";
 import {
   DEFAULT_MARKETING_PAGE_SIZE,
@@ -403,16 +403,8 @@ export async function getSmsTemplate(id: string) {
 
 function marketingOptionScopes(context: Awaited<ReturnType<typeof requirePermission>>) {
   return {
-    contacts: dataScopeCondition(context, {
-      organizationId: contacts.organizationId,
-      ownerUserId: contacts.assignedUserId,
-      brokerUserId: contacts.brokerUserId,
-    }),
-    deals: dataScopeCondition(context, {
-      organizationId: deals.organizationId,
-      ownerUserId: deals.primaryAgentUserId,
-      brokerUserId: deals.brokerUserId,
-    }),
+    contacts: contactScopeCondition(context),
+    deals: dealScopeCondition(context),
   };
 }
 

@@ -38,7 +38,12 @@ import {
 import { canAccessResource, requirePermission } from "@/lib/permissions/authorization";
 import { eligibleAgent } from "@/features/contacts/lib/assignment";
 import { grantedPropertyCondition } from "@/lib/permissions/property-access";
-import { dataScopeCondition, scopedAgentCondition } from "@/lib/permissions/scope";
+import {
+  dataScopeCondition,
+  scopedAgentCondition,
+  contactScopeCondition,
+  dealScopeCondition,
+} from "@/lib/permissions/scope";
 import { canManageBilling } from "@/lib/permissions/policy";
 import { resolveMoveRole } from "../lib/stage-transitions";
 import { dealFirstMonthPaid, dealReservationPaid } from "@/features/billing/lib/deal-payment";
@@ -49,11 +54,7 @@ import { BOARD_COLUMN_LIMIT } from "../lib/board-limit";
 
 /** Opportunities the user reaches, whatever became of the contact. */
 const access = (context: Awaited<ReturnType<typeof requirePermission>>) =>
-  dataScopeCondition(context, {
-    organizationId: deals.organizationId,
-    ownerUserId: deals.primaryAgentUserId,
-    brokerUserId: deals.brokerUserId,
-  });
+  dealScopeCondition(context);
 const scope = (context: Awaited<ReturnType<typeof requirePermission>>) =>
   and(access(context), leadNotArchived)!;
 const fromStage = alias(pipelineStages, "from_stage");
@@ -346,11 +347,7 @@ export async function listDeals(input: {
 }
 
 function dealContactScope(context: Awaited<ReturnType<typeof requirePermission>>) {
-  return dataScopeCondition(context, {
-    organizationId: contacts.organizationId,
-    ownerUserId: contacts.assignedUserId,
-    brokerUserId: contacts.brokerUserId,
-  });
+  return contactScopeCondition(context);
 }
 
 export async function getDealOptions() {

@@ -19,7 +19,7 @@ import {
 } from "@/db/schema";
 import { lockActiveAssignees } from "@/lib/permissions/active-assignees";
 import { requirePermission } from "@/lib/permissions/authorization";
-import { dataScopeCondition } from "@/lib/permissions/scope";
+import { contactScopeCondition, dealScopeCondition } from "@/lib/permissions/scope";
 import { getEmailProvider, getSmsProvider } from "@/lib/messaging/providers";
 import { getUserFacingMessage } from "@/lib/error-handler";
 import { redactValue } from "@/lib/audit/redact";
@@ -180,11 +180,7 @@ export async function createCampaign(input: unknown): Promise<MarketingResult> {
         eq(contacts.organizationId, c.organizationId),
         eq(contacts.marketingConsent, true),
         isNull(contacts.deletedAt),
-        dataScopeCondition(c, {
-          organizationId: contacts.organizationId,
-          ownerUserId: contacts.assignedUserId,
-          brokerUserId: contacts.brokerUserId,
-        }),
+        contactScopeCondition(c),
         inArray(contacts.id, v.contactIds),
       ),
     );
@@ -577,11 +573,7 @@ export async function enrollInSequence(input: unknown): Promise<MarketingResult>
           eq(contacts.id, p.data.contactId),
           eq(contacts.organizationId, c.organizationId),
           isNull(contacts.deletedAt),
-          dataScopeCondition(c, {
-            organizationId: contacts.organizationId,
-            ownerUserId: contacts.assignedUserId,
-            brokerUserId: contacts.brokerUserId,
-          }),
+          contactScopeCondition(c),
         ),
       )
       .limit(1);
@@ -596,11 +588,7 @@ export async function enrollInSequence(input: unknown): Promise<MarketingResult>
           eq(deals.id, p.data.dealId),
           eq(deals.organizationId, c.organizationId),
           isNull(deals.deletedAt),
-          dataScopeCondition(c, {
-            organizationId: deals.organizationId,
-            ownerUserId: deals.primaryAgentUserId,
-            brokerUserId: deals.brokerUserId,
-          }),
+          dealScopeCondition(c),
         ),
       )
       .limit(1);

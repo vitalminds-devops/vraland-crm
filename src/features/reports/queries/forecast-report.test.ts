@@ -30,7 +30,7 @@ vi.mock("@/lib/permissions/authorization", () => ({
 }));
 vi.mock("@/lib/permissions/policy", () => ({ hasOrganizationWideAccess: () => false }));
 vi.mock("@/lib/permissions/scope", () => ({
-  dataScopeCondition: () => eq(deals.primaryAgentUserId, "user-1"),
+  dealScopeCondition: () => eq(deals.primaryAgentUserId, "user-1"),
 }));
 
 beforeEach(() => {

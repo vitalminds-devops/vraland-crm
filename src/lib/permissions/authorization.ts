@@ -24,7 +24,7 @@ import type { PermissionKey } from "./catalog";
 import { canGrantPermissions, hasPermission, type AuthorizationContext } from "./policy";
 import { grantedPropertyCondition } from "./property-access";
 import { applyPermissionOverrides } from "./user-permissions";
-import { dataScopeCondition } from "./scope";
+import { dataScopeCondition, contactScopeCondition, dealScopeCondition } from "./scope";
 
 export class AuthorizationError extends Error {
   constructor(message = "You do not have permission to perform this operation.") {
@@ -204,11 +204,7 @@ export async function canAccessResource(
         and(
           eq(contacts.id, resource.id),
           isNull(contacts.deletedAt),
-          dataScopeCondition(context, {
-            organizationId: contacts.organizationId,
-            ownerUserId: contacts.assignedUserId,
-            brokerUserId: contacts.brokerUserId,
-          }),
+          contactScopeCondition(context),
         ),
       )
       .limit(1);
@@ -235,17 +231,7 @@ export async function canAccessResource(
     const [record] = await db
       .select({ id: deals.id })
       .from(deals)
-      .where(
-        and(
-          eq(deals.id, resource.id),
-          isNull(deals.deletedAt),
-          dataScopeCondition(context, {
-            organizationId: deals.organizationId,
-            ownerUserId: deals.primaryAgentUserId,
-            brokerUserId: deals.brokerUserId,
-          }),
-        ),
-      )
+      .where(and(eq(deals.id, resource.id), isNull(deals.deletedAt), dealScopeCondition(context)))
       .limit(1);
     return Boolean(record);
   }

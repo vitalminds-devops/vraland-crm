@@ -13,7 +13,11 @@ import {
 import { requirePermission } from "@/lib/permissions/authorization";
 import { hasOrganizationWideAccess } from "@/lib/permissions/policy";
 import { grantedPropertyCondition } from "@/lib/permissions/property-access";
-import { dataScopeCondition, scopedAgentCondition } from "@/lib/permissions/scope";
+import {
+  dataScopeCondition,
+  scopedAgentCondition,
+  contactScopeCondition,
+} from "@/lib/permissions/scope";
 import { canChangeEvent, responseSummary, type Invitee } from "../lib/event-access";
 export async function listCalendarEvents(input: { start: Date; end: Date; type?: string }) {
   const context = await requirePermission("calendar.view");
@@ -234,11 +238,7 @@ export async function getCalendarOptions() {
         and(
           eq(contacts.organizationId, context.organizationId),
           isNull(contacts.deletedAt),
-          dataScopeCondition(context, {
-            organizationId: contacts.organizationId,
-            ownerUserId: contacts.assignedUserId,
-            brokerUserId: contacts.brokerUserId,
-          }),
+          contactScopeCondition(context),
         ),
       )
       .orderBy(asc(contacts.lastName))

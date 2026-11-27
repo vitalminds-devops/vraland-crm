@@ -34,7 +34,12 @@ import { requirePermission } from "@/lib/permissions/authorization";
 import { superAdministratorRoleSlug } from "@/lib/permissions/catalog";
 import { hasOrganizationWideAccess, type AuthorizationContext } from "@/lib/permissions/policy";
 import { grantedPropertyCondition } from "@/lib/permissions/property-access";
-import { dataScopeCondition, scopedAgentCondition } from "@/lib/permissions/scope";
+import {
+  dataScopeCondition,
+  scopedAgentCondition,
+  contactScopeCondition,
+  dealScopeCondition,
+} from "@/lib/permissions/scope";
 import { manilaDate, manilaMidnight } from "@/lib/utils/manila-time";
 import { leadNotArchived } from "@/features/deals/lib/lead-not-archived";
 import { arimaForecast, monthlySalesHistory } from "../lib/arima-forecast";
@@ -129,12 +134,7 @@ export async function getReportOptions() {
 const dealInDevelopment = (developmentId: string) =>
   sql`(${deals.developmentId} = ${developmentId} or exists (select 1 from properties p where p.id = ${deals.propertyId} and p.development_id = ${developmentId}))`;
 
-const dealScopeFor = (context: AuthorizationContext) =>
-  dataScopeCondition(context, {
-    organizationId: deals.organizationId,
-    ownerUserId: deals.primaryAgentUserId,
-    brokerUserId: deals.brokerUserId,
-  });
+const dealScopeFor = (context: AuthorizationContext) => dealScopeCondition(context);
 
 /** `closedLimit` caps the closed-deal list: the page shows the latest 25, an export takes them all. */
 export async function getSalesReport(filters: ReportFilters, closedLimit = 25) {
@@ -376,13 +376,7 @@ export async function getAgentReport(filters: ReportFilters) {
           isNull(contacts.deletedAt),
           gte(contacts.createdAt, manilaMidnight(filters.from)),
           lt(contacts.createdAt, manilaMidnight(endExclusive(filters.to))),
-          organizationWide
-            ? undefined
-            : dataScopeCondition(context, {
-                organizationId: contacts.organizationId,
-                ownerUserId: contacts.assignedUserId,
-                brokerUserId: contacts.brokerUserId,
-              }),
+          organizationWide ? undefined : contactScopeCondition(context),
           filters.agent ? eq(contacts.assignedUserId, filters.agent) : undefined,
         ),
       )

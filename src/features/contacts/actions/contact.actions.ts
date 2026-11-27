@@ -49,7 +49,7 @@ import { canAccessResource, requirePermission } from "@/lib/permissions/authoriz
 import { brokerRoleSlugs } from "@/lib/permissions/catalog";
 import { hasOrganizationWideAccess } from "@/lib/permissions/policy";
 import type { AuthorizationContext } from "@/lib/permissions/policy";
-import { dataScopeCondition, scopedAgentCondition } from "@/lib/permissions/scope";
+import { scopedAgentCondition, contactScopeCondition } from "@/lib/permissions/scope";
 import { InactiveAssigneeError, lockActiveAssignees } from "@/lib/permissions/active-assignees";
 import { moveOpenDeals } from "@/features/deals/lib/move-open-deals";
 import { enrollByTrigger } from "@/features/marketing/lib/auto-enroll";
@@ -932,13 +932,7 @@ export async function restoreContact(
     if (!(await validateAssignee(context, newAgentId)))
       return validationFailure("Select an active agent or broker.");
   }
-  const scope = hasOrganizationWideAccess(context)
-    ? undefined
-    : dataScopeCondition(context, {
-        organizationId: contacts.organizationId,
-        ownerUserId: contacts.assignedUserId,
-        brokerUserId: contacts.brokerUserId,
-      });
+  const scope = hasOrganizationWideAccess(context) ? undefined : contactScopeCondition(context);
   try {
     const restored = await db.transaction(async (tx) => {
       const [before] = await tx

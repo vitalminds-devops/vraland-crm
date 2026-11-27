@@ -24,7 +24,7 @@ import {
   canViewBilling,
   type AuthorizationContext,
 } from "@/lib/permissions/policy";
-import { dataScopeCondition } from "@/lib/permissions/scope";
+import { dealScopeCondition } from "@/lib/permissions/scope";
 import { manilaDate } from "@/lib/utils/manila-time";
 import { leadNotArchived } from "@/features/deals/lib/lead-not-archived";
 import { isContactsFirstDeal } from "@/features/deals/lib/first-deal";
@@ -70,11 +70,7 @@ function dealScope(context: AuthorizationContext) {
   return and(
     eq(deals.organizationId, context.organizationId),
     isNull(deals.deletedAt),
-    dataScopeCondition(context, {
-      organizationId: deals.organizationId,
-      ownerUserId: deals.primaryAgentUserId,
-      brokerUserId: deals.brokerUserId,
-    }),
+    dealScopeCondition(context),
     leadNotArchived,
     // Billing starts at Opportunity; a deal still in Leads has nothing to bill.
     sql`${deals.stageId} not in (select ${pipelineStages.id} from ${pipelineStages} where ${pipelineStages.slug} = 'leads')`,
@@ -507,11 +503,7 @@ export async function getDealBilling(dealId: string) {
 
 /** Deals whose bills and payments the user reaches through their data access. */
 function dealInDataScope(context: AuthorizationContext) {
-  return dataScopeCondition(context, {
-    organizationId: deals.organizationId,
-    ownerUserId: deals.primaryAgentUserId,
-    brokerUserId: deals.brokerUserId,
-  });
+  return dealScopeCondition(context);
 }
 
 async function paymentsContext() {

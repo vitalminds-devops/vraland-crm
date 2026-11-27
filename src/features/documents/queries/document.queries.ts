@@ -13,7 +13,7 @@ import {
 } from "@/db/schema";
 import { requirePermission } from "@/lib/permissions/authorization";
 import { grantedPropertyCondition } from "@/lib/permissions/property-access";
-import { dataScopeCondition } from "@/lib/permissions/scope";
+import { contactScopeCondition, dealScopeCondition } from "@/lib/permissions/scope";
 import { documentScope, sensitiveDocumentCondition } from "../lib/document-scope";
 import { canManageSharedFiles, sharedFileCategory } from "../lib/shared-files";
 const documentOwner = alias(users, "document_owner");
@@ -117,11 +117,7 @@ export async function getDocumentOptions() {
         and(
           eq(contacts.organizationId, context.organizationId),
           isNull(contacts.deletedAt),
-          dataScopeCondition(context, {
-            organizationId: contacts.organizationId,
-            ownerUserId: contacts.assignedUserId,
-            brokerUserId: contacts.brokerUserId,
-          }),
+          contactScopeCondition(context),
         ),
       )
       .orderBy(asc(contacts.lastName))
@@ -145,11 +141,7 @@ export async function getDocumentOptions() {
         and(
           eq(deals.organizationId, context.organizationId),
           isNull(deals.deletedAt),
-          dataScopeCondition(context, {
-            organizationId: deals.organizationId,
-            ownerUserId: deals.primaryAgentUserId,
-            brokerUserId: deals.brokerUserId,
-          }),
+          dealScopeCondition(context),
         ),
       )
       .orderBy(asc(deals.title))

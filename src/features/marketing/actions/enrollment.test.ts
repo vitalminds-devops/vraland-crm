@@ -41,7 +41,10 @@ vi.mock("@/db", () => {
 vi.mock("@/lib/permissions/authorization", () => ({
   requirePermission: vi.fn(async () => ({ organizationId: "org", userId: "actor" })),
 }));
-vi.mock("@/lib/permissions/scope", () => ({ dataScopeCondition: () => undefined }));
+vi.mock("@/lib/permissions/scope", () => ({
+  contactScopeCondition: () => undefined,
+  dealScopeCondition: () => undefined,
+}));
 vi.mock("@/lib/messaging/providers", () => ({
   getEmailProvider: vi.fn(),
   getSmsProvider: vi.fn(),
