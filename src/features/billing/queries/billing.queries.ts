@@ -282,7 +282,8 @@ async function billLinesFor(
           miscellaneousFee: "",
         }),
       );
-      // Opportunities from before slots were listed have a parking amount but no slots.
+      // Opportunities from before slots were listed have a parking amount and a count but no slots;
+      // the stored count is read only here.
       if (!slots.length && Number(row.parkingAmount) > 0)
         suggested.push({
           unitLabel: [

@@ -118,7 +118,7 @@ export default async function DealPage({
                     </li>
                   ))}
                 </ul>
-                {d.parkingSlots > 0 && d.parkingAmount && (
+                {data.parking.length > 0 && d.parkingAmount && (
                   <p className="text-xs text-muted-foreground">
                     Parking {money(d.parkingAmount, d.currency)}
                   </p>
