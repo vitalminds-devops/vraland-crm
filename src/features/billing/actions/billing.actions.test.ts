@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { InventoryUnavailable } from "@/features/deals/lib/deal-inventory";
 import { syncBillingInventory } from "../lib/billing-inventory";
 import { billItems, bills, dealStageChangeRequests, documents, payments } from "@/db/schema";
-import { changeDealStage } from "@/features/deals/actions/deal.actions";
+import { applyStageChange } from "@/features/deals/lib/apply-stage-change";
 import {
   NO_FIRST_MONTH_MESSAGE,
   NO_RESERVATION_MESSAGE,
@@ -40,8 +40,8 @@ vi.mock("@/lib/permissions/authorization", () => ({
     permissions: new Set(["deals.change_stage"]),
   }),
 }));
-vi.mock("@/features/deals/actions/deal.actions", () => ({
-  changeDealStage: vi.fn(async (): Promise<unknown> => ({ success: true, data: { id: "deal" } })),
+vi.mock("@/features/deals/lib/apply-stage-change", () => ({
+  applyStageChange: vi.fn(async (): Promise<unknown> => ({ success: true, data: { id: "deal" } })),
 }));
 vi.mock("@/lib/permissions/policy", () => ({ canManageBilling: () => mock.canManage }));
 
@@ -367,7 +367,11 @@ it.each([
       data: { message: `Payment recorded. Moved to ${name}.` },
     },
   );
-  expect(changeDealStage).toHaveBeenCalledWith({ dealId: input.dealId, stageId });
+  // The move runs under Billing's own context, not a second permission check.
+  expect(applyStageChange).toHaveBeenCalledWith(expect.objectContaining({ userId: "manager" }), {
+    dealId: input.dealId,
+    stageId,
+  });
 });
 
 it.each([
@@ -444,22 +448,22 @@ it("takes a full payment from Opportunity to Won, one stage at a time", async ()
   expect(await recordPayment(fullPayment, transactionSlip())).toMatchObject({
     data: { message: "Payment recorded. Moved to Won." },
   });
-  expect(vi.mocked(changeDealStage).mock.calls).toEqual([
-    [{ dealId: input.dealId, stageId: "reservation-stage" }],
-    [{ dealId: input.dealId, stageId: "won-stage" }],
+  expect(vi.mocked(applyStageChange).mock.calls).toEqual([
+    [expect.anything(), { dealId: input.dealId, stageId: "reservation-stage" }],
+    [expect.anything(), { dealId: input.dealId, stageId: "won-stage" }],
   ]);
 });
 
 it("stops a full payment's moves at a stage sent for approval", async () => {
   mock.reads = fullPaymentReads();
-  vi.mocked(changeDealStage).mockResolvedValueOnce({
+  vi.mocked(applyStageChange).mockResolvedValueOnce({
     success: true,
     data: { id: "deal", approvalRequested: true },
   });
   expect(await recordPayment(fullPayment, transactionSlip())).toMatchObject({
     data: { message: "Payment recorded. Sent to Reservation for approval." },
   });
-  expect(changeDealStage).toHaveBeenCalledOnce();
+  expect(applyStageChange).toHaveBeenCalledOnce();
 });
 
 it.each([
@@ -478,17 +482,17 @@ it.each([
   ["Not allowed.", undefined, "Payment recorded. Not moved to Reservation."],
 ])("keeps the payment when the move is refused: %s", async (refusal, details, message) => {
   mock.reads = fullPaymentReads();
-  vi.mocked(changeDealStage).mockResolvedValueOnce(failureFrom("INVALID_INPUT", refusal, details));
+  vi.mocked(applyStageChange).mockResolvedValueOnce(failureFrom("INVALID_INPUT", refusal, details));
   expect(await recordPayment(fullPayment, transactionSlip())).toMatchObject({
     success: true,
     data: { message },
   });
-  expect(changeDealStage).toHaveBeenCalledOnce();
+  expect(applyStageChange).toHaveBeenCalledOnce();
 });
 
 it("reports the stage reached when a later move is refused", async () => {
   mock.reads = fullPaymentReads();
-  vi.mocked(changeDealStage)
+  vi.mocked(applyStageChange)
     .mockResolvedValueOnce({ success: true, data: { id: "deal" } })
     .mockResolvedValueOnce(
       failureFrom("INVALID_INPUT", NO_FIRST_MONTH_MESSAGE, { payment: "first-month" }),
@@ -511,7 +515,7 @@ it("leaves the stage alone when the payment does not match the deal's stage", as
     success: true,
     data: { message: "Payment recorded." },
   });
-  expect(changeDealStage).not.toHaveBeenCalled();
+  expect(applyStageChange).not.toHaveBeenCalled();
 });
 
 it("refuses bills and payments on opportunities outside the user's data access", async () => {

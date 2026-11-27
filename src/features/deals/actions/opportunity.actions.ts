@@ -66,7 +66,8 @@ import {
   syncBillingInventory,
 } from "@/features/billing/lib/billing-inventory";
 import { APPOINTMENT_TYPE, VALID_ID_TYPE, documentsOnFile } from "../lib/opportunity-requirements";
-import { changeDealStage, type DealActionResult } from "./deal.actions";
+import type { DealActionResult } from "./deal.actions";
+import { applyStageChange } from "../lib/apply-stage-change";
 import { canMoveStage, resolveMoveRole } from "../lib/stage-transitions";
 
 // 2 required + 3 extra files at 15 MB stay under the 80 MB server action body limit.
@@ -823,7 +824,7 @@ export async function openOpportunity(formData: FormData): Promise<DealActionRes
     );
   }
   revalidatePath(`/contacts/${contactId}`);
-  const result = await changeDealStage({
+  const result = await applyStageChange(context, {
     dealId: v.dealId,
     stageId: v.stageId,
     note: "",

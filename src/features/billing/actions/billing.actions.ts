@@ -34,7 +34,7 @@ import {
   dealReservationReceived,
 } from "../lib/deal-payment";
 import { stagesAfterPayment } from "../lib/payment-stage";
-import { changeDealStage } from "@/features/deals/actions/deal.actions";
+import { applyStageChange } from "@/features/deals/lib/apply-stage-change";
 import { logError } from "@/lib/logger";
 import { canAccessResource, requireAuthorizationContext } from "@/lib/permissions/authorization";
 import { canManageBilling, type AuthorizationContext } from "@/lib/permissions/policy";
@@ -427,7 +427,10 @@ export async function recordPayment(
     let stopped = "";
     if (context.permissions.has("deals.change_stage"))
       for (const stage of outcome.nextStages) {
-        const moved = await changeDealStage({ dealId: outcome.dealId, stageId: stage.id });
+        const moved = await applyStageChange(context, {
+          dealId: outcome.dealId,
+          stageId: stage.id,
+        });
         if (!moved.success) {
           const missing = missingPaymentOf(moved.error.details);
           stopped =

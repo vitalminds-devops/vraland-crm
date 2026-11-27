@@ -5,6 +5,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+- Billing and Move to Opportunity change the stage under the permission they already checked, instead of checking it a second time.
+
 ## [0.7.1] - 2026-11-26
 
 ### Fixed

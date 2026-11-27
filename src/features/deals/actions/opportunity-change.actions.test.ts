@@ -138,7 +138,7 @@ vi.mock("@/features/properties/queries/parking.queries", () => ({
   ]),
 }));
 vi.mock("@/lib/permissions/property-access", () => ({ grantedUnitsCondition: vi.fn() }));
-vi.mock("./deal.actions", () => ({ changeDealStage: vi.fn() }));
+vi.mock("../lib/apply-stage-change", () => ({ applyStageChange: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/logger", () => ({ logError: vi.fn() }));
 

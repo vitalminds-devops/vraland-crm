@@ -120,7 +120,7 @@ vi.mock("@/lib/permissions/authorization", () => ({
   }),
   canAccessResource: async () => true,
 }));
-vi.mock("./deal.actions", () => ({ changeDealStage: async () => inventory.stageResult }));
+vi.mock("../lib/apply-stage-change", () => ({ applyStageChange: async () => inventory.stageResult }));
 vi.mock("@/lib/storage/document-storage", () => ({
   getDocumentStorage: () => ({ put: inventory.put, remove: inventory.remove }),
 }));
