@@ -26,7 +26,7 @@ export type OpenDealForContactInput = {
   /** Human label used to build the default deal title (e.g. "Maria Santos"). */
   contactName: string;
   /** Agent inherited from the contact; becomes the deal's primary agent. */
-  primaryAgentUserId: string | null;
+  agentUserId: string | null;
   /** Optional stage override; defaults to the first active pipeline stage. */
   stageId?: string | null;
   dealType?: ContactDealInput["dealType"];
@@ -103,10 +103,7 @@ export async function openDealForApprovedContact(
   const title = input.title?.trim()
     ? input.title.trim()
     : dealTitleFor(input.contactName, development?.name ?? null);
-  await lockActiveAssignees(tx, context.organizationId, [
-    input.primaryAgentUserId,
-    contact.brokerUserId,
-  ]);
+  await lockActiveAssignees(tx, context.organizationId, [input.agentUserId, contact.brokerUserId]);
 
   const [row] = await tx
     .insert(deals)
@@ -117,7 +114,7 @@ export async function openDealForApprovedContact(
       dealType,
       stageId: stage.id,
       developmentId: development?.id ?? null,
-      primaryAgentUserId: input.primaryAgentUserId,
+      agentUserId: input.agentUserId,
       brokerUserId: contact?.brokerUserId ?? null,
       probability: stage.defaultProbability,
       createdBy: context.userId,

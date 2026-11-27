@@ -443,7 +443,7 @@ export async function getDashboardData() {
       })
       .from(deals)
       .leftJoin(pipelineStages, eq(pipelineStages.id, deals.stageId))
-      .leftJoin(users, eq(users.id, deals.primaryAgentUserId))
+      .leftJoin(users, eq(users.id, deals.agentUserId))
       .where(
         and(
           eq(deals.organizationId, context.organizationId),

@@ -57,7 +57,7 @@ export type DealActionResult = ActionResult<{
 
 export async function createDealForContact(
   contactId: string,
-  primaryAgentUserId: string | null,
+  agentUserId: string | null,
   input: ContactDealInput,
 ): Promise<DealActionResult> {
   const context = await requirePermission("deals.create");
@@ -74,7 +74,7 @@ export async function createDealForContact(
     )
     .where(and(eq(deals.organizationId, context.organizationId), isNull(deals.deletedAt)))
     .limit(1);
-  if (opened) return saveDealForContact(contactId, primaryAgentUserId, input);
+  if (opened) return saveDealForContact(contactId, agentUserId, input);
   const [stage] = await db
     .select()
     .from(pipelineStages)
@@ -117,13 +117,13 @@ export async function createDealForContact(
     : [];
   const developmentId = development?.id ?? null;
   const title = dealTitleFor(formatContactName(contact), development?.name ?? null);
-  if (primaryAgentUserId) {
+  if (agentUserId) {
     const [row] = await db
       .select({ id: users.id })
       .from(users)
       .where(
         and(
-          eq(users.id, primaryAgentUserId),
+          eq(users.id, agentUserId),
           eligibleAgent(context.organizationId),
           scopedAgentCondition(context),
         ),
@@ -133,10 +133,7 @@ export async function createDealForContact(
   }
   try {
     const id = await db.transaction(async (tx) => {
-      await lockActiveAssignees(tx, context.organizationId, [
-        primaryAgentUserId,
-        contact.brokerUserId,
-      ]);
+      await lockActiveAssignees(tx, context.organizationId, [agentUserId, contact.brokerUserId]);
       const [row] = await tx
         .insert(deals)
         .values({
@@ -146,7 +143,7 @@ export async function createDealForContact(
           dealType: v.dealType,
           stageId: v.stageId,
           developmentId,
-          primaryAgentUserId,
+          agentUserId,
           brokerUserId: contact.brokerUserId,
           amount: toAmount(v.amount),
           expectedCommission: toAmount(v.expectedCommission),
@@ -162,12 +159,12 @@ export async function createDealForContact(
         role: v.dealType === "sale" ? "buyer" : "tenant",
         isPrimary: true,
       });
-      if (primaryAgentUserId)
+      if (agentUserId)
         await tx
           .insert(dealAgents)
           .values({
             dealId: row.id,
-            userId: primaryAgentUserId,
+            userId: agentUserId,
             role: "primary",
           })
           .onConflictDoNothing();
@@ -208,7 +205,7 @@ export async function createDealForContact(
 
 export async function saveDealForContact(
   contactId: string,
-  primaryAgentUserId: string | null,
+  agentUserId: string | null,
   input: ContactDealInput,
 ): Promise<DealActionResult> {
   const context = await requirePermission("contacts.update");
@@ -225,7 +222,7 @@ export async function saveDealForContact(
     .where(and(eq(deals.organizationId, context.organizationId), isNull(deals.deletedAt)))
     .orderBy(asc(deals.createdAt))
     .limit(1);
-  if (!existing) return createDealForContact(contactId, primaryAgentUserId, input);
+  if (!existing) return createDealForContact(contactId, agentUserId, input);
 
   if (!hasPermission(context, "deals.update")) return failure(permissionDenied());
   if (!(await canAccessResource(context, { type: "deal", id: existing.id })))

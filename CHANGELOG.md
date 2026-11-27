@@ -15,6 +15,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - An opportunity's parking amount shows whenever it has parking slots listed, going by the list itself rather than a separately stored count.
 - A bill's summed label and price are named for what they are in the code (items label and total); nothing changes on screen.
 - A unit's, floor's and parking slot's property is called the property in the code too, not the building. A Move to Opportunity form left half-filled before this update starts fresh.
+- The Agent on a contact or opportunity has one name in the code instead of five; tasks keep their Assignee. Nothing changes on screen or in CSV files.
 
 ### Removed
 - Retired database columns nothing used: an opportunity's old reservation-fee paid date and payer, and the unused password field on users. Run `npm run db:migrate` (migration 0081).

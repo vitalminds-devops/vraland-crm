@@ -64,7 +64,7 @@ beforeEach(() => {
     title: "Example",
     dealCode: "D-1",
     status: "open",
-    primaryAgentUserId: "agent",
+    agentUserId: "agent",
     brokerUserId: "broker",
     deletedAt: null,
   };
@@ -95,7 +95,7 @@ it("reports an already deleted opportunity as missing", async () => {
 });
 
 it.each([
-  [["agent"], "primaryAgentUserId"],
+  [["agent"], "agentUserId"],
   [["broker"], "brokerUserId"],
 ])("lets %s delete only their own opportunity", async (roles, ownerField) => {
   fixture.roles = roles;

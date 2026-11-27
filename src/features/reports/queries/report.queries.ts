@@ -152,7 +152,7 @@ export async function getSalesReport(filters: ReportFilters, closedLimit = 25) {
     // Same rule as the dashboard: an archived client takes its opportunities out of the counts.
     leadNotArchived,
     dealScope,
-    filters.agent ? eq(deals.primaryAgentUserId, filters.agent) : undefined,
+    filters.agent ? eq(deals.agentUserId, filters.agent) : undefined,
     propertyFilters,
   );
   const closed = and(
@@ -204,7 +204,7 @@ export async function getSalesReport(filters: ReportFilters, closedLimit = 25) {
         propertyTitle: properties.title,
       })
       .from(deals)
-      .leftJoin(users, eq(deals.primaryAgentUserId, users.id))
+      .leftJoin(users, eq(deals.agentUserId, users.id))
       .leftJoin(properties, eq(deals.propertyId, properties.id))
       .where(closed)
       .orderBy(desc(deals.actualCloseDate), desc(deals.createdAt))
@@ -249,7 +249,7 @@ export async function getForecastReport(filters: ReportFilters) {
     // Same rule as the dashboard: an archived client takes its opportunities out of the counts.
     leadNotArchived,
     organizationWide ? undefined : dealScopeFor(context),
-    filters.agent ? eq(deals.primaryAgentUserId, filters.agent) : undefined,
+    filters.agent ? eq(deals.agentUserId, filters.agent) : undefined,
     filters.development ? dealInDevelopment(filters.development) : undefined,
     filters.propertyType
       ? sql`exists (select 1 from properties p where p.id = ${deals.propertyId} and p.organization_id = ${context.organizationId} and p.property_type = ${filters.propertyType})`
@@ -365,7 +365,7 @@ export async function getAgentReport(filters: ReportFilters) {
       .orderBy(asc(users.firstName)),
     db
       .select({
-        userId: contacts.assignedUserId,
+        userId: contacts.agentUserId,
         leads: count(),
         activeLeads: sql<number>`count(*) filter (where ${activeLead})`,
       })
@@ -377,13 +377,13 @@ export async function getAgentReport(filters: ReportFilters) {
           gte(contacts.createdAt, manilaMidnight(filters.from)),
           lt(contacts.createdAt, manilaMidnight(endExclusive(filters.to))),
           organizationWide ? undefined : contactScopeCondition(context),
-          filters.agent ? eq(contacts.assignedUserId, filters.agent) : undefined,
+          filters.agent ? eq(contacts.agentUserId, filters.agent) : undefined,
         ),
       )
-      .groupBy(contacts.assignedUserId),
+      .groupBy(contacts.agentUserId),
     db
       .select({
-        userId: deals.primaryAgentUserId,
+        userId: deals.agentUserId,
         deals: sql<number>`count(*) filter (where ${deals.createdAt} >= ${manilaMidnight(filters.from)} and ${deals.createdAt} < ${manilaMidnight(endExclusive(filters.to))})`,
         closed: sql<number>`count(*) filter (where ${deals.status} = 'won' and ${deals.actualCloseDate} >= ${filters.from} and ${deals.actualCloseDate} < ${endExclusive(filters.to)})`,
         sales: sql<string>`coalesce(sum(${deals.amount}) filter (where ${deals.status} = 'won' and ${deals.actualCloseDate} >= ${filters.from} and ${deals.actualCloseDate} < ${endExclusive(filters.to)}), 0)`,
@@ -396,10 +396,10 @@ export async function getAgentReport(filters: ReportFilters) {
           // Same rule as the dashboard: an archived client takes its opportunities out of the counts.
           leadNotArchived,
           organizationWide ? undefined : dealScopeFor(context),
-          filters.agent ? eq(deals.primaryAgentUserId, filters.agent) : undefined,
+          filters.agent ? eq(deals.agentUserId, filters.agent) : undefined,
         ),
       )
-      .groupBy(deals.primaryAgentUserId),
+      .groupBy(deals.agentUserId),
     db
       .select({ userId: activities.actorUserId, activities: count() })
       .from(activities)

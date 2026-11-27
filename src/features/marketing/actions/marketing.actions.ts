@@ -727,7 +727,7 @@ export async function executeNextStep(enrollmentId: string): Promise<MarketingRe
       // The follow-up belongs to the contact's agent, else the opportunity's, not whoever ran the step.
       const [owner] = enrollment.contactId
         ? await db
-            .select({ userId: contacts.assignedUserId })
+            .select({ userId: contacts.agentUserId })
             .from(contacts)
             .where(and(eq(contacts.id, enrollment.contactId), isNull(contacts.deletedAt)))
             .limit(1)
@@ -737,7 +737,7 @@ export async function executeNextStep(enrollmentId: string): Promise<MarketingRe
       const [deal] =
         !owner?.userId && enrollment.dealId
           ? await db
-              .select({ userId: deals.primaryAgentUserId })
+              .select({ userId: deals.agentUserId })
               .from(deals)
               .where(eq(deals.id, enrollment.dealId))
               .limit(1)

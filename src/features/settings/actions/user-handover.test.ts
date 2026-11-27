@@ -226,14 +226,14 @@ it("gives handed-over records the receiver's own broker", async () => {
   expect(
     (await setUserStatus({ id: leaving, status: "inactive", handoverToUserId: receiver })).success,
   ).toBe(true);
-  const assigned = mocks.updates.find((u) => u.table === contacts && "assignedUserId" in u.values);
+  const assigned = mocks.updates.find((u) => u.table === contacts && "agentUserId" in u.values);
   expect(assigned?.values).toMatchObject({
-    assignedUserId: receiver,
+    agentUserId: receiver,
     brokerUserId: receiversBroker,
   });
-  const dealMove = mocks.updates.find((u) => u.table === deals && "primaryAgentUserId" in u.values);
+  const dealMove = mocks.updates.find((u) => u.table === deals && "agentUserId" in u.values);
   expect(dealMove?.values).toMatchObject({
-    primaryAgentUserId: receiver,
+    agentUserId: receiver,
     brokerUserId: receiversBroker,
   });
 });

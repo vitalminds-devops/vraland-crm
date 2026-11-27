@@ -442,9 +442,7 @@ it("rebuilds a lead's old bill when it re-enters Opportunity with another pick",
 
 it("refuses a move the agent can't make before saving anything", async () => {
   // Another agent's lead.
-  inventory.moveDeal = [
-    { stageId: "leads", primaryAgentUserId: "someone-else", brokerUserId: null },
-  ];
+  inventory.moveDeal = [{ stageId: "leads", agentUserId: "someone-else", brokerUserId: null }];
   inventory.moveStages = [
     {
       id: "leads",

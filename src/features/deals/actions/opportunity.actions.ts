@@ -208,7 +208,7 @@ async function moveRefusal(
   const [deal] = await db
     .select({
       stageId: deals.stageId,
-      primaryAgentUserId: deals.primaryAgentUserId,
+      agentUserId: deals.agentUserId,
       brokerUserId: deals.brokerUserId,
     })
     .from(deals)
@@ -1003,7 +1003,7 @@ export async function addOpportunityForContact(dealId: string): Promise<DealActi
       firstName: contacts.firstName,
       middleName: contacts.middleName,
       lastName: contacts.lastName,
-      agentId: deals.primaryAgentUserId,
+      agentUserId: deals.agentUserId,
       dealType: deals.dealType,
       stageSlug: pipelineStages.slug,
     })
@@ -1028,7 +1028,7 @@ export async function addOpportunityForContact(dealId: string): Promise<DealActi
           middleName: source.middleName,
           lastName: source.lastName ?? "",
         }),
-        primaryAgentUserId: source.agentId,
+        agentUserId: source.agentUserId,
         dealType: source.dealType === "rent" ? "rent" : "sale",
         another: true,
       }),

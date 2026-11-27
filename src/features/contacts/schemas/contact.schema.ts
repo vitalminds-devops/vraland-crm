@@ -104,7 +104,7 @@ function contactSchemaFor(requireDetails: boolean) {
         .transform((v) => v || null),
       financingPreferenceOther: optionalText(180),
       bankName: optionalText(180),
-      assignedAgentId: requiredUuid("Select an agent to assign this contact."),
+      agentUserId: requiredUuid("Select an agent to assign this contact."),
       budgetMin: optionalMoney,
       budgetMax: optionalMoney,
       // Chosen when the lead becomes an opportunity.

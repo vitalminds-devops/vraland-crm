@@ -105,7 +105,7 @@ export async function applyStageChange(
           propertyId: deals.propertyId,
           unitIds: deals.unitIds,
           parkingSlotIds: deals.parkingSlotIds,
-          primaryAgentUserId: deals.primaryAgentUserId,
+          agentUserId: deals.agentUserId,
           brokerUserId: deals.brokerUserId,
           reservationPaid: dealReservationPaid,
           firstMonthPaid: dealFirstMonthPaid,
@@ -169,7 +169,7 @@ export async function applyStageChange(
         userId: context.userId,
         role,
         deal: {
-          primaryAgentUserId: before.primaryAgentUserId,
+          agentUserId: before.agentUserId,
           brokerUserId: before.brokerUserId,
         },
         fromStage,
@@ -462,7 +462,7 @@ export async function applyStageChange(
             organizationId: context.organizationId,
             dealId,
             amount: before.amount,
-            sellerUserId: before.primaryAgentUserId,
+            sellerUserId: before.agentUserId,
             brokerUserId: before.brokerUserId,
           });
         else

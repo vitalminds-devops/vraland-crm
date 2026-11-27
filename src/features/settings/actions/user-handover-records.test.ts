@@ -123,7 +123,7 @@ it("audits moved contacts, broker-only deals, tasks and viewings", async () => {
       action: "update",
       actorUserId: "actor",
       entityId: "contact",
-      newValues: expect.objectContaining({ assignedUserId: receiver }),
+      newValues: expect.objectContaining({ agentUserId: receiver }),
     }),
     expect.objectContaining({ entityId: "contact", newValues: { brokerUserId: receiver } }),
   ]);
@@ -140,9 +140,7 @@ it("audits moved contacts, broker-only deals, tasks and viewings", async () => {
   expect(audited("property_viewing")).toEqual([
     expect.objectContaining({ entityId: "viewing", newValues: { agentUserId: receiver } }),
   ]);
-  const brokerOnly = mocks.updates.find(
-    (u) => u.table === deals && !("primaryAgentUserId" in u.values),
-  );
+  const brokerOnly = mocks.updates.find((u) => u.table === deals && !("agentUserId" in u.values));
   expect(brokerOnly?.values).toMatchObject({ brokerUserId: receiver, updatedBy: "actor" });
 });
 

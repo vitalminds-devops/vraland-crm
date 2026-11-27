@@ -150,7 +150,7 @@ export async function getPipelineBoard() {
         brokerLastName: brokerUser.lastName,
         agentRoleNames: roleNamesOf(users.id),
         brokerRoleNames: roleNamesOf(brokerUser.id),
-        agentIsBroker: sql<boolean>`coalesce(${deals.brokerUserId} = ${deals.primaryAgentUserId}, false)`,
+        agentIsBroker: sql<boolean>`coalesce(${deals.brokerUserId} = ${deals.agentUserId}, false)`,
         creatorFirstName: leadCreator.firstName,
         creatorLastName: leadCreator.lastName,
         creatorRoleNames: roleNamesOf(leadCreator.id),
@@ -181,7 +181,7 @@ export async function getPipelineBoard() {
       .leftJoin(developments, eq(deals.developmentId, developments.id))
       .leftJoin(units, eq(units.id, sql`${deals.unitIds}[1]`))
       .leftJoin(floors, eq(units.floorId, floors.id))
-      .leftJoin(users, eq(deals.primaryAgentUserId, users.id))
+      .leftJoin(users, eq(deals.agentUserId, users.id))
       .leftJoin(
         dealContacts,
         and(eq(dealContacts.dealId, deals.id), eq(dealContacts.isPrimary, true)),
@@ -306,7 +306,7 @@ export async function listDeals(input: {
       .leftJoin(developments, eq(deals.developmentId, developments.id))
       .leftJoin(units, eq(units.id, sql`${deals.unitIds}[1]`))
       .leftJoin(floors, eq(units.floorId, floors.id))
-      .leftJoin(users, eq(deals.primaryAgentUserId, users.id))
+      .leftJoin(users, eq(deals.agentUserId, users.id))
       .where(where)
       .orderBy(desc(deals.updatedAt))
       .limit(limit)
@@ -440,7 +440,7 @@ export async function getDeal(id: string) {
     .innerJoin(pipelineStages, eq(deals.stageId, pipelineStages.id))
     .leftJoin(properties, eq(deals.propertyId, properties.id))
     .leftJoin(developments, eq(deals.developmentId, developments.id))
-    .leftJoin(users, eq(deals.primaryAgentUserId, users.id))
+    .leftJoin(users, eq(deals.agentUserId, users.id))
     .leftJoin(brokerUser, eq(deals.brokerUserId, brokerUser.id))
     .leftJoin(lostReasons, eq(deals.lostReasonId, lostReasons.id))
     .where(eq(deals.id, id))
@@ -592,7 +592,7 @@ export async function getLostAnalysis() {
         value: sql<string>`coalesce(sum(${deals.amount}),0)`,
       })
       .from(deals)
-      .leftJoin(users, eq(deals.primaryAgentUserId, users.id))
+      .leftJoin(users, eq(deals.agentUserId, users.id))
       .where(where)
       .groupBy(users.id)
       .orderBy(desc(count())),

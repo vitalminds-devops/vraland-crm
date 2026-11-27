@@ -44,7 +44,7 @@ async function openWork(tx: Tx, organizationId: string, userId: string) {
         eq(contacts.organizationId, organizationId),
         isNull(contacts.deletedAt),
         activeLead,
-        or(eq(contacts.assignedUserId, userId), eq(contacts.brokerUserId, userId)),
+        or(eq(contacts.agentUserId, userId), eq(contacts.brokerUserId, userId)),
       ),
     );
   const [working] = await tx
@@ -56,7 +56,7 @@ async function openWork(tx: Tx, organizationId: string, userId: string) {
         isNull(deals.deletedAt),
         eq(deals.status, "open"),
         or(
-          eq(deals.primaryAgentUserId, userId),
+          eq(deals.agentUserId, userId),
           eq(deals.brokerUserId, userId),
           // Co-agents too; exists keeps it one count per deal.
           sql`exists (select 1 from "deal_agents" a where a."deal_id" = ${deals.id} and a."user_id" = ${userId})`,
@@ -170,10 +170,10 @@ async function brokersOthersWork(tx: Tx, organizationId: string, userId: string)
         eq(users.id, userId),
         sql`(exists (select 1 from ${contacts} where ${contacts.organizationId} = ${organizationId}
           and ${contacts.deletedAt} is null and ${activeLead} and ${contacts.brokerUserId} = ${userId}
-          and ${contacts.assignedUserId} is distinct from ${userId})
+          and ${contacts.agentUserId} is distinct from ${userId})
         or exists (select 1 from ${deals} where ${deals.organizationId} = ${organizationId}
           and ${deals.deletedAt} is null and ${deals.status} = 'open' and ${deals.brokerUserId} = ${userId}
-          and ${deals.primaryAgentUserId} is distinct from ${userId}))`,
+          and ${deals.agentUserId} is distinct from ${userId}))`,
       ),
     )
     .limit(1);
@@ -234,13 +234,13 @@ export async function handOverWork(
   const brokerForReceiver = receiverBrokerId ?? toUserId;
   const assigned = await tx
     .update(contacts)
-    .set({ assignedUserId: toUserId, brokerUserId: brokerForReceiver, updatedAt: now })
+    .set({ agentUserId: toUserId, brokerUserId: brokerForReceiver, updatedAt: now })
     .where(
       and(
         eq(contacts.organizationId, organizationId),
         isNull(contacts.deletedAt),
         activeLead,
-        eq(contacts.assignedUserId, fromUserId),
+        eq(contacts.agentUserId, fromUserId),
       ),
     )
     .returning({ id: contacts.id });
@@ -277,8 +277,8 @@ export async function handOverWork(
   await audit("contact", [
     ...assigned.map((contact) => ({
       entityId: contact.id,
-      oldValues: { assignedUserId: fromUserId },
-      newValues: { assignedUserId: toUserId, brokerUserId: brokerForReceiver },
+      oldValues: { agentUserId: fromUserId },
+      newValues: { agentUserId: toUserId, brokerUserId: brokerForReceiver },
     })),
     ...brokered.map((contact) => ({
       entityId: contact.id,
@@ -294,13 +294,13 @@ export async function handOverWork(
   const worked = await tx
     .select({ id: deals.id, brokerUserId: deals.brokerUserId })
     .from(deals)
-    .where(and(openDeal, eq(deals.primaryAgentUserId, fromUserId)));
+    .where(and(openDeal, eq(deals.agentUserId, fromUserId)));
   if (worked.length) {
     const ids = worked.map((deal) => deal.id);
     await tx
       .update(deals)
       .set({
-        primaryAgentUserId: toUserId,
+        agentUserId: toUserId,
         brokerUserId: brokerForReceiver,
         updatedBy: actorUserId,
         updatedAt: now,
@@ -318,8 +318,8 @@ export async function handOverWork(
       "deal",
       worked.map((deal) => ({
         entityId: deal.id,
-        oldValues: { primaryAgentUserId: fromUserId, brokerUserId: deal.brokerUserId },
-        newValues: { primaryAgentUserId: toUserId, brokerUserId: brokerForReceiver },
+        oldValues: { agentUserId: fromUserId, brokerUserId: deal.brokerUserId },
+        newValues: { agentUserId: toUserId, brokerUserId: brokerForReceiver },
       })),
     );
   }

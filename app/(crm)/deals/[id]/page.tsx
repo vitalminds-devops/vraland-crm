@@ -48,7 +48,7 @@ export default async function DealPage({
             {data.canReassignAgent && (
               <ReassignAgentButton
                 dealId={id}
-                currentAgentId={d.primaryAgentUserId}
+                currentAgentId={d.agentUserId}
                 agents={options.agents}
               />
             )}

@@ -8,7 +8,7 @@ type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 /**
  * Hands a contact's open opportunities to its new agent and/or broker, so access and commissions
  * follow the contact. Won, lost and cancelled ones keep whoever earned them.
- * Leave `primaryAgentUserId` out to change only the broker.
+ * Leave `agentUserId` out to change only the broker.
  */
 export async function moveOpenDeals(
   tx: Tx,
@@ -16,7 +16,7 @@ export async function moveOpenDeals(
     organizationId: string;
     actorUserId: string;
     contactId: string;
-    primaryAgentUserId?: string | null;
+    agentUserId?: string | null;
     brokerUserId: string | null;
   },
 ) {
@@ -24,7 +24,7 @@ export async function moveOpenDeals(
   const open = await tx
     .select({
       id: deals.id,
-      primaryAgentUserId: deals.primaryAgentUserId,
+      agentUserId: deals.agentUserId,
       brokerUserId: deals.brokerUserId,
     })
     .from(deals)
@@ -50,16 +50,14 @@ export async function moveOpenDeals(
     .update(deals)
     .set({ ...owner, updatedBy: actorUserId, updatedAt: new Date() })
     .where(and(inArray(deals.id, ids), eq(deals.organizationId, organizationId)));
-  if (owner.primaryAgentUserId !== undefined) {
+  if (owner.agentUserId !== undefined) {
     await tx
       .delete(dealAgents)
       .where(and(inArray(dealAgents.dealId, ids), eq(dealAgents.role, "primary")));
-    if (owner.primaryAgentUserId)
+    if (owner.agentUserId)
       await tx
         .insert(dealAgents)
-        .values(
-          ids.map((dealId) => ({ dealId, userId: owner.primaryAgentUserId!, role: "primary" })),
-        )
+        .values(ids.map((dealId) => ({ dealId, userId: owner.agentUserId!, role: "primary" })))
         .onConflictDoNothing();
   }
   await tx.insert(auditLogs).values(
@@ -70,9 +68,9 @@ export async function moveOpenDeals(
       entityType: "deal",
       entityId: deal.id,
       oldValues:
-        owner.primaryAgentUserId === undefined
+        owner.agentUserId === undefined
           ? { brokerUserId: deal.brokerUserId }
-          : { primaryAgentUserId: deal.primaryAgentUserId, brokerUserId: deal.brokerUserId },
+          : { agentUserId: deal.agentUserId, brokerUserId: deal.brokerUserId },
       newValues: owner,
     })),
   );

@@ -151,9 +151,9 @@ async function validateAssignee(context: AuthorizationContext, userId: string | 
  */
 async function checkContactReferences(
   context: AuthorizationContext,
-  value: Pick<ContactInput, "assignedAgentId" | "preferredDevelopmentId" | "preferredUnitIds">,
+  value: Pick<ContactInput, "agentUserId" | "preferredDevelopmentId" | "preferredUnitIds">,
 ): Promise<string | null> {
-  if (!(await validateAssignee(context, value.assignedAgentId || null)))
+  if (!(await validateAssignee(context, value.agentUserId || null)))
     return "Select an active agent or broker.";
   const developmentId = value.preferredDevelopmentId || null;
   const unitIds = value.preferredUnitIds ?? [];
@@ -311,7 +311,7 @@ async function insertContact(
       const opened = await openDealForApprovedContact(tx, context, {
         contactId: created.data.id,
         contactName: `${value.firstName} ${value.lastName}`.trim(),
-        primaryAgentUserId: value.assignedAgentId || null,
+        agentUserId: value.agentUserId || null,
       });
       if (!opened.success) throw new Error(opened.error.message);
       return created.data.id;
@@ -364,14 +364,14 @@ async function insertContactRow(
 ): Promise<ActionResult<InsertedContact>> {
   try {
     let brokerUserId: string | null = null;
-    if (value.assignedAgentId) {
-      await lockActiveAssignees(tx, context.organizationId, [value.assignedAgentId]);
+    if (value.agentUserId) {
+      await lockActiveAssignees(tx, context.organizationId, [value.agentUserId]);
       const [agent] = await tx
         .select({ brokerId: users.brokerId })
         .from(users)
-        .where(eq(users.id, value.assignedAgentId))
+        .where(eq(users.id, value.agentUserId))
         .limit(1);
-      brokerUserId = agent?.brokerId ?? value.assignedAgentId;
+      brokerUserId = agent?.brokerId ?? value.agentUserId;
       // The agent's lock keeps their broker from changing; now hold the broker too.
       await lockActiveAssignees(tx, context.organizationId, [brokerUserId]);
     }
@@ -412,7 +412,7 @@ async function insertContactRow(
         preferredContactMethods: value.preferredContactMethods,
         lifecycleStage: value.lifecycleStage,
         // A CSV leaves an omitted agent or development as "", which a uuid column rejects.
-        assignedUserId: value.assignedAgentId || null,
+        agentUserId: value.agentUserId || null,
         brokerUserId,
         purchaseType: value.purchaseType,
         financingPreference: value.financingPreference,
@@ -435,10 +435,10 @@ async function insertContactRow(
       trigger: "lead_created",
       contactId: record.id,
     });
-    if (value.assignedAgentId)
+    if (value.agentUserId)
       await tx.insert(contactAssignmentHistory).values({
         contactId: record.id,
-        toUserId: value.assignedAgentId,
+        toUserId: value.agentUserId,
         changedBy: context.userId,
         reason: "Initial assignment",
       });
@@ -551,7 +551,7 @@ function contactAuditRow(stored: Record<string, unknown>): Record<string, unknow
     annualIncome: auditMoney(stored.annualIncome),
     preferredContactMethods: sortMethods(stored.preferredContactMethods),
     lifecycleStage: stored.lifecycleStage ?? null,
-    assignedUserId: stored.assignedUserId ?? null,
+    agentUserId: stored.agentUserId ?? null,
     brokerUserId: stored.brokerUserId ?? null,
     purchaseType: stored.purchaseType ?? null,
     financingPreference: stored.financingPreference ?? null,
@@ -611,7 +611,7 @@ function contactAuditInput(
     annualIncome: auditMoney(value.annualIncome),
     preferredContactMethods: sortMethods(value.preferredContactMethods),
     lifecycleStage: value.lifecycleStage ?? null,
-    assignedUserId: value.assignedAgentId,
+    agentUserId: value.agentUserId,
     brokerUserId,
     purchaseType: value.purchaseType ?? null,
     financingPreference: value.financingPreference ?? null,
@@ -644,7 +644,7 @@ export async function updateContact(id: string, input: ContactInput): Promise<Co
   const value = parsed.data;
   const [existing] = await db
     .select({
-      assignedUserId: contacts.assignedUserId,
+      agentUserId: contacts.agentUserId,
     })
     .from(contacts)
     .where(and(eq(contacts.id, id), eq(contacts.organizationId, context.organizationId)))
@@ -662,18 +662,18 @@ export async function updateContact(id: string, input: ContactInput): Promise<Co
       { duplicate: await visibleDuplicate(context, duplicate) } satisfies ContactErrorDetails,
     );
   if (
-    value.assignedAgentId !== existing.assignedUserId &&
+    value.agentUserId !== existing.agentUserId &&
     !context.permissions.has("contacts.reassign_broker")
   )
     return failure(permissionDenied("You don't have permission to reassign this contact."));
   if (
-    existing.assignedUserId !== value.assignedAgentId &&
-    !(await validateAssignee(context, value.assignedAgentId))
+    existing.agentUserId !== value.agentUserId &&
+    !(await validateAssignee(context, value.agentUserId))
   )
     return validationFailure("Select an active agent or broker.");
   const referenceError = await checkContactReferences(context, {
     // An unchanged agent is kept even if they no longer qualify as a new pick.
-    assignedAgentId: existing.assignedUserId === value.assignedAgentId ? "" : value.assignedAgentId,
+    agentUserId: existing.agentUserId === value.agentUserId ? "" : value.agentUserId,
     preferredDevelopmentId: value.preferredDevelopmentId,
     preferredUnitIds: value.preferredUnitIds,
   });
@@ -688,14 +688,14 @@ export async function updateContact(id: string, input: ContactInput): Promise<Co
       if (!before) throw new Error("Contact not found");
 
       let brokerUserId = before.brokerUserId;
-      if (value.assignedAgentId && value.assignedAgentId !== before.assignedUserId) {
-        await lockActiveAssignees(tx, context.organizationId, [value.assignedAgentId]);
+      if (value.agentUserId && value.agentUserId !== before.agentUserId) {
+        await lockActiveAssignees(tx, context.organizationId, [value.agentUserId]);
         const [agent] = await tx
           .select({ brokerId: users.brokerId })
           .from(users)
-          .where(eq(users.id, value.assignedAgentId))
+          .where(eq(users.id, value.agentUserId))
           .limit(1);
-        brokerUserId = agent?.brokerId ?? value.assignedAgentId;
+        brokerUserId = agent?.brokerId ?? value.agentUserId;
         if (brokerUserId !== before.brokerUserId)
           await lockActiveAssignees(tx, context.organizationId, [brokerUserId]);
       }
@@ -732,7 +732,7 @@ export async function updateContact(id: string, input: ContactInput): Promise<Co
           annualIncome: value.annualIncome === null ? null : String(value.annualIncome),
           preferredContactMethods: value.preferredContactMethods,
           lifecycleStage: value.lifecycleStage,
-          assignedUserId: value.assignedAgentId,
+          agentUserId: value.agentUserId,
           brokerUserId,
           purchaseType: value.purchaseType,
           financingPreference: value.financingPreference,
@@ -752,11 +752,11 @@ export async function updateContact(id: string, input: ContactInput): Promise<Co
           updatedAt: new Date(),
         })
         .where(and(eq(contacts.id, id), eq(contacts.organizationId, context.organizationId)));
-      if (before.assignedUserId !== value.assignedAgentId) {
+      if (before.agentUserId !== value.agentUserId) {
         await tx.insert(contactAssignmentHistory).values({
           contactId: id,
-          fromUserId: before.assignedUserId,
-          toUserId: value.assignedAgentId,
+          fromUserId: before.agentUserId,
+          toUserId: value.agentUserId,
           changedBy: context.userId,
           reason: "Contact updated",
         });
@@ -764,7 +764,7 @@ export async function updateContact(id: string, input: ContactInput): Promise<Co
           organizationId: context.organizationId,
           actorUserId: context.userId,
           contactId: id,
-          primaryAgentUserId: value.assignedAgentId || null,
+          agentUserId: value.agentUserId || null,
           brokerUserId,
         });
       }
@@ -947,7 +947,7 @@ export async function restoreContact(
           mobilePhone1: contacts.mobilePhone1,
           mobilePhone2: contacts.mobilePhone2,
           mobilePhone3: contacts.mobilePhone3,
-          assignedUserId: contacts.assignedUserId,
+          agentUserId: contacts.agentUserId,
           brokerUserId: contacts.brokerUserId,
         })
         .from(contacts)
@@ -964,7 +964,7 @@ export async function restoreContact(
         organizationId: context.organizationId,
         actorUserId: context.userId,
         contactId: id,
-        assignedUserId: before.assignedUserId,
+        agentUserId: before.agentUserId,
         brokerUserId: before.brokerUserId,
         newAgentId,
       });
@@ -995,7 +995,7 @@ export async function restoreContact(
         ...buildChangeSet(
           {
             deletedAt: before.deletedAt.toISOString(),
-            assignedUserId: before.assignedUserId,
+            agentUserId: before.agentUserId,
             brokerUserId: before.brokerUserId,
           },
           { deletedAt: null, ...owner },
@@ -1218,7 +1218,7 @@ async function runImport(
             const opened = await openDealForApprovedContact(sp, context, {
               contactId: inserted.data.id,
               contactName: `${value.firstName} ${value.lastName}`.trim(),
-              primaryAgentUserId: value.assignedAgentId || null,
+              agentUserId: value.agentUserId || null,
             });
             // Returned, not thrown, so only this row's savepoint rolls back.
             if (!opened.success) return databaseFailure(opened.error.message);

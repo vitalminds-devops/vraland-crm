@@ -56,7 +56,7 @@ export function isContactSortKey(value: string | undefined): value is ContactSor
  */
 function brokerOwnsContact() {
   return and(
-    sql`${contacts.brokerUserId} is not distinct from ${contacts.assignedUserId}`,
+    sql`${contacts.brokerUserId} is not distinct from ${contacts.agentUserId}`,
     exists(
       db
         .select({ one: sql`1` })
@@ -64,7 +64,7 @@ function brokerOwnsContact() {
         .innerJoin(roles, eq(userRoles.roleId, roles.id))
         .where(
           and(
-            eq(userRoles.userId, contacts.assignedUserId),
+            eq(userRoles.userId, contacts.agentUserId),
             inArray(sql`lower(${roles.slug})`, [...brokerRoleSlugs]),
           ),
         ),
@@ -75,7 +75,7 @@ function brokerOwnsContact() {
 /** False for an agent with no broker, so they don't show as their own broker. */
 function brokerShown() {
   return or(
-    sql`${contacts.brokerUserId} is distinct from ${contacts.assignedUserId}`,
+    sql`${contacts.brokerUserId} is distinct from ${contacts.agentUserId}`,
     brokerOwnsContact(),
   )!;
 }
@@ -166,7 +166,7 @@ export async function listContacts(input: {
         createdAt: contacts.createdAt,
       })
       .from(contacts)
-      .leftJoin(users, and(eq(contacts.assignedUserId, users.id), not(brokerOwnsContact())))
+      .leftJoin(users, and(eq(contacts.agentUserId, users.id), not(brokerOwnsContact())))
       .leftJoin(brokerUser, and(eq(contacts.brokerUserId, brokerUser.id), brokerShown()))
       .where(where)
       .orderBy(...orderBy)
@@ -235,7 +235,7 @@ export async function listArchivedContacts(input: {
         assignedLastName: users.lastName,
       })
       .from(contacts)
-      .leftJoin(users, eq(contacts.assignedUserId, users.id))
+      .leftJoin(users, eq(contacts.agentUserId, users.id))
       .where(where)
       .orderBy(desc(contacts.deletedAt), desc(contacts.id))
       .limit(limit)
@@ -374,7 +374,7 @@ export async function getContact(id: string) {
       preferredDevelopmentName: developments.name,
     })
     .from(contacts)
-    .leftJoin(users, eq(contacts.assignedUserId, users.id))
+    .leftJoin(users, eq(contacts.agentUserId, users.id))
     .leftJoin(developments, eq(contacts.preferredDevelopmentId, developments.id))
     .where(
       and(
@@ -452,7 +452,7 @@ export async function exportContacts() {
         financingPreference: contacts.financingPreference,
         financingPreferenceOther: contacts.financingPreferenceOther,
         bankName: contacts.bankName,
-        assignedAgentId: contacts.assignedUserId,
+        agentUserId: contacts.agentUserId,
         brokerUserId: contacts.brokerUserId,
         brokerFirstName: brokerUser.firstName,
         brokerLastName: brokerUser.lastName,

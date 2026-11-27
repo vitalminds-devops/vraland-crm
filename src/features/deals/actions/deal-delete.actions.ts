@@ -56,7 +56,7 @@ export async function deleteDeal(input: unknown): Promise<ActionResult<{ id: str
           title: deals.title,
           dealCode: deals.dealCode,
           status: deals.status,
-          primaryAgentUserId: deals.primaryAgentUserId,
+          agentUserId: deals.agentUserId,
           brokerUserId: deals.brokerUserId,
           deletedAt: deals.deletedAt,
         })
@@ -66,7 +66,7 @@ export async function deleteDeal(input: unknown): Promise<ActionResult<{ id: str
         .for("update");
       if (!deal || deal.deletedAt) return { kind: "missing" as const };
       if (
-        (role === "agent" && deal.primaryAgentUserId !== context.userId) ||
+        (role === "agent" && deal.agentUserId !== context.userId) ||
         (role === "broker" && deal.brokerUserId !== context.userId)
       )
         return { kind: "scope" as const, message: "You can only delete your own opportunities." };

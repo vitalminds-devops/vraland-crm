@@ -50,7 +50,7 @@ export function scopedAgentCondition(context: AuthorizationContext): SQL {
 export function contactScopeCondition(context: AuthorizationContext): SQL {
   return dataScopeCondition(context, {
     organizationId: contacts.organizationId,
-    ownerUserId: contacts.assignedUserId,
+    ownerUserId: contacts.agentUserId,
     brokerUserId: contacts.brokerUserId,
   });
 }
@@ -59,7 +59,7 @@ export function contactScopeCondition(context: AuthorizationContext): SQL {
 export function dealScopeCondition(context: AuthorizationContext): SQL {
   return dataScopeCondition(context, {
     organizationId: deals.organizationId,
-    ownerUserId: deals.primaryAgentUserId,
+    ownerUserId: deals.agentUserId,
     brokerUserId: deals.brokerUserId,
   });
 }

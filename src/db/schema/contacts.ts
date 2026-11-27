@@ -61,7 +61,7 @@ export const contacts = pgTable(
       .default(sql`'{}'::text[]`)
       .notNull(),
     lifecycleStage: varchar("lifecycle_stage", { length: 30 }),
-    assignedUserId: uuid("assigned_user_id").references(() => users.id, {
+    agentUserId: uuid("assigned_user_id").references(() => users.id, {
       onDelete: "set null",
     }),
     brokerUserId: uuid("broker_user_id").references(() => users.id, {

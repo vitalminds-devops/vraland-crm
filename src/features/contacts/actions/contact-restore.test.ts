@@ -76,7 +76,7 @@ const archived = {
   lastName: "Cruz",
   deletedAt: new Date("2026-11-01T00:00:00Z"),
   expiredAt: null,
-  assignedUserId: oldAgent,
+  agentUserId: oldAgent,
   brokerUserId: oldBroker,
 };
 const contactUpdate = () => mocks.updates.find((u) => u.table === contacts)?.values;
@@ -95,7 +95,7 @@ it("restores with an active agent and leaves the owner alone", async () => {
   expect((await restoreContact("contact")).success).toBe(true);
   expect(contactUpdate()).toMatchObject({
     deletedAt: null,
-    assignedUserId: oldAgent,
+    agentUserId: oldAgent,
     brokerUserId: oldBroker,
   });
   expect(audit()).toMatchObject({ oldValues: { deletedAt: expect.any(String) } });
@@ -117,13 +117,13 @@ it("moves agent, broker and open deals to an eligible new agent", async () => {
   mocks.inactive = new Set([oldAgent, oldBroker]);
   mocks.reads = [[{ id: newAgent }], [archived], [{ brokerId: newBroker }]];
   expect((await restoreContact("contact", newAgent)).success).toBe(true);
-  expect(contactUpdate()).toMatchObject({ assignedUserId: newAgent, brokerUserId: newBroker });
+  expect(contactUpdate()).toMatchObject({ agentUserId: newAgent, brokerUserId: newBroker });
   expect(mocks.moves).toEqual([
-    expect.objectContaining({ primaryAgentUserId: newAgent, brokerUserId: newBroker }),
+    expect.objectContaining({ agentUserId: newAgent, brokerUserId: newBroker }),
   ]);
   expect(audit()).toMatchObject({
-    oldValues: { assignedUserId: oldAgent, brokerUserId: oldBroker },
-    newValues: { deletedAt: null, assignedUserId: newAgent, brokerUserId: newBroker },
+    oldValues: { agentUserId: oldAgent, brokerUserId: oldBroker },
+    newValues: { deletedAt: null, agentUserId: newAgent, brokerUserId: newBroker },
   });
 });
 
@@ -131,9 +131,9 @@ it("re-derives only the broker when the agent is active but the broker left", as
   mocks.inactive = new Set([oldBroker]);
   mocks.reads = [[archived], [{ brokerId: newBroker }]];
   expect((await restoreContact("contact")).success).toBe(true);
-  expect(contactUpdate()).toMatchObject({ assignedUserId: oldAgent, brokerUserId: newBroker });
+  expect(contactUpdate()).toMatchObject({ agentUserId: oldAgent, brokerUserId: newBroker });
   expect(mocks.moves).toEqual([expect.objectContaining({ brokerUserId: newBroker })]);
-  expect(mocks.moves[0]).not.toHaveProperty("primaryAgentUserId");
+  expect(mocks.moves[0]).not.toHaveProperty("agentUserId");
 });
 
 it("refuses a new agent who is not active", async () => {

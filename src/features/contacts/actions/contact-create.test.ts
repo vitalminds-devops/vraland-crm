@@ -104,7 +104,7 @@ const creationId = "22222222-2222-4222-8222-222222222222";
 const input = contactSchema.parse({
   firstName: "Ana",
   lastName: "Cruz",
-  assignedAgentId: "11111111-1111-4111-8111-111111111111",
+  agentUserId: "11111111-1111-4111-8111-111111111111",
   currentProvince: "Cebu",
   currentCity: "Cebu City",
   currentBarangay: "Lahug",

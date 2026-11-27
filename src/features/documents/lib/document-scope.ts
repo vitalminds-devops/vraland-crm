@@ -60,7 +60,7 @@ export function sensitiveDocumentCondition(context: AuthorizationContext) {
         sql`(select ${dealAgents.dealId} from ${dealAgents}
           where ${dealAgents.userId} = ${context.userId})`,
       ),
-      eq(deals.primaryAgentUserId, context.userId),
+      eq(deals.agentUserId, context.userId),
       eq(deals.brokerUserId, context.userId),
       eq(deals.createdBy, context.userId),
     ),

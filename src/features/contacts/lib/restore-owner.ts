@@ -30,18 +30,18 @@ export async function restoredOwner(
     organizationId: string;
     actorUserId: string;
     contactId: string;
-    assignedUserId: string | null;
+    agentUserId: string | null;
     brokerUserId: string | null;
     newAgentId?: string | null;
   },
 ) {
-  const { organizationId, actorUserId, contactId, assignedUserId, brokerUserId } = input;
-  const agentId = input.newAgentId || assignedUserId;
+  const { organizationId, actorUserId, contactId, agentUserId, brokerUserId } = input;
+  const agentId = input.newAgentId || agentUserId;
   if (!agentId) return null;
   if (input.newAgentId) await lockActiveAssignees(tx, organizationId, [agentId]);
   else if (!(await isActive(tx, organizationId, agentId))) return null;
 
-  const agentChanged = agentId !== assignedUserId;
+  const agentChanged = agentId !== agentUserId;
   let broker = brokerUserId;
   if (agentChanged || (broker && !(await isActive(tx, organizationId, broker)))) {
     const [agent] = await tx
@@ -56,7 +56,7 @@ export async function restoredOwner(
   if (agentChanged)
     await tx.insert(contactAssignmentHistory).values({
       contactId,
-      fromUserId: assignedUserId,
+      fromUserId: agentUserId,
       toUserId: agentId,
       changedBy: actorUserId,
       reason: "Contact restored",
@@ -75,8 +75,8 @@ export async function restoredOwner(
       organizationId,
       actorUserId,
       contactId,
-      ...(agentChanged ? { primaryAgentUserId: agentId } : {}),
+      ...(agentChanged ? { agentUserId: agentId } : {}),
       brokerUserId: broker,
     });
-  return { assignedUserId: agentId, brokerUserId: broker };
+  return { agentUserId: agentId, brokerUserId: broker };
 }

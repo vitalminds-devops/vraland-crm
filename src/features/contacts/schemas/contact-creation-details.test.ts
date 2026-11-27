@@ -5,7 +5,7 @@ import { opportunityAddressSchema, opportunityInterestSchema } from "./opportuni
 const lead = {
   firstName: "Test",
   lastName: "Lead",
-  assignedAgentId: "12345678-1234-4234-8234-123456789abc",
+  agentUserId: "12345678-1234-4234-8234-123456789abc",
 };
 it("creates a lead without address or property interest", () => {
   expect(contactCreateSchema.safeParse(lead).success).toBe(true);

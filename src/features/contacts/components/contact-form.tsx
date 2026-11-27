@@ -179,7 +179,7 @@ export function ContactForm({
       lifecycleStage: "active_client",
       purchaseType: "house_and_lot",
       marketingConsent: false,
-      assignedAgentId: initial?.assignedAgentId ?? "",
+      agentUserId: initial?.agentUserId ?? "",
       ...initial,
       preferredContactMethods: seedChannels(initial),
       // Country is pinned to Philippines
@@ -222,7 +222,7 @@ export function ContactForm({
   });
   const canEditDeal = initialDeal ? canUpdateDeal : canCreateDeal;
   const showDealFields = canEditDeal && hasUsableStage;
-  const assignedAgentId = useWatch({ control, name: "assignedAgentId" });
+  const agentUserId = useWatch({ control, name: "agentUserId" });
   const birthDate = useWatch({ control, name: "birthDate" });
   const [today] = useState(manilaToday);
   const age = ageOn(birthDate, today);
@@ -266,7 +266,7 @@ export function ContactForm({
         : options.assignees;
 
   // Find the broker for the selected agent
-  const selectedAgent = options.assignees.find((a) => a.id === assignedAgentId);
+  const selectedAgent = options.assignees.find((a) => a.id === agentUserId);
   const brokerName =
     selectedAgent && selectedAgent.brokerFirstName
       ? `${selectedAgent.brokerFirstName} ${selectedAgent.brokerLastName}`.trim()
@@ -383,11 +383,7 @@ export function ContactForm({
         savedContactId.current = result.data.id;
         if (dealValues && wantsDeal) {
           const saveDeal = contactId ? saveDealForContact : createDealForContact;
-          const dealResult = await saveDeal(
-            result.data.id,
-            values.assignedAgentId ?? null,
-            dealValues,
-          );
+          const dealResult = await saveDeal(result.data.id, values.agentUserId ?? null, dealValues);
           if (!dealResult.success) {
             const message = `${dealResult.error.message} The contact was saved, but its opportunity was not ${contactId ? "updated" : "created"}.`;
             setDealError(message);
@@ -808,12 +804,12 @@ export function ContactForm({
                     : "It starts in Leads."}
           </p>
           <FormRow>
-            <FormField label="Agent" required error={errors.assignedAgentId?.message}>
-              <FormSelect {...register("assignedAgentId")}>
+            <FormField label="Agent" required error={errors.agentUserId?.message}>
+              <FormSelect {...register("agentUserId")}>
                 <option value="">Select an agent</option>
-                {initial?.assignedAgentId &&
-                  !filteredAssignees.some((agent) => agent.id === initial.assignedAgentId) && (
-                    <option value={initial.assignedAgentId} disabled>
+                {initial?.agentUserId &&
+                  !filteredAssignees.some((agent) => agent.id === initial.agentUserId) && (
+                    <option value={initial.agentUserId} disabled>
                       Current agent
                     </option>
                   )}

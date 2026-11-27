@@ -38,7 +38,7 @@ const move = (
   canMoveStage({
     userId: "broker-1",
     role,
-    deal: { primaryAgentUserId: "broker-1", brokerUserId: "broker-1" },
+    deal: { agentUserId: "broker-1", brokerUserId: "broker-1" },
     fromStage: from,
     toStage: to,
     payments,
@@ -201,7 +201,7 @@ describe("moving back", () => {
       canMoveStage({
         userId: "broker-1",
         role,
-        deal: { primaryAgentUserId: "broker-1", brokerUserId: "broker-1" },
+        deal: { agentUserId: "broker-1", brokerUserId: "broker-1" },
         fromStage: won,
         toStage: reservation,
         payments: {},

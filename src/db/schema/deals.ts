@@ -97,7 +97,7 @@ export const deals = pgTable(
       scale: 2,
     }),
     probability: numeric({ precision: 5, scale: 2 }).default("0").notNull(),
-    primaryAgentUserId: uuid("primary_agent_user_id").references(() => users.id, {
+    agentUserId: uuid("primary_agent_user_id").references(() => users.id, {
       onDelete: "set null",
     }),
     brokerUserId: uuid("broker_user_id").references(() => users.id, {

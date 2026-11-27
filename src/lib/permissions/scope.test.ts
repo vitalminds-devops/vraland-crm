@@ -16,7 +16,7 @@ const render = (role: DataScope, roles = ["agent"]) => {
   return new PgDialect().sqlToQuery(
     dataScopeCondition(context, {
       organizationId: deals.organizationId,
-      ownerUserId: deals.primaryAgentUserId,
+      ownerUserId: deals.agentUserId,
       brokerUserId: deals.brokerUserId,
     }),
   );
@@ -66,7 +66,7 @@ describe("contact and opportunity scopes", () => {
       query(
         dataScopeCondition(context, {
           organizationId: deals.organizationId,
-          ownerUserId: deals.primaryAgentUserId,
+          ownerUserId: deals.agentUserId,
           brokerUserId: deals.brokerUserId,
         }),
       ),
@@ -75,7 +75,7 @@ describe("contact and opportunity scopes", () => {
       query(
         dataScopeCondition(context, {
           organizationId: contacts.organizationId,
-          ownerUserId: contacts.assignedUserId,
+          ownerUserId: contacts.agentUserId,
           brokerUserId: contacts.brokerUserId,
         }),
       ),

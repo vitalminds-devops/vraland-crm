@@ -62,7 +62,7 @@ export async function reassignDealAgent(input: unknown): Promise<ActionResult<{ 
           title: deals.title,
           status: deals.status,
           amount: deals.amount,
-          primaryAgentUserId: deals.primaryAgentUserId,
+          agentUserId: deals.agentUserId,
           brokerUserId: deals.brokerUserId,
         })
         .from(deals)
@@ -76,7 +76,7 @@ export async function reassignDealAgent(input: unknown): Promise<ActionResult<{ 
         .limit(1)
         .for("update");
       if (!deal) return "missing" as const;
-      if (deal.primaryAgentUserId === agentUserId) return "same" as const;
+      if (deal.agentUserId === agentUserId) return "same" as const;
       await lockActiveAssignees(tx, context.organizationId, [agentUserId]);
 
       // The opportunity follows the new agent's broker (or the agent, with none), as handover does,
@@ -85,7 +85,7 @@ export async function reassignDealAgent(input: unknown): Promise<ActionResult<{ 
       await tx
         .update(deals)
         .set({
-          primaryAgentUserId: agentUserId,
+          agentUserId: agentUserId,
           brokerUserId,
           updatedBy: context.userId,
           updatedAt: new Date(),
@@ -102,9 +102,7 @@ export async function reassignDealAgent(input: unknown): Promise<ActionResult<{ 
       // seller's share moves to the new agent and the broker's to the new broker (dropped when the
       // agent is their own broker). A deal never won has no rows, so nothing changes.
       const oldBroker =
-        deal.brokerUserId && deal.brokerUserId !== deal.primaryAgentUserId
-          ? deal.brokerUserId
-          : null;
+        deal.brokerUserId && deal.brokerUserId !== deal.agentUserId ? deal.brokerUserId : null;
       if (oldBroker) {
         const brokerShares = and(
           eq(dealCommissions.dealId, dealId),
@@ -113,15 +111,12 @@ export async function reassignDealAgent(input: unknown): Promise<ActionResult<{ 
         if (brokerUserId === agentUserId) await tx.delete(dealCommissions).where(brokerShares);
         else await tx.update(dealCommissions).set({ userId: brokerUserId }).where(brokerShares);
       }
-      if (deal.primaryAgentUserId)
+      if (deal.agentUserId)
         await tx
           .update(dealCommissions)
           .set({ userId: agentUserId })
           .where(
-            and(
-              eq(dealCommissions.dealId, dealId),
-              eq(dealCommissions.userId, deal.primaryAgentUserId),
-            ),
+            and(eq(dealCommissions.dealId, dealId), eq(dealCommissions.userId, deal.agentUserId)),
           );
       const name = `${agent.firstName ?? ""} ${agent.lastName ?? ""}`.trim();
       await tx.insert(activities).values({
@@ -138,8 +133,8 @@ export async function reassignDealAgent(input: unknown): Promise<ActionResult<{ 
         action: "update",
         entityType: "deal",
         entityId: dealId,
-        oldValues: { primaryAgentUserId: deal.primaryAgentUserId, brokerUserId: deal.brokerUserId },
-        newValues: { primaryAgentUserId: agentUserId, brokerUserId, reason },
+        oldValues: { agentUserId: deal.agentUserId, brokerUserId: deal.brokerUserId },
+        newValues: { agentUserId: agentUserId, brokerUserId, reason },
       });
       return "moved" as const;
     });

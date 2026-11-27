@@ -68,7 +68,7 @@ test("manual contact intake creates its deal, detects duplicates and reassigns b
   await page.getByRole("main").locator("[name=email]").fill(email);
   await page.getByRole("main").locator("[name=email]").blur();
   await expect(page.getByRole("main").locator("select[name=currentProvince]")).toHaveCount(0);
-  await page.getByRole("main").locator("select[name=assignedAgentId]").selectOption(agent);
+  await page.getByRole("main").locator("select[name=agentUserId]").selectOption(agent);
   await expect(page.getByRole("combobox", { name: /Budget range/ })).toHaveCount(0);
   await page.getByRole("button", { name: "Create contact", exact: true }).click();
   await expect(page).toHaveURL(/\/contacts$/);

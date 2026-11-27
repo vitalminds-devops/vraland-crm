@@ -359,7 +359,7 @@ test("contact edit persists identity, required preferences and one existing deal
   await main.locator("select[name=currentCity]").selectOption({ index: 1 });
   await expect(main.locator("select[name=currentBarangay]")).toBeEnabled();
   await main.locator("select[name=currentBarangay]").selectOption({ index: 1 });
-  await main.locator("select[name=assignedAgentId]").selectOption(agent);
+  await main.locator("select[name=agentUserId]").selectOption(agent);
   await page.getByRole("combobox", { name: /Budget range/ }).selectOption("below-2.3m");
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(page).toHaveURL(/\/contacts$/);

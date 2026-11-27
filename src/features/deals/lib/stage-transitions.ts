@@ -13,7 +13,7 @@ export type StagePosition = {
 export type Role = "agent" | "broker" | "sales-manager" | "admin" | "viewer";
 
 export type DealOwnership = {
-  primaryAgentUserId: string | null;
+  agentUserId: string | null;
   brokerUserId: string | null;
 };
 
@@ -181,7 +181,7 @@ export function canMoveStage(context: MoveContext): MoveCheck {
   }
 
   // Agent/broker own-deal rule applies in both directions.
-  if (role === "agent" && deal.primaryAgentUserId !== userId)
+  if (role === "agent" && deal.agentUserId !== userId)
     return {
       allowed: false,
       message: "Agents can only move their own opportunities.",

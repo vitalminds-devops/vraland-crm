@@ -11,7 +11,7 @@ const fixture = vi.hoisted(() => ({
 // Selects in call order: the contact's deal, the contact, then the locked deal inside the transaction.
 function selects() {
   const rows = () => [
-    [{ id: "deal", stageId: "12345678-1234-4234-8234-123456789abc", primaryAgentUserId: null }],
+    [{ id: "deal", stageId: "12345678-1234-4234-8234-123456789abc", agentUserId: null }],
     [{ firstName: "Maria", lastName: "Santos", preferredDevelopmentId: null }],
     [
       {
@@ -107,5 +107,8 @@ it("keeps the commission from the first win while a won deal is reopened", async
   fixture.status = "open";
   fixture.earned = true;
   expect((await saveDealForContact("contact", null, input)).success).toBe(true);
-  expect(fixture.updates[0]).toMatchObject({ amount: "6000000.00", expectedCommission: "150000.00" });
+  expect(fixture.updates[0]).toMatchObject({
+    amount: "6000000.00",
+    expectedCommission: "150000.00",
+  });
 });

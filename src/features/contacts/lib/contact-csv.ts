@@ -151,7 +151,7 @@ export function parseContactCsvRow(row: Record<string, string>) {
         | "Others"
         | null,
       lifecycleStage,
-      assignedAgentId: data.assigned_agent_id || "",
+      agentUserId: data.assigned_agent_id || "",
       marketingConsent: data.marketing_consent || false,
       notes: data.notes || null,
       // Address fields
@@ -206,7 +206,7 @@ export function serializeContactsCsv(
     preferredContactMethods?: string[];
     employmentType?: string | null;
     lifecycleStage?: string | null;
-    assignedAgentId?: string | null;
+    agentUserId?: string | null;
     brokerUserId?: string | null;
     brokerFirstName?: string | null;
     brokerLastName?: string | null;
@@ -286,7 +286,7 @@ export function serializeContactsCsv(
     (contact.preferredContactMethods || []).join(";"),
     contact.employmentType || "",
     contact.lifecycleStage ? lifecycleLabel(contact.lifecycleStage) : "",
-    contact.assignedAgentId || "",
+    contact.agentUserId || "",
     contact.brokerUserId || "",
     contact.brokerFirstName || "",
     contact.brokerLastName || "",

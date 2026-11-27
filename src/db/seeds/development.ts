@@ -480,7 +480,7 @@ await db.transaction(async (tx) => {
       .insert(contacts)
       .values({
         organizationId: organization.id,
-        assignedUserId: agentUser?.id || null,
+        agentUserId: agentUser?.id || null,
         brokerUserId: agentUser ? brokerUser?.id || null : null,
         preferredDevelopmentId: preferredDevelopmentCode
           ? (developmentIdByCode.get(preferredDevelopmentCode) ?? null)
@@ -597,7 +597,7 @@ await db.transaction(async (tx) => {
         unitIds: unitId ? [unitId] : [],
         stageId: stage.id,
         status: isWon ? "won" : "open",
-        primaryAgentUserId: agentUser?.id || null,
+        agentUserId: agentUser?.id || null,
         amount: deal.amount,
         probability: String(deal.probability),
         expectedCloseDate,

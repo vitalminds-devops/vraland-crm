@@ -44,7 +44,7 @@ vi.mock("@/db", () => ({
               title: "Maria Santos",
               status: fixture.status,
               amount: "5000000.00",
-              primaryAgentUserId: "old-agent",
+              agentUserId: "old-agent",
               brokerUserId: "broker",
             },
           ]),
@@ -100,7 +100,7 @@ const input = { dealId, agentUserId, reason: "Agent left the team" };
 it("moves an open opportunity to the new agent and their broker, recomputing no commission", async () => {
   expect((await reassignDealAgent(input)).success).toBe(true);
   expect(fixture.updates[0]).toEqual(
-    expect.objectContaining({ primaryAgentUserId: agentUserId, brokerUserId: "new-broker" }),
+    expect.objectContaining({ agentUserId: agentUserId, brokerUserId: "new-broker" }),
   );
   // Shares kept from an earlier win (none on a deal never won) only change hands.
   expect(fixture.updates.slice(1)).toEqual([{ userId: "new-broker" }, { userId: agentUserId }]);

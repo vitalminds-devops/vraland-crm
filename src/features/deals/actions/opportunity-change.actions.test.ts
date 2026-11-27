@@ -346,7 +346,7 @@ it("opens another opportunity for the same client, agent and deal type", async (
         firstName: "Juan",
         middleName: null,
         lastName: "Dela Cruz",
-        agentId: "agent-1",
+        agentUserId: "agent-1",
         dealType: "sale",
       },
     ],
@@ -360,7 +360,7 @@ it("opens another opportunity for the same client, agent and deal type", async (
     expect.anything(),
     expect.objectContaining({
       contactId: "contact",
-      primaryAgentUserId: "agent-1",
+      agentUserId: "agent-1",
       dealType: "sale",
       another: true,
     }),

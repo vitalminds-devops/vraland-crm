@@ -408,7 +408,7 @@ export async function updateViewingStatus(input: unknown): Promise<CalendarResul
       id: propertyViewings.id,
       status: propertyViewings.status,
       eventId: propertyViewings.eventId,
-      agentId: propertyViewings.agentUserId,
+      agentUserId: propertyViewings.agentUserId,
       propertyId: propertyViewings.propertyId,
       contactId: propertyViewings.contactId,
       dealId: calendarEvents.dealId,
@@ -445,7 +445,7 @@ export async function updateViewingStatus(input: unknown): Promise<CalendarResul
   const viewingRef: ViewingReference = {
     id: before.id,
     organizationId: before.organizationId,
-    agentUserId: before.agentId,
+    agentUserId: before.agentUserId,
     eventCreatedBy: before.createdBy,
     contactId: before.contactId,
     propertyId: before.propertyId,
@@ -462,8 +462,8 @@ export async function updateViewingStatus(input: unknown): Promise<CalendarResul
     const saved = await db.transaction(async (tx) => {
       if (
         reactivated &&
-        before.agentId &&
-        (await viewingClash(tx, before.agentId, before.startAt, before.endAt, before.eventId))
+        before.agentUserId &&
+        (await viewingClash(tx, before.agentUserId, before.startAt, before.endAt, before.eventId))
       )
         return false;
       await tx

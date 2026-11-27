@@ -44,7 +44,7 @@ export default async function EditContactPage({ params }: { params: Promise<{ id
     employmentType: r.employmentType as ContactInput["employmentType"],
     annualIncome: r.annualIncome ? Number(r.annualIncome) : null,
     lifecycleStage: r.lifecycleStage as ContactInput["lifecycleStage"],
-    assignedAgentId: r.assignedUserId ?? "",
+    agentUserId: r.agentUserId ?? "",
     purchaseType: r.purchaseType as ContactInput["purchaseType"],
     financingPreference: r.financingPreference as ContactInput["financingPreference"],
     financingPreferenceOther: r.financingPreferenceOther,

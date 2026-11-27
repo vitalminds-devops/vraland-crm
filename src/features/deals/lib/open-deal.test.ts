@@ -21,7 +21,7 @@ it("refuses a contact outside the caller's organization and writes nothing", asy
   const result = await openDealForApprovedContact(
     tx,
     { organizationId: "org", userId: "admin" } as Parameters<typeof openDealForApprovedContact>[1],
-    { contactId: "foreign", contactName: "Ana", primaryAgentUserId: null },
+    { contactId: "foreign", contactName: "Ana", agentUserId: null },
   );
   expect(result.success).toBe(false);
   expect(insert).not.toHaveBeenCalled();

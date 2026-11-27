@@ -56,7 +56,7 @@ vi.mock("@/db", async () => {
                       unitId: "unit-1",
                       unitIds: ["unit-1", "unit-2"],
                       parkingSlotIds: ["parking-1"],
-                      primaryAgentUserId: "actor",
+                      agentUserId: "actor",
                       brokerUserId: "actor",
                       reservationPaid: true,
                       firstMonthPaid: true,
