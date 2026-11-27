@@ -14,6 +14,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - The dashboard's data loads in four parts (contacts, sales, work, inventory) in the code; it shows the same figures.
 - Move to Opportunity and Change units check the user's permission before anything else, and their reads and form rules live in their own files; they work the same.
 - Saving a bill and recording a payment give each refusal's message where the rule is checked; the messages are unchanged.
+- Adding a user and adding an agent share one way of creating the sign-in account; both work the same.
 
 ## [0.8.0] - 2026-11-27
 

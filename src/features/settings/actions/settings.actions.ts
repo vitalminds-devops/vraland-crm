@@ -13,7 +13,6 @@ import {
 } from "@/lib/permissions/team-assignment";
 import {
   agents,
-  authAccount,
   authSession,
   authUser,
   auditLogs,
@@ -48,6 +47,11 @@ import { createHash, randomUUID } from "node:crypto";
 import { hashPassword } from "better-auth/crypto";
 import { canManageUsers, hasPermission } from "@/lib/permissions/policy";
 import { logError } from "@/lib/logger";
+import {
+  insertUserAccount,
+  onboardingDocumentValues,
+  type StoredOnboardingFile,
+} from "../lib/user-account";
 import { buildChangeSet, isEmptyChangeSet } from "@/lib/audit/redact";
 import { withoutUnusablePanels } from "@/lib/permissions/view-access";
 import {
@@ -156,14 +160,6 @@ const agentAccountSchema = z.object({
   documents: z.array(z.instanceof(File)).max(5),
 });
 
-type StoredOnboardingFile = {
-  name: string;
-  storageKey: string;
-  mimeType: string;
-  size: number;
-  checksum: string;
-};
-
 function parseOnboardingFiles(formData: FormData) {
   return (
     formData
@@ -217,26 +213,6 @@ async function removeOnboardingFiles(files: StoredOnboardingFile[]) {
   if (!files.length) return;
   const storage = getDocumentStorage();
   await Promise.all(files.map((file) => storage.remove(file.storageKey).catch(() => undefined)));
-}
-
-function onboardingDocumentValues(
-  organizationId: string,
-  createdBy: string,
-  userId: string,
-  files: StoredOnboardingFile[],
-) {
-  return files.map((file) => ({
-    organizationId,
-    userId,
-    name: file.name,
-    category: "other",
-    status: "draft",
-    storageKey: file.storageKey,
-    mimeType: file.mimeType,
-    fileSizeBytes: file.size,
-    checksumSha256: file.checksum,
-    createdBy,
-  }));
 }
 
 async function validateUserAssignment(
@@ -507,77 +483,22 @@ export async function createUser(formData: FormData): Promise<SettingsResult> {
     const passwordHash = await hashPassword(v.password);
     storedFiles = await storeOnboardingFiles(context.organizationId, v.documents);
     id = await db.transaction(async (tx) => {
-      const [user] = await tx
-        .insert(users)
-        .values({
-          organizationId: context.organizationId,
-          brokerId: v.brokerId || null,
-          email: v.email.toLowerCase(),
-          firstName: v.firstName,
-          lastName: v.lastName,
-          phone: v.phone || null,
-          status: "active",
-        })
-        .returning({ id: users.id });
-      const identityId = randomUUID();
-      await tx.insert(authUser).values({
-        id: identityId,
-        crmUserId: user.id,
-        name: `${v.firstName} ${v.lastName}`,
-        email: v.email.toLowerCase(),
-        emailVerified: false,
+      const userId = await insertUserAccount(tx, context, {
+        email: v.email,
+        firstName: v.firstName,
+        lastName: v.lastName,
+        phone: v.phone,
+        brokerId: v.brokerId,
+        passwordHash,
+        roleIds: v.roleIds,
+        files: storedFiles,
       });
-      await tx.insert(authAccount).values({
-        id: randomUUID(),
-        issuer: "local:credential",
-        accountId: identityId,
-        providerId: "credential",
-        userId: identityId,
-        password: passwordHash,
-      });
-      await tx.insert(userRoles).values(
-        v.roleIds.map((roleId) => ({
-          userId: user.id,
-          roleId,
-          assignedBy: context.userId,
-        })),
-      );
-      if (storedFiles.length) {
-        const uploadedDocuments = await tx
-          .insert(documents)
-          .values(
-            onboardingDocumentValues(context.organizationId, context.userId, user.id, storedFiles),
-          )
-          .returning({
-            id: documents.id,
-            name: documents.name,
-            mimeType: documents.mimeType,
-            fileSizeBytes: documents.fileSizeBytes,
-            checksumSha256: documents.checksumSha256,
-          });
-        await tx.insert(auditLogs).values(
-          uploadedDocuments.map((document) => ({
-            organizationId: context.organizationId,
-            actorUserId: context.userId,
-            action: "create",
-            entityType: "document",
-            entityId: document.id,
-            newValues: {
-              name: document.name,
-              mimeType: document.mimeType,
-              fileSize: document.fileSizeBytes,
-              checksum: document.checksumSha256,
-              userId: user.id,
-            },
-          })),
-        );
-      }
       await tx.insert(auditLogs).values({
         organizationId: context.organizationId,
         actorUserId: context.userId,
         action: "create",
         entityType: "user",
-        entityId: user.id,
+        entityId: userId,
         newValues: {
           email: v.email,
           brokerId: v.brokerId,
@@ -589,13 +510,13 @@ export async function createUser(formData: FormData): Promise<SettingsResult> {
         tx,
         context.organizationId,
         context.userId,
-        user.id,
+        userId,
         v.roleIds,
         v.brokerId,
         v.salesExecutiveIds,
         v.brokerIds,
       );
-      return user.id;
+      return userId;
     });
   } catch (error) {
     await removeOnboardingFiles(storedFiles);
@@ -1045,77 +966,24 @@ export async function createAgentAccount(formData: FormData): Promise<SettingsRe
     const passwordHash = await hashPassword(value.password);
     storedFiles = await storeOnboardingFiles(context.organizationId, value.documents);
     agentId = await db.transaction(async (tx) => {
-      const [user] = await tx
-        .insert(users)
-        .values({
-          organizationId: context.organizationId,
-          brokerId: value.brokerId || null,
-          email: value.email.toLowerCase(),
-          firstName: value.firstName,
-          lastName: value.lastName,
-          phone: value.phone || null,
-          status: "active",
-        })
-        .returning({ id: users.id });
-      const identityId = randomUUID();
-      await tx.insert(authUser).values({
-        id: identityId,
-        crmUserId: user.id,
-        name: `${value.firstName} ${value.lastName}`,
-        email: value.email.toLowerCase(),
-        emailVerified: false,
-      });
-      await tx.insert(authAccount).values({
-        id: randomUUID(),
-        issuer: "local:credential",
-        accountId: identityId,
-        providerId: "credential",
-        userId: identityId,
-        password: passwordHash,
-      });
-      await tx.insert(userRoles).values({
-        userId: user.id,
-        roleId: agentRole.id,
-        assignedBy: context.userId,
+      const userId = await insertUserAccount(tx, context, {
+        email: value.email,
+        firstName: value.firstName,
+        lastName: value.lastName,
+        phone: value.phone,
+        brokerId: value.brokerId,
+        passwordHash,
+        roleIds: [agentRole.id],
+        files: storedFiles,
       });
       const [agent] = await tx
         .insert(agents)
         .values({
           organizationId: context.organizationId,
-          userId: user.id,
+          userId,
           license: value.license,
         })
         .returning({ id: agents.id });
-      if (storedFiles.length) {
-        const uploadedDocuments = await tx
-          .insert(documents)
-          .values(
-            onboardingDocumentValues(context.organizationId, context.userId, user.id, storedFiles),
-          )
-          .returning({
-            id: documents.id,
-            name: documents.name,
-            mimeType: documents.mimeType,
-            fileSizeBytes: documents.fileSizeBytes,
-            checksumSha256: documents.checksumSha256,
-          });
-        await tx.insert(auditLogs).values(
-          uploadedDocuments.map((document) => ({
-            organizationId: context.organizationId,
-            actorUserId: context.userId,
-            action: "create",
-            entityType: "document",
-            entityId: document.id,
-            newValues: {
-              name: document.name,
-              mimeType: document.mimeType,
-              fileSize: document.fileSizeBytes,
-              checksum: document.checksumSha256,
-              userId: user.id,
-            },
-          })),
-        );
-      }
       await tx.insert(auditLogs).values({
         organizationId: context.organizationId,
         actorUserId: context.userId,
@@ -1123,7 +991,7 @@ export async function createAgentAccount(formData: FormData): Promise<SettingsRe
         entityType: "agent",
         entityId: agent.id,
         newValues: {
-          userId: user.id,
+          userId,
           teamLeadId: value.brokerId || null,
         },
       });
