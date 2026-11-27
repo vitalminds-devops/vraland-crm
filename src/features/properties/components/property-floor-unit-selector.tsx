@@ -7,7 +7,7 @@ import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { notify } from "@/components/ui/toast";
 import { cn } from "@/lib/utils/cn";
 import { unitStatusLabel, unitStatusToneFor } from "../lib/unit-codes";
-import type { UnitGroup } from "../lib/floor-groups";
+import type { UnitGroup } from "../lib/sections";
 import { formatMoney, formatMoneyShort } from "@/lib/utils/money";
 
 const selectClass =

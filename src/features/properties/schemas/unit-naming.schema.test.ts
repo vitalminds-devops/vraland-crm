@@ -11,18 +11,17 @@ it("keeps named, coloured floor groups and needs endings for custom numbering", 
     propertyId,
     style: "number",
     endings: [],
-    floorGroups: [group],
+    sections: [group],
   });
-  expect(parsed.floorGroups?.[0]).toMatchObject({ name: "Tower A", color: "teal" });
+  expect(parsed.sections?.[0]).toMatchObject({ name: "Tower A", color: "teal" });
   expect(
-    unitNamingSchema.safeParse({ propertyId, style: "custom", endings: [], floorGroups: [] })
-      .success,
+    unitNamingSchema.safeParse({ propertyId, style: "custom", endings: [], sections: [] }).success,
   ).toBe(false);
 });
 
 it("refuses a floor in two groups, a group with no floors, or an unknown colour", () => {
-  const parse = (floorGroups: unknown[]) =>
-    unitNamingSchema.safeParse({ propertyId, style: "number", endings: [], floorGroups });
+  const parse = (sections: unknown[]) =>
+    unitNamingSchema.safeParse({ propertyId, style: "number", endings: [], sections });
   expect(
     parse([group, { ...group, id: "g2", floorIds: [floorA, floorB] }]).error?.issues[0]?.message,
   ).toBe("A unit can be in one section only. Two sections on one floor need different units.");
@@ -33,15 +32,15 @@ it("refuses a floor in two groups, a group with no floors, or an unknown colour"
 it("lets an odd and an even section share a floor", () => {
   const sunrise = { ...group, id: "g2", name: "Sunrise", side: "even" };
   const sunset = { ...group, id: "g3", name: "Sunset", side: "odd" };
-  const parse = (floorGroups: unknown[]) =>
-    unitNamingSchema.safeParse({ propertyId, style: "number", endings: [], floorGroups });
+  const parse = (sections: unknown[]) =>
+    unitNamingSchema.safeParse({ propertyId, style: "number", endings: [], sections });
   expect(parse([sunrise, sunset]).success).toBe(true);
   expect(parse([sunrise, { ...sunset, side: "even" }]).success).toBe(false);
   expect(parse([sunrise, { ...sunset, side: "all" }]).success).toBe(false);
 });
 
 it("needs picked units for a pick section, and lets picks share a floor apart", () => {
-  const parse = (floorGroups: unknown[]) => unitNamingSchema.safeParse({ propertyId, floorGroups });
+  const parse = (sections: unknown[]) => unitNamingSchema.safeParse({ propertyId, sections });
   const garden = { ...group, id: "g4", name: "Garden", side: "pick", endings: ["A", "B"] };
   expect(parse([{ ...garden, endings: [] }]).success).toBe(false);
   expect(parse([garden, { ...garden, id: "g5", endings: ["C"] }]).success).toBe(true);
@@ -56,7 +55,7 @@ it("accepts the section ids migration 0070 made from old side names", () => {
       propertyId,
       style: "number",
       endings: [],
-      floorGroups: [evenSide],
+      sections: [evenSide],
     }).success,
   ).toBe(true);
 });

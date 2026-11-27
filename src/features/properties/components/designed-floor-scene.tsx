@@ -33,7 +33,7 @@ import {
   UnitPlaque,
   type SceneUnit,
 } from "./floor-scene-kit";
-import type { UnitGroup } from "../lib/floor-groups";
+import type { UnitGroup } from "../lib/sections";
 
 const WALL = "#e4ebf2";
 const CAP = "#3d5468";

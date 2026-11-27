@@ -20,7 +20,7 @@ import { organizations, users } from "./organization";
 import { createdAt, updatedAt } from "./shared";
 import type { UnitIdentifierStyle } from "@/features/properties/lib/unit-codes";
 import type { UnitNumbering } from "@/features/properties/lib/unit-numbering";
-import type { FloorGroup } from "@/features/properties/lib/floor-groups";
+import type { Section } from "@/features/properties/lib/sections";
 import type { ParkingType } from "@/features/properties/lib/parking-types";
 import type { FloorLayout, UnitDesign } from "@/features/properties/lib/floor-layout";
 import type { ParkingLayout } from "@/features/properties/lib/parking-layout";
@@ -90,7 +90,7 @@ export const properties = pgTable(
     /** Chosen when floors are first set up; null keeps the old letters with floor 4 skipped. */
     unitNumbering: jsonb("unit_numbering").$type<UnitNumbering>(),
     /** Floors named together with a colour (e.g. Tower A, teal), shown on each of their units. */
-    floorGroups: jsonb("floor_groups").$type<FloorGroup[]>().default([]).notNull(),
+    sections: jsonb("floor_groups").$type<Section[]>().default([]).notNull(),
     /** Slot designs (size, price, reservation fee) dragged onto floors in Design floor. */
     parkingTypes: jsonb("parking_types").$type<ParkingType[]>().default([]).notNull(),
     createdBy: uuid("created_by").references(() => users.id, {

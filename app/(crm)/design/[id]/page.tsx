@@ -10,7 +10,7 @@ import { FloorsAndUnits } from "@/features/properties";
 import { UnitTypesPanel } from "@/features/properties/components/unit-types-panel";
 import { UnitNamingPanel } from "@/features/properties/components/unit-naming-panel";
 import { FloorSetupPanel } from "@/features/properties/components/floor-setup-panel";
-import { unitEndings } from "@/features/properties/lib/floor-groups";
+import { unitEndings } from "@/features/properties/lib/sections";
 import { propertyPageActions } from "@/features/properties/lib/property-page-actions";
 import { canWriteProperty } from "@/features/properties/queries/property-scope.queries";
 import { listParkingSlots } from "@/features/properties/queries/parking.queries";
@@ -96,7 +96,7 @@ export default async function PropertyDesignPage({
           <UnitNamingPanel
             propertyId={id}
             floors={inventory.floors}
-            floorGroups={property.floorGroups}
+            sections={property.sections}
             unitEndings={unitEndings(inventory.units, inventory.floors)}
           />
         </Panel>
@@ -120,7 +120,7 @@ export default async function PropertyDesignPage({
             propertyType={property.propertyType}
             parkingSlots={parking}
             parkingTypes={property.parkingTypes}
-            floorGroups={property.floorGroups}
+            sections={property.sections}
           />
         </Panel>
       )}

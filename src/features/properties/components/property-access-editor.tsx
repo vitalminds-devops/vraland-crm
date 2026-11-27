@@ -20,7 +20,7 @@ import { unitImageUrl } from "../lib/floor-image";
 import { fitPlacements, type FloorLayout, type UnitDesign } from "../lib/floor-layout";
 import { ParkingPicker } from "./parking-picker";
 import { InventoryBrowser } from "./inventory-browser";
-import type { UnitGroup } from "../lib/floor-groups";
+import type { UnitGroup } from "../lib/sections";
 
 const PEOPLE_PER_PAGE = 8;
 

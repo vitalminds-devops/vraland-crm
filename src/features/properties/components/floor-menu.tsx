@@ -23,7 +23,7 @@ import { notify } from "@/components/ui/toast";
 import { cn } from "@/lib/utils/cn";
 import { addFloor, renameFloor } from "../actions/unit.actions";
 import { parseFloorNames } from "../lib/floor-names";
-import type { UnitGroup } from "../lib/floor-groups";
+import type { UnitGroup } from "../lib/sections";
 
 type Floor = { id: string; label: string; unitCount?: number; sections?: UnitGroup[] };
 

@@ -9,7 +9,7 @@ import { Paginator } from "@/components/ui/paginator";
 import { cn } from "@/lib/utils/cn";
 import { InventoryUnitCard } from "./inventory-unit-card";
 import { UnitPanoramaViewer } from "./unit-panorama-viewer";
-import type { UnitGroup } from "../lib/floor-groups";
+import type { UnitGroup } from "../lib/sections";
 
 export type InventoryBuildingData = {
   id: string;

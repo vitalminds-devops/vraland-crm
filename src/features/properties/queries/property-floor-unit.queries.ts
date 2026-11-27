@@ -1,6 +1,6 @@
 import "server-only";
 import type { ParkingType } from "../lib/parking-types";
-import { groupOfUnit, type FloorGroup, type UnitGroup } from "../lib/floor-groups";
+import { groupOfUnit, type Section, type UnitGroup } from "../lib/sections";
 import type { ParkingLayout } from "../lib/parking-layout";
 
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
@@ -42,7 +42,7 @@ async function findProperty(context: AuthorizationContext, propertyId: string) {
       unitsPerFloor: properties.unitsPerFloor,
       unitIdentifierStyle: properties.unitIdentifierStyle,
       unitNumbering: properties.unitNumbering,
-      floorGroups: properties.floorGroups,
+      sections: properties.sections,
       currency: properties.currency,
       parkingTypes: properties.parkingTypes,
     })
@@ -158,7 +158,7 @@ export async function getUnitsForFloor(context: AuthorizationContext, floorId: s
       status: units.status,
       imageStorageKey: units.imageStorageKey,
       level: floors.level,
-      floorGroups: properties.floorGroups,
+      sections: properties.sections,
       // What the agent picks by: its type, its price (own, else its type's) and fee.
       typeName: unitTypes.name,
       price: sql<string | null>`coalesce(${units.price}, ${unitTypes.price})`,
@@ -181,9 +181,9 @@ export async function getUnitsForFloor(context: AuthorizationContext, floorId: s
     )
     .orderBy(units.code);
 
-  return rows.map(({ floorGroups, level, ...unit }) => ({
+  return rows.map(({ sections, level, ...unit }) => ({
     ...unit,
-    group: groupOfUnit(floorGroups, { id: floorId, level }, unit.code),
+    group: groupOfUnit(sections, { id: floorId, level }, unit.code),
   }));
 }
 
@@ -197,7 +197,7 @@ export type PropertyInventory = {
     unitsPerFloor: number | null;
     unitIdentifierStyle: UnitIdentifierStyle;
     unitNumbering: UnitNumbering | null;
-    floorGroups: FloorGroup[];
+    sections: Section[];
     currency: string;
     parkingTypes: ParkingType[];
   } | null;
@@ -315,7 +315,7 @@ async function loadInventory(
     units: unitRows.map((unit) => ({
       ...unit,
       group: groupOfUnit(
-        property.floorGroups,
+        property.sections,
         { id: unit.floorId, level: levelOf.get(unit.floorId) ?? 0 },
         unit.code,
       ),

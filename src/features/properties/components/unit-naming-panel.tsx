@@ -4,27 +4,27 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { notify } from "@/components/ui/toast";
 import { saveUnitNaming } from "../actions/unit-naming.actions";
-import type { FloorGroup } from "../lib/floor-groups";
+import type { Section } from "../lib/sections";
 import { unitNamingSchema } from "../schemas/unit-naming.schema";
-import { FloorGroupsField } from "./floor-groups-field";
+import { SectionsField } from "./sections-field";
 
 /** The Design page's Sections tab (stored as floor groups). Unit identifiers are set from Design floor's Identifier button. */
 export function UnitNamingPanel({
   propertyId,
   floors,
-  floorGroups,
+  sections,
   unitEndings,
 }: {
   propertyId: string;
   floors: { id: string; label: string }[];
-  floorGroups: FloorGroup[];
+  sections: Section[];
   unitEndings: string[];
 }) {
-  const [groups, setGroups] = useState(floorGroups);
+  const [groups, setGroups] = useState(sections);
   const [pending, startTransition] = useTransition();
 
   const save = () => {
-    const input = { propertyId, floorGroups: groups };
+    const input = { propertyId, sections: groups };
     // Checked here first so the message names the problem, not just "Review the fields".
     const checked = unitNamingSchema.safeParse(input);
     if (!checked.success)
@@ -47,7 +47,7 @@ export function UnitNamingPanel({
         save();
       }}
     >
-      <FloorGroupsField
+      <SectionsField
         floors={floors}
         groups={groups}
         onChange={setGroups}

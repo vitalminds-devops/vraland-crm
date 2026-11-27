@@ -4,19 +4,13 @@ import { Check, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils/cn";
-import {
-  groupColors,
-  groupHex,
-  groupSides,
-  sidesOverlap,
-  type FloorGroup,
-} from "../lib/floor-groups";
+import { groupColors, groupHex, groupSides, sidesOverlap, type Section } from "../lib/sections";
 
 /**
  * Sections: a name and colour for a set of floors (Tower A, floors 1–10), shown in that colour
  * on each of their units. A floor belongs to one group at most.
  */
-export function FloorGroupsField({
+export function SectionsField({
   floors,
   groups,
   onChange,
@@ -24,16 +18,16 @@ export function FloorGroupsField({
   unitEndings,
 }: {
   floors: { id: string; label: string }[];
-  groups: FloorGroup[];
-  onChange: (next: FloorGroup[]) => void;
+  groups: Section[];
+  onChange: (next: Section[]) => void;
   disabled?: boolean;
   /** Every unit ending in the property (A, B… or 01, 02…), for sections that pick units. */
   unitEndings: string[];
 }) {
-  const update = (id: string, change: Partial<FloorGroup>) =>
+  const update = (id: string, change: Partial<Section>) =>
     onChange(groups.map((group) => (group.id === id ? { ...group, ...change } : group)));
   // Another section holding this floor for the same units (odd, even or all) blocks it.
-  const takenBy = (group: FloorGroup, floorId: string) =>
+  const takenBy = (group: Section, floorId: string) =>
     groups.find(
       (other) =>
         other.id !== group.id && other.floorIds.includes(floorId) && sidesOverlap(other, group),

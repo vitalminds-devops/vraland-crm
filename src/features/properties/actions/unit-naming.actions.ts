@@ -35,7 +35,7 @@ export async function saveUnitNaming(input: unknown): Promise<ActionResult> {
       const [current] = await tx
         .select({
           unitNumbering: properties.unitNumbering,
-          floorGroups: properties.floorGroups,
+          sections: properties.sections,
         })
         .from(properties)
         .where(
@@ -48,7 +48,7 @@ export async function saveUnitNaming(input: unknown): Promise<ActionResult> {
         .for("update");
       if (!current) return false;
       // Groups hold only this property's own floors; a floor removed since is dropped, not refused.
-      const floorIds = (value.floorGroups ?? []).flatMap((group) => group.floorIds);
+      const floorIds = (value.sections ?? []).flatMap((group) => group.floorIds);
       const own = new Set(
         floorIds.length
           ? (
@@ -59,7 +59,7 @@ export async function saveUnitNaming(input: unknown): Promise<ActionResult> {
             ).map((floor) => floor.id)
           : [],
       );
-      const floorGroups = value.floorGroups
+      const sections = value.sections
         ?.map((group) => ({ ...group, floorIds: group.floorIds.filter((id) => own.has(id)) }))
         .filter((group) => group.floorIds.length > 0);
       // Skipped floors and units per floor stay as they were; only the naming changes.
@@ -78,7 +78,7 @@ export async function saveUnitNaming(input: unknown): Promise<ActionResult> {
         .update(properties)
         .set({
           unitNumbering: numbering,
-          floorGroups: floorGroups ?? current.floorGroups,
+          sections: sections ?? current.sections,
           updatedAt: new Date(),
         })
         .where(eq(properties.id, value.propertyId));
@@ -90,11 +90,11 @@ export async function saveUnitNaming(input: unknown): Promise<ActionResult> {
         entityId: value.propertyId,
         oldValues: {
           unitNumbering: current.unitNumbering,
-          floorGroups: current.floorGroups,
+          sections: current.sections,
         },
         newValues: {
           unitNumbering: numbering,
-          floorGroups: floorGroups ?? current.floorGroups,
+          sections: sections ?? current.sections,
         },
       });
       return true;

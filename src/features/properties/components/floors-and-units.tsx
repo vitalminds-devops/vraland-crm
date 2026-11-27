@@ -36,7 +36,7 @@ import { legacyNumbering, type UnitNumbering } from "../lib/unit-numbering";
 
 import { UnitPanoramaViewer } from "./unit-panorama-viewer";
 import { UnitPictureDialog } from "./unit-picture-dialog";
-import { sectionsOfFloor, type FloorGroup, type UnitGroup } from "../lib/floor-groups";
+import { sectionsOfFloor, type Section, type UnitGroup } from "../lib/sections";
 
 /** The same colours as the status dots on the 3D unit tags. */
 const statusDot: Record<string, string> = {
@@ -73,7 +73,7 @@ export function FloorsAndUnits({
   overlayActions,
   parkingSlots = [],
   parkingTypes = [],
-  floorGroups = [],
+  sections = [],
 }: {
   propertyId: string;
   canManageUnits?: boolean;
@@ -124,7 +124,7 @@ export function FloorsAndUnits({
   /** Design only: the property's parking types for Design floor's palette. */
   parkingTypes?: ParkingType[];
   /** The property's sections, named on each floor in the floor menu. */
-  floorGroups?: FloorGroup[];
+  sections?: Section[];
 }) {
   const [activeFloorId, setActiveFloorId] = useState<string | null>(floors[0]?.id ?? null);
   const [, startFloorSwitch] = useTransition();
@@ -519,7 +519,7 @@ export function FloorsAndUnits({
                 floorKey={activeFloor.id}
                 floors={floors.map((floor) => ({
                   ...floor,
-                  sections: sectionsOfFloor(floorGroups, floor.id),
+                  sections: sectionsOfFloor(sections, floor.id),
                 }))}
                 onFloorChange={(id) => startFloorSwitch(() => setActiveFloorId(id))}
                 alwaysShowFloorSwitch={immersive}

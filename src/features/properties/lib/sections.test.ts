@@ -5,10 +5,10 @@ import {
   unitEndings,
   sidesOverlap,
   unitParity,
-  type FloorGroup,
-} from "./floor-groups";
+  type Section,
+} from "./sections";
 
-const groups: FloorGroup[] = [
+const groups: Section[] = [
   { id: "a", name: "Tower A", color: "teal", floorIds: ["f1"] },
   { id: "b", name: "Sunrise", color: "orange", floorIds: ["f2"], side: "even" },
   { id: "c", name: "Sunset", color: "violet", floorIds: ["f2"], side: "odd" },

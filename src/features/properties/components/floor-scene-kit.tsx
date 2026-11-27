@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/cn";
 import { Loader2, Maximize, Minimize, X } from "lucide-react";
 import { unitStatusLabel } from "../lib/unit-codes";
-import type { UnitGroup } from "../lib/floor-groups";
+import type { UnitGroup } from "../lib/sections";
 
 /** The illustrated 3D floor's shared parts: the frame, camera, furniture and unit labels. */
 

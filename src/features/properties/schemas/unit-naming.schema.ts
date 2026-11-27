@@ -5,9 +5,9 @@ import {
   sidesOverlap,
   type GroupColor,
   type GroupSide,
-} from "../lib/floor-groups";
+} from "../lib/sections";
 
-const floorGroupSchema = z.object({
+const sectionSchema = z.object({
   // 64, not 40: sections made from old side names have ids like "even-<uuid>" (41).
   id: z.string().min(1).max(64),
   name: z
@@ -36,13 +36,13 @@ export const unitNamingSchema = z
       .array(z.string().regex(/^[0-9A-Z]{1,4}$/))
       .max(60)
       .default([]),
-    floorGroups: z.array(floorGroupSchema).max(30).optional(),
+    sections: z.array(sectionSchema).max(30).optional(),
   })
   .refine(
     (value) =>
-      (value.floorGroups ?? []).every((group) => group.side !== "pick" || group.endings.length > 0),
+      (value.sections ?? []).every((group) => group.side !== "pick" || group.endings.length > 0),
     {
-      path: ["floorGroups"],
+      path: ["sections"],
       message: "Pick at least one unit for each section.",
     },
   )
@@ -53,7 +53,7 @@ export const unitNamingSchema = z
   .refine(
     // Two sections may share a floor only when one takes its odd units and the other its even.
     (value) =>
-      (value.floorGroups ?? []).every((group, index, all) =>
+      (value.sections ?? []).every((group, index, all) =>
         all
           .slice(index + 1)
           .every(
@@ -63,7 +63,7 @@ export const unitNamingSchema = z
           ),
       ),
     {
-      path: ["floorGroups"],
+      path: ["sections"],
       message: "A unit can be in one section only. Two sections on one floor need different units.",
     },
   );

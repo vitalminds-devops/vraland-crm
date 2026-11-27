@@ -4,7 +4,7 @@ import { Eye, ImagePlus, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/cn";
 import { formatMoney } from "@/lib/utils/money";
-import type { UnitGroup } from "../lib/floor-groups";
+import type { UnitGroup } from "../lib/sections";
 import {
   formatArea,
   roomCounts,

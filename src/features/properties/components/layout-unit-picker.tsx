@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils/cn";
 import { footprint, type FloorLayout, type UnitDesign } from "../lib/floor-layout";
 import { unitStatusLabel } from "../lib/unit-codes";
 import { PlacedLabel, SpaceArt, UnitArt, itemTransform } from "./layout-art";
-import type { UnitGroup } from "../lib/floor-groups";
+import type { UnitGroup } from "../lib/sections";
 
 export type PickerUnit = {
   id: string;

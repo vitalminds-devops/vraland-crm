@@ -4,7 +4,7 @@ import { useFrame } from "@react-three/fiber";
 import { useRef } from "react";
 import { CanvasTexture, SRGBColorSpace, type PerspectiveCamera } from "three";
 import { Box, statusColor, useScreenScale } from "./floor-scene-kit";
-import type { UnitGroup } from "../lib/floor-groups";
+import type { UnitGroup } from "../lib/sections";
 
 /**
  * The picked unit's outline. Status itself shows on each unit's number chip, so the floor's

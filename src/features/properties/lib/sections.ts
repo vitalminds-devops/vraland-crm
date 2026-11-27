@@ -28,7 +28,7 @@ export type GroupSide = (typeof groupSides)[number]["value"];
  * A section: floors named together, such as Tower A for floors 1–10, Sunrise for the even
  * units, or Garden for units A to F, shown in its colour on each of its units.
  */
-export type FloorGroup = {
+export type Section = {
   id: string;
   name: string;
   color: GroupColor;
@@ -57,7 +57,7 @@ export function unitParity(code: string): "odd" | "even" | null {
 }
 
 /** Whether a section takes the unit with this ending. */
-function takes(group: Pick<FloorGroup, "side" | "endings">, ending: string) {
+function takes(group: Pick<Section, "side" | "endings">, ending: string) {
   const side = group.side ?? "all";
   if (side === "all") return true;
   if (side === "pick") return (group.endings ?? []).includes(ending);
@@ -66,8 +66,8 @@ function takes(group: Pick<FloorGroup, "side" | "endings">, ending: string) {
 
 /** Whether two sections on one floor could both take a unit. */
 export function sidesOverlap(
-  a: Pick<FloorGroup, "side" | "endings">,
-  b: Pick<FloorGroup, "side" | "endings">,
+  a: Pick<Section, "side" | "endings">,
+  b: Pick<Section, "side" | "endings">,
 ): boolean {
   const [sa, sb] = [a.side ?? "all", b.side ?? "all"];
   if (sa === "all" || sb === "all") return true;
@@ -78,7 +78,7 @@ export function sidesOverlap(
 
 /** The section a unit belongs to, from its floor and its number, or null when it is in none. */
 export function groupOfUnit(
-  groups: readonly FloorGroup[] | null | undefined,
+  groups: readonly Section[] | null | undefined,
   floor: { id: string; level: number },
   code: string,
 ): UnitGroup | null {
@@ -91,7 +91,7 @@ export function groupOfUnit(
 
 /** The sections on a floor, in their colours, for the floor menu. */
 export function sectionsOfFloor(
-  groups: readonly FloorGroup[] | null | undefined,
+  groups: readonly Section[] | null | undefined,
   floorId: string,
 ): UnitGroup[] {
   return (groups ?? [])
