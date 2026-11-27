@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-11-27
+
 ### Changed
 - The contact form asks for the last name first, then first name and middle name, as Billing's applicant details do.
 - Sections are called sections in the code too, not floor groups; nothing changes on screen.
