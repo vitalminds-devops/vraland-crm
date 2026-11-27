@@ -26,7 +26,6 @@ const deal = {
   id: "deal",
   propertyId: "building",
   brokerUserId: null,
-  unitId: "primary",
   unitIds: ["primary", "second"],
   parkingSlotIds: ["parking"],
 };
@@ -115,19 +114,6 @@ it("marks all persisted units and parking sold after a settled payment", async (
     parkingSlotIds: ["parking"],
     status: "sold",
   });
-});
-
-it("uses the legacy primary unit when there is no saved unit array", async () => {
-  const { tx } = transaction([{ total: "1000", paid: "100", reservationPaid: true }]);
-  await syncBillingInventory(
-    tx,
-    { organizationId: "org", userId: "actor" },
-    { ...deal, slug: "reservation", unitIds: [] },
-  );
-  expect(syncDealInventory).toHaveBeenCalledWith(
-    tx,
-    expect.objectContaining({ unitIds: ["primary"], status: "deposit_paid" }),
-  );
 });
 
 it.each([100, 1000])(

@@ -1,5 +1,5 @@
 import { isHeld } from "./unit-codes";
-import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { db } from "@/db";
 import { deals, units } from "@/db/schema";
 
@@ -23,7 +23,7 @@ export async function removalBlocker(
     .leftJoin(
       deals,
       and(
-        or(eq(deals.unitId, units.id), sql`${units.id} = any(${deals.unitIds})`),
+        sql`${units.id} = any(${deals.unitIds})`,
         eq(deals.status, "open"),
         isNull(deals.deletedAt),
       ),

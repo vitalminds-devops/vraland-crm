@@ -75,6 +75,8 @@ export const deals = pgTable(
     developmentId: uuid("development_id").references(() => developments.id, {
       onDelete: "set null",
     }),
+    // Retired: the units are unitIds (0085 copied this into it). Kept because migrations 0043,
+    // 0071 and 0080 still read it when db:migrate replays an adopted database.
     unitId: uuid("unit_id").references(() => units.id, {
       onDelete: "set null",
     }),

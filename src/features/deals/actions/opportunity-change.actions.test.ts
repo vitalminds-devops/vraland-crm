@@ -180,7 +180,6 @@ beforeEach(() => {
     isLostStage: false,
     isCancelledStage: false,
     propertyId: null,
-    unitId: null,
     unitIds: [],
     parkingSlotIds: [],
   };
@@ -196,10 +195,11 @@ it("moves an open opportunity to new units and reprices it", async () => {
   const result = await changeOpportunityUnits(selection);
   expect(result).toEqual({ success: true, data: { id: dealId } });
   const update = written("update", deals)[0].values as Record<string, unknown>;
+  // The retired unit_id is no longer written.
+  expect(update).not.toHaveProperty("unitId");
   expect(update).toMatchObject({
     developmentId,
     propertyId: buildingId,
-    unitId: unitA,
     unitIds: [unitA, unitB],
     parkingSlots: 1,
     parkingSlotIds: [heldSlot],

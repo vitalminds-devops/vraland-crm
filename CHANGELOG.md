@@ -11,6 +11,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Units and parking slots are treated as reserved or sold out by one shared rule everywhere.
 - When another opportunity has reserved a unit or parking slot, Billing names every one taken, as the pipeline does, instead of only the first.
 - Who can see which contacts and opportunities is decided by one shared rule in every list, report and export.
+- Opportunities read their units from one list everywhere; older opportunities with a single unit are moved onto that list. Run `npm run db:migrate` (migration 0085).
 
 ### Removed
 - Retired database columns nothing used: an opportunity's old reservation-fee paid date and payer, and the unused password field on users. Run `npm run db:migrate` (migration 0081).

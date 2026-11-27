@@ -29,15 +29,13 @@ const dealPaidAs = (classification: string, due: SQL) => sql<boolean>`exists (
 )`;
 
 /**
- * An amount set on each unit type, summed over the deal's units (a deal without a unit list uses
- * its single unit). Null when none of them sets it. Property-wide amounts are no longer used.
+ * An amount set on each unit type, summed over the deal's units. Null when none of them sets it. Property-wide amounts are no longer used.
  */
 const perUnit = (column: "reservation_fee" | "monthly_amortization") => {
   const typeAmount = sql.raw(`ut."${column}"`);
   return sql`(select sum(${typeAmount}) from "units" u
     join "unit_types" ut on ut."id" = u."unit_type_id"
-    where u."id" = any("deals"."unit_ids")
-      or (cardinality("deals"."unit_ids") = 0 and u."id" = "deals"."unit_id"))`;
+    where u."id" = any("deals"."unit_ids"))`;
 };
 
 /** The reservation fees of the deal's parking slots. */

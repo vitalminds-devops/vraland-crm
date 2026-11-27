@@ -23,7 +23,6 @@ export type RebillInput = {
 export function selectionChanged(
   before: {
     propertyId: string | null;
-    unitId: string | null;
     unitIds: readonly string[];
     parkingSlotIds: readonly string[];
   },
@@ -31,10 +30,9 @@ export function selectionChanged(
 ): boolean {
   const same = (a: readonly string[], b: readonly string[]) =>
     a.length === b.length && a.every((id) => b.includes(id));
-  const units = before.unitIds.length ? before.unitIds : before.unitId ? [before.unitId] : [];
   return (
     before.propertyId !== after.buildingId ||
-    !same(units, after.unitIds) ||
+    !same(before.unitIds, after.unitIds) ||
     !same(before.parkingSlotIds, after.parkingSlotIds)
   );
 }

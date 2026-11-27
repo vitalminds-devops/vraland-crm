@@ -166,7 +166,7 @@ export async function saveBill(input: unknown): Promise<ActionResult<{ id: strin
             .returning({ id: bills.id });
       await tx.delete(billItems).where(eq(billItems.billId, saved.id));
       // A line keeps its unit or slot only when it is still this opportunity's.
-      const dealUnits = new Set([deal.unitId, ...(deal.unitIds ?? [])]);
+      const dealUnits = new Set(deal.unitIds);
       const dealSlots = new Set(deal.parkingSlotIds ?? []);
       await tx.insert(billItems).values(
         value.items.map((item, position) => ({

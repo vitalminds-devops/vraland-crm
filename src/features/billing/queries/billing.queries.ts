@@ -108,7 +108,6 @@ const dealRows = () =>
       propertyTitle: properties.title,
       developmentName: developments.name,
       unitCode: units.code,
-      dealUnitId: deals.unitId,
       dealUnitIds: deals.unitIds,
       preferredUnitIds: contacts.preferredUnitIds,
       firstDeal: isContactsFirstDeal,
@@ -135,7 +134,7 @@ const dealRows = () =>
     .leftJoin(contacts, eq(dealContacts.contactId, contacts.id))
     .leftJoin(properties, eq(deals.propertyId, properties.id))
     .leftJoin(developments, eq(deals.developmentId, developments.id))
-    .leftJoin(units, eq(deals.unitId, units.id))
+    .leftJoin(units, eq(units.id, sql`${deals.unitIds}[1]`))
     .leftJoin(brokerUser, eq(deals.brokerUserId, brokerUser.id));
 
 type DealRow = Awaited<ReturnType<typeof dealRows>>[number];
@@ -163,7 +162,6 @@ async function billLinesFor(
         row.billId
           ? []
           : [
-              row.dealUnitId,
               ...(row.dealUnitIds?.length
                 ? row.dealUnitIds
                 : row.firstDeal
@@ -246,7 +244,6 @@ async function billLinesFor(
       }
       const picked = [
         ...new Set([
-          row.dealUnitId,
           ...(row.dealUnitIds?.length
             ? row.dealUnitIds
             : row.firstDeal

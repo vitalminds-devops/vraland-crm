@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { contacts, dealContacts, deals, documents } from "@/db/schema";
 import { requiredDocumentLabel } from "@/features/contacts/lib/contact-options";
@@ -57,7 +57,7 @@ export async function missingOpportunityDetails(
       amount: deals.amount,
       developmentId: deals.developmentId,
       buildingId: deals.propertyId,
-      unitId: deals.unitId,
+      unitCount: sql<number>`cardinality(${deals.unitIds})`,
       contactId: contacts.id,
       financing: contacts.financingPreference,
       tinNumber: contacts.tinNumber,
@@ -80,7 +80,7 @@ export async function missingOpportunityDetails(
   if (!opportunityInterestSchema.safeParse(row).success) missing.push("budget range");
   if (!row?.developmentId) missing.push("development");
   if (!row?.buildingId) missing.push("property");
-  if (!row?.unitId) missing.push("unit");
+  if (!row?.unitCount) missing.push("unit");
   if (!row?.financing) missing.push("financing");
   if (!(Number(row?.amount) > 0)) missing.push("amount");
   const files = row?.contactId

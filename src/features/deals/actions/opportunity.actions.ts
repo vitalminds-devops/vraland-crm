@@ -140,7 +140,6 @@ async function rebillForSelection(
     developmentName: string;
     before: {
       propertyId: string | null;
-      unitId: string | null;
       unitIds: string[];
       parkingSlotIds: string[];
     };
@@ -694,7 +693,6 @@ export async function openOpportunity(formData: FormData): Promise<DealActionRes
         developmentName: development.name,
         before: {
           propertyId: row.buildingId,
-          unitId: null,
           unitIds: row.unitIds ?? [],
           parkingSlotIds: row.parkingSlotIds ?? [],
         },
@@ -740,7 +738,6 @@ export async function openOpportunity(formData: FormData): Promise<DealActionRes
           parkingReservationFee: estimate.parkingReservationFee,
           monthlyAmortization: estimate.monthlyAmortization,
           developmentId: v.developmentId,
-          unitId: v.unitIds[0] ?? null,
           unitIds: v.unitIds,
           title: dealTitleFor(
             formatContactName({
@@ -909,7 +906,6 @@ export async function changeOpportunityUnits(input: unknown): Promise<DealAction
         .set({
           developmentId: v.developmentId,
           propertyId: v.buildingId,
-          unitId: v.unitIds[0] ?? null,
           unitIds: v.unitIds,
           parkingSlots: v.parkingSlotIds.length,
           parkingSlotIds: v.parkingSlotIds,
@@ -934,7 +930,6 @@ export async function changeOpportunityUnits(input: unknown): Promise<DealAction
       const propertyIds = await syncBillingInventory(tx, context, {
         ...deal,
         propertyId: v.buildingId,
-        unitId: v.unitIds[0] ?? null,
         unitIds: v.unitIds,
         parkingSlotIds: v.parkingSlotIds,
       });

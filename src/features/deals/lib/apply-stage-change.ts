@@ -103,7 +103,6 @@ export async function applyStageChange(
           updatedAt: deals.updatedAt,
           amount: deals.amount,
           propertyId: deals.propertyId,
-          unitId: deals.unitId,
           unitIds: deals.unitIds,
           parkingSlotIds: deals.parkingSlotIds,
           primaryAgentUserId: deals.primaryAgentUserId,
@@ -204,7 +203,7 @@ export async function applyStageChange(
         // has reserved since (say, while this move waited for approval) can't be this one's too.
         const taken = await heldElsewhere(tx, {
           id: dealId,
-          unitIds: before.unitIds.length ? before.unitIds : before.unitId ? [before.unitId] : [],
+          unitIds: before.unitIds,
           parkingSlotIds: before.parkingSlotIds,
         });
         if (taken.length)
@@ -334,11 +333,7 @@ export async function applyStageChange(
       const actualCloseDate = closeDateFor(status, before, manilaToday());
       // Back in Leads the units and parking go back on sale, so the opportunity lets go of them and
       // of the fees quoted for them; Move to Opportunity then starts from a clean pick.
-      const heldUnitIds = before.unitIds.length
-        ? before.unitIds
-        : before.unitId
-          ? [before.unitId]
-          : [];
+      const heldUnitIds = before.unitIds;
       const releasing =
         stage.slug === "leads" && (heldUnitIds.length > 0 || before.parkingSlotIds.length > 0);
       const inventoryProperties = await syncDealInventory(tx, {
@@ -346,7 +341,7 @@ export async function applyStageChange(
         actorUserId: context.userId,
         dealId,
         buildingId: before.propertyId,
-        unitIds: before.unitIds.length ? before.unitIds : before.unitId ? [before.unitId] : [],
+        unitIds: before.unitIds,
         parkingSlotIds: before.parkingSlotIds,
         status: inventoryStatusForDeal(
           stage,
@@ -365,7 +360,6 @@ export async function applyStageChange(
           // Reopened, it is no longer lost: its old loss reason would only mislead.
           ...(status !== "lost" && { lostReasonId: null, lostNotes: null }),
           ...(releasing && {
-            unitId: null,
             unitIds: [],
             parkingSlots: 0,
             parkingSlotIds: [],

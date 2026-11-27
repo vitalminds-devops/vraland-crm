@@ -23,7 +23,6 @@ export async function lockDealForInventory(
       id: deals.id,
       brokerUserId: deals.brokerUserId,
       propertyId: deals.propertyId,
-      unitId: deals.unitId,
       unitIds: deals.unitIds,
       parkingSlotIds: deals.parkingSlotIds,
       isWonStage: pipelineStages.isWonStage,
@@ -51,7 +50,7 @@ export async function inventoryHeldElsewhere(
 ): Promise<string | null> {
   const taken = await heldElsewhere(tx, {
     id: deal.id,
-    unitIds: deal.unitIds.length ? deal.unitIds : deal.unitId ? [deal.unitId] : [],
+    unitIds: deal.unitIds,
     parkingSlotIds: deal.parkingSlotIds,
   });
   return taken.length ? `${heldElsewhereMessage(taken)} Pick again.` : null;
@@ -114,7 +113,7 @@ export async function syncBillingInventory(
     actorUserId: context.userId,
     dealId: deal.id,
     buildingId: deal.propertyId,
-    unitIds: deal.unitIds.length ? deal.unitIds : deal.unitId ? [deal.unitId] : [],
+    unitIds: deal.unitIds,
     parkingSlotIds: deal.parkingSlotIds,
     status: inventoryStatusForDeal(
       deal,

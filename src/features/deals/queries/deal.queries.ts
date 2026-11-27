@@ -136,7 +136,7 @@ export async function getPipelineBoard() {
         unitCodes: sql<
           string | null
         >`(select string_agg(u.code, ', ' order by u.code) from ${units} u
-          where u.id = ${deals.unitId} or u.id = any(${deals.unitIds})
+          where u.id = any(${deals.unitIds})
             or (cardinality(${deals.unitIds}) = 0 and ${isContactsFirstDeal}
               and u.id = any(${contacts.preferredUnitIds})))`,
         /** The deal's parking slot identifiers, such as "P1, P12". */
@@ -179,7 +179,7 @@ export async function getPipelineBoard() {
       .innerJoin(pipelineStages, eq(deals.stageId, pipelineStages.id))
       .leftJoin(properties, eq(deals.propertyId, properties.id))
       .leftJoin(developments, eq(deals.developmentId, developments.id))
-      .leftJoin(units, eq(deals.unitId, units.id))
+      .leftJoin(units, eq(units.id, sql`${deals.unitIds}[1]`))
       .leftJoin(floors, eq(units.floorId, floors.id))
       .leftJoin(users, eq(deals.primaryAgentUserId, users.id))
       .leftJoin(
@@ -304,7 +304,7 @@ export async function listDeals(input: {
       .innerJoin(pipelineStages, eq(deals.stageId, pipelineStages.id))
       .leftJoin(properties, eq(deals.propertyId, properties.id))
       .leftJoin(developments, eq(deals.developmentId, developments.id))
-      .leftJoin(units, eq(deals.unitId, units.id))
+      .leftJoin(units, eq(units.id, sql`${deals.unitIds}[1]`))
       .leftJoin(floors, eq(units.floorId, floors.id))
       .leftJoin(users, eq(deals.primaryAgentUserId, users.id))
       .where(where)
@@ -446,11 +446,7 @@ export async function getDeal(id: string) {
     .where(eq(deals.id, id))
     .limit(1);
   if (!record) return null;
-  const unitIds = record.deal.unitIds.length
-    ? record.deal.unitIds
-    : record.deal.unitId
-      ? [record.deal.unitId]
-      : [];
+  const unitIds = record.deal.unitIds;
   const [unitRows, parkingRows] = await Promise.all([
     unitIds.length
       ? db

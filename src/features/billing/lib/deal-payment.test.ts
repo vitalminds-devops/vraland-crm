@@ -39,8 +39,8 @@ it("takes a deal's own reservation fee as the total, else sums each unit's type 
   expect(sql).toContain(`select sum(ut."reservation_fee") from "units" u`);
   expect(sql).toContain(`join "unit_types" ut on ut."id" = u."unit_type_id"`);
   expect(sql).toContain(`u."id" = any("deals"."unit_ids")`);
-  // A deal with no unit list falls back to its single unit; property-wide fees are not used.
-  expect(sql).toContain(`cardinality("deals"."unit_ids") = 0 and u."id" = "deals"."unit_id"`);
+  // The units come only from the unit list; the retired unit_id and property-wide fees are not used.
+  expect(sql).not.toContain(`"deals"."unit_id"`);
   expect(sql).not.toContain(`pr."reservation_fee"`);
 });
 

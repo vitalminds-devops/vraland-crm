@@ -839,7 +839,7 @@ export async function archiveContact(id: string): Promise<ContactActionResult> {
             eq(dealContacts.isPrimary, true),
             isNull(deals.deletedAt),
             inArray(deals.status, ["open", "won"]),
-            sql`(${deals.unitId} is not null or cardinality(${deals.unitIds}) > 0 or cardinality(${deals.parkingSlotIds}) > 0
+            sql`(cardinality(${deals.unitIds}) > 0 or cardinality(${deals.parkingSlotIds}) > 0
               or exists (select 1 from "bills" b join "payments" p on p."bill_id" = b."id" where b."deal_id" = ${deals.id} and p."deleted_at" is null))`,
           ),
         )

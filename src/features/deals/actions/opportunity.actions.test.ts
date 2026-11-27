@@ -120,7 +120,9 @@ vi.mock("@/lib/permissions/authorization", () => ({
   }),
   canAccessResource: async () => true,
 }));
-vi.mock("../lib/apply-stage-change", () => ({ applyStageChange: async () => inventory.stageResult }));
+vi.mock("../lib/apply-stage-change", () => ({
+  applyStageChange: async () => inventory.stageResult,
+}));
 vi.mock("@/lib/storage/document-storage", () => ({
   getDocumentStorage: () => ({ put: inventory.put, remove: inventory.remove }),
 }));
@@ -205,7 +207,6 @@ it("saves the building, parking quantity, and authoritative total before moving"
   expect(inventory.updates).toContainEqual(
     expect.objectContaining({
       propertyId: id,
-      unitId: id,
       unitIds: [id],
       amount: "145000.75",
       parkingSlots: 1,

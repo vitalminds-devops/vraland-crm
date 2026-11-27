@@ -594,7 +594,7 @@ await db.transaction(async (tx) => {
         dealCode: deal.dealCode,
         title: deal.title,
         developmentId: developmentIdByCode.get(deal.developmentCode) ?? null,
-        unitId,
+        unitIds: unitId ? [unitId] : [],
         stageId: stage.id,
         status: isWon ? "won" : "open",
         primaryAgentUserId: agentUser?.id || null,
