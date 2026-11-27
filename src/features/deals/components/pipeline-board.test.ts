@@ -51,7 +51,6 @@ const deal: Props["deals"][number] = {
   contactMiddleName: null,
   contactLastName: "Lead",
   nextAction: null,
-  financingType: null,
   lastStageNote: null,
   lastStageChangedAt: null,
   cancellationReason: null,

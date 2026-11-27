@@ -87,7 +87,6 @@ export const contacts = pgTable(
     notes: text(),
     marketingConsent: boolean("marketing_consent").default(false).notNull(),
     consentRecordedAt: timestamp("consent_recorded_at", { withTimezone: true }),
-    lastContactedAt: timestamp("last_contacted_at", { withTimezone: true }),
     convertedAt: timestamp("converted_at", { withTimezone: true }),
     createdBy: uuid("created_by").references(() => users.id, {
       onDelete: "set null",

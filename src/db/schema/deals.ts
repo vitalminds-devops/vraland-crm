@@ -106,7 +106,6 @@ export const deals = pgTable(
       onDelete: "set null",
     }),
     lostNotes: text("lost_notes"),
-    financingType: varchar("financing_type", { length: 20 }),
     cancellationReason: text("cancellation_reason"),
     // The reservation fee and monthly amortization quoted when the units and parking were chosen,
     // so later unit type or slot edits don't change the sale. Whether they are paid comes from its
@@ -161,10 +160,6 @@ export const dealAgents = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     role: varchar({ length: 30 }).default("agent").notNull(),
-    commissionSplitPercent: numeric("commission_split_percent", {
-      precision: 5,
-      scale: 2,
-    }),
     createdAt,
   },
   (t) => [primaryKey({ columns: [t.dealId, t.userId, t.role] })],

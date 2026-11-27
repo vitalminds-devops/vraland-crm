@@ -102,7 +102,6 @@ type Deal = {
   contactMiddleName: string | null;
   contactLastName: string | null;
   nextAction: string | null;
-  financingType: string | null;
   lastStageNote: string | null;
   lastStageChangedAt: string | null;
   cancellationReason: string | null;

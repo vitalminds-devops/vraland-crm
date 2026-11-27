@@ -54,8 +54,6 @@ export async function getSettingsSummary() {
         website: organizations.website,
         currency: organizations.currency,
         timezone: organizations.timezone,
-        city: organizations.city,
-        province: organizations.province,
         countryCode: organizations.countryCode,
         isActive: organizations.isActive,
         createdAt: organizations.createdAt,

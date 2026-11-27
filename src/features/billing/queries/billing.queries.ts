@@ -106,7 +106,6 @@ const dealRows = () =>
       city: contacts.currentCity,
       province: contacts.currentProvince,
       propertyTitle: properties.title,
-      floorAreaSqm: properties.floorAreaSqm,
       developmentName: developments.name,
       unitCode: units.code,
       dealUnitId: deals.unitId,

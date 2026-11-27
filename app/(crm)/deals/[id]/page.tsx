@@ -272,10 +272,7 @@ export default async function DealPage({
                 {data.agents.map((v) => (
                   <li key={v.id} className="text-sm">
                     <p className="font-medium">{person(v.firstName, v.lastName)}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {label(v.role)}
-                      {v.split ? ` · ${v.split}% split` : ""}
-                    </p>
+                    <p className="text-xs text-muted-foreground">{label(v.role)}</p>
                   </li>
                 ))}
               </ul>

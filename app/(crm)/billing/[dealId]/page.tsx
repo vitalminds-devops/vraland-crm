@@ -7,7 +7,6 @@ import {
   Home,
   MapPin,
   Receipt,
-  Ruler,
   Ticket,
   User,
   Wallet,
@@ -142,7 +141,6 @@ export default async function DealBillingPage({ params }: { params: Promise<{ de
   const unitLabel =
     bill.lines.map((line) => shortLabel(line.unitLabel)).join("\n") ||
     [bill.unitCode, bill.propertyTitle].filter(Boolean).join(" · ");
-  const floorArea = Number(bill.floorAreaSqm ?? 0);
   const total = Number(bill.total ?? 0);
   const paidPercent = total > 0 ? Math.min(100, (Number(bill.paid) / total) * 100) : 0;
   const billInitial = {
@@ -218,12 +216,6 @@ export default async function DealBillingPage({ params }: { params: Promise<{ de
                 <dt>Broker</dt>
                 <dd>{broker}</dd>
               </div>
-              {floorArea > 0 && (
-                <div>
-                  <dt>Floor area</dt>
-                  <dd>{floorArea.toLocaleString("en-PH")} sqm</dd>
-                </div>
-              )}
             </dl>
           </section>
           <section aria-label="Itemized charges">
@@ -429,11 +421,6 @@ export default async function DealBillingPage({ params }: { params: Promise<{ de
                       : "Unit"
                 }
                 value={unitLabel}
-              />
-              <Detail
-                icon={Ruler}
-                label="Floor area"
-                value={floorArea > 0 ? `${floorArea.toLocaleString("en-PH")} sqm` : null}
               />
               <div className="col-span-full">
                 <Detail icon={MapPin} label="Address" value={address} />

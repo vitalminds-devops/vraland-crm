@@ -40,10 +40,6 @@ export const calendarEvents = pgTable(
       onDelete: "set null",
     }),
     dealId: uuid("deal_id").references(() => deals.id, { onDelete: "set null" }),
-    externalCalendarProvider: varchar("external_calendar_provider", {
-      length: 30,
-    }),
-    externalEventId: varchar("external_event_id", { length: 255 }),
     createdAt,
     updatedAt,
   },

@@ -41,10 +41,7 @@ export default async function SettingsPage() {
   const canViewSystem = context.permissions.has("settings.system");
 
   const { organization, users, roles } = data;
-  const location =
-    [organization?.city, organization?.province].filter(Boolean).join(", ") ||
-    organization?.countryCode ||
-    null;
+  const location = organization?.countryCode || null;
   const regional = [organization?.timezone, organization?.currency].filter(Boolean).join(" · ");
 
   // Only what the name doesn't already say, e.g. no code under "Real Estate CRM (CRM-PROD)".

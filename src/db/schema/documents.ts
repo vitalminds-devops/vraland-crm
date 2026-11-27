@@ -43,8 +43,6 @@ export const documents = pgTable(
     mimeType: varchar("mime_type", { length: 120 }),
     fileSizeBytes: bigint("file_size_bytes", { mode: "number" }),
     checksumSha256: varchar("checksum_sha256", { length: 64 }),
-    esignProvider: varchar("esign_provider", { length: 80 }),
-    externalEnvelopeId: varchar("external_envelope_id", { length: 255 }),
     signedAt: timestamp("signed_at", { withTimezone: true }),
     createdBy: uuid("created_by").references(() => users.id, {
       onDelete: "set null",

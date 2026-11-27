@@ -15,7 +15,6 @@ const fixture = vi.hoisted(() => ({
       status: "active",
       currency: "PHP",
       parkingSpaces: 1,
-      floorAreaSqm: "42",
       listedAt: null,
       availableFrom: null,
       contractStartDate: null,

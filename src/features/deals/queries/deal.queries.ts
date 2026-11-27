@@ -160,7 +160,6 @@ export async function getPipelineBoard() {
         nextAction: sql<
           string | null
         >`(select min(${tasks.dueAt})::text from ${tasks} where ${tasks.dealId} = ${deals.id} and ${tasks.status} in ('todo','in_progress') and ${tasks.deletedAt} is null)`,
-        financingType: deals.financingType,
         reservationPaid: dealReservationPaid,
         firstMonthPaid: dealFirstMonthPaid,
         // Most recent stage history note
@@ -494,7 +493,6 @@ export async function getDeal(id: string) {
           firstName: users.firstName,
           lastName: users.lastName,
           role: dealAgents.role,
-          split: dealAgents.commissionSplitPercent,
         })
         .from(dealAgents)
         .innerJoin(users, eq(dealAgents.userId, users.id))

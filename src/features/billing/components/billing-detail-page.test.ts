@@ -27,7 +27,6 @@ vi.mock("@/features/billing/queries/billing.queries", () => ({
     brokerFirstName: "John",
     brokerLastName: "Doe",
     developmentName: "Fairfield Heights",
-    floorAreaSqm: "0",
     reservationFee: "10655",
     parkingAmount: "0",
     monthlyAmortization: "15660655",
