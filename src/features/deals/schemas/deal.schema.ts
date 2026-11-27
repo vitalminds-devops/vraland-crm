@@ -33,3 +33,6 @@ export const stageApprovalSchema = z.object({
 });
 
 export const dealDeleteSchema = z.object({ dealId: z.uuid() });
+
+/** Recalculating a won opportunity's commission by today's rules. */
+export const commissionRecalculationSchema = z.object({ dealId: z.uuid() });

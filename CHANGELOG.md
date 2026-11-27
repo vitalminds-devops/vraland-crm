@@ -5,6 +5,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+- A won opportunity's Commission card has Recalculate, for users who manage commission rates: it replaces the commission with today's commission rules for the current agent and broker, and is logged.
+
 ### Changed
 - An agent under a broker is paid only by the commission rule linking their role to the broker's; with no such link, no commission is recorded. Only an independent agent earns their own role's rate.
 

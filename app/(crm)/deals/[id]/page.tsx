@@ -17,6 +17,8 @@ import { unitStatusLabel, unitStatusToneFor } from "@/features/properties/lib/un
 import { getDeal, getDealOptions } from "@/features/deals/queries/deal.queries";
 import { dealStatusLabel, dealTypeLabel } from "@/features/deals/lib/deal-label";
 import { requirePagePermission } from "@/lib/permissions/authorization";
+import { hasPermission } from "@/lib/permissions/policy";
+import { RecalculateCommissionButton } from "@/features/deals/components/recalculate-commission-button";
 
 const headClass = "border-b border-border/60 pb-3 text-[16px] font-semibold leading-none";
 
@@ -28,7 +30,8 @@ export default async function DealPage({
   searchParams: Promise<{ opportunityDraft?: string }>;
 }) {
   const { id } = await params;
-  await requirePagePermission("deals.view");
+  const context = await requirePagePermission("deals.view");
+  const canRecalculate = hasPermission(context, "roles.manage");
   const [data, options] = await Promise.all([getDeal(id), getDealOptions()]);
   if (!data) notFound();
   const d = data.deal;
@@ -286,10 +289,12 @@ export default async function DealPage({
             <Section
               title="Commission"
               action={
-                d.status !== "won" && (
+                d.status !== "won" ? (
                   <span className="text-xs font-normal text-muted-foreground">
                     From the first win
                   </span>
+                ) : (
+                  canRecalculate && <RecalculateCommissionButton dealId={d.id} />
                 )
               }
             >
