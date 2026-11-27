@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-27
+
 ### Changed
 - Editing a contact no longer requires the agent, budget range, province, city or barangay. Leaving the agent blank keeps the current one.
 - Billing and Move to Opportunity change the stage under the permission they already checked, instead of checking it a second time.
