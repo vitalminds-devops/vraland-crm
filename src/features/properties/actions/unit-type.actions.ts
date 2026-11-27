@@ -1,5 +1,6 @@
 "use server";
 
+import { toAmount } from "@/lib/utils/money";
 import { and, count, eq, inArray, isNull, notInArray } from "drizzle-orm";
 import { z } from "zod";
 import { ActionErrorCode } from "@/lib/errors/action-error";
@@ -24,8 +25,6 @@ import { canWriteProperty } from "../queries/property-scope.queries";
 import { changesMoney, heldPriceMessage, pricesNeedPermission } from "../lib/price-changes";
 import { designFacts, REPRICED_STATUSES } from "../lib/floor-layout";
 import { unitDetailsSchema, unitTypeSchema } from "../schemas/floor-layout.schema";
-
-const money = (value: number | null) => (value === null ? null : value.toFixed(2));
 
 /** Adds a unit type with its design, or updates one when `id` is given. */
 export async function saveUnitType(
@@ -65,9 +64,9 @@ export async function saveUnitType(
       : [];
     if (
       changesMoney(current, {
-        price: money(value.price),
-        reservationFee: money(value.reservationFee),
-        monthlyAmortization: money(value.monthlyAmortization),
+        price: toAmount(value.price),
+        reservationFee: toAmount(value.reservationFee),
+        monthlyAmortization: toAmount(value.monthlyAmortization),
       })
     )
       return failure(outOfScope(pricesNeedPermission));
@@ -78,10 +77,10 @@ export async function saveUnitType(
   const fields = {
     name: value.name,
     bedrooms: facts.bedrooms,
-    floorArea: money(facts.floorArea),
-    price: money(value.price),
-    reservationFee: money(value.reservationFee),
-    monthlyAmortization: money(value.monthlyAmortization),
+    floorArea: toAmount(facts.floorArea),
+    price: toAmount(value.price),
+    reservationFee: toAmount(value.reservationFee),
+    monthlyAmortization: toAmount(value.monthlyAmortization),
     layout: value.layout,
     updatedAt: new Date(),
   };
@@ -254,21 +253,21 @@ export async function saveUnitDetails(input: unknown): Promise<ActionResult> {
   }
   if (
     !hasPermission(context, "properties.manage_prices") &&
-    changesMoney({ price: unit.price }, { price: money(value.price) })
+    changesMoney({ price: unit.price }, { price: toAmount(value.price) })
   )
     return failure(outOfScope(pricesNeedPermission));
   // A reserved or sold unit's price is what the client agreed to; it changes only on the bill.
-  if (unit.reservedDealId && changesMoney({ price: unit.price }, { price: money(value.price) }))
+  if (unit.reservedDealId && changesMoney({ price: unit.price }, { price: toAmount(value.price) }))
     return validationFailure(heldPriceMessage(`Unit ${unit.code}`));
 
   const fields = {
     unitTypeId: value.unitTypeId,
-    floorArea: money(value.floorArea),
+    floorArea: toAmount(value.floorArea),
     // A held unit that followed its type's price keeps the price it was sold at under a new type.
     price:
       unit.reservedDealId && value.price === null && unit.price === null
         ? unit.typePrice
-        : money(value.price),
+        : toAmount(value.price),
   };
   try {
     await db.transaction(async (tx) => {

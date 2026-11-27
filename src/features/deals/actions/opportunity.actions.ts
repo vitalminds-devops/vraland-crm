@@ -1,5 +1,6 @@
 "use server";
 
+import { formatMoney } from "@/lib/utils/money";
 import { createHash, randomUUID } from "node:crypto";
 import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -703,7 +704,7 @@ export async function openOpportunity(formData: FormData): Promise<DealActionRes
         throw new OpportunityChanged(
           rebilled.error === "discount"
             ? "The bill's reservation discount is more than the new price."
-            : `The new total is less than the ₱${rebilled.paid.toLocaleString("en-PH")} already paid.`,
+            : `The new total is less than the ${formatMoney(rebilled.paid)} already paid.`,
         );
       await tx
         .update(contacts)
@@ -980,7 +981,7 @@ export async function changeOpportunityUnits(input: unknown): Promise<DealAction
       return validationFailure("The bill's reservation discount is more than the new price.");
     if (outcome.kind === "below-paid")
       return validationFailure(
-        `The new total is less than the ₱${outcome.paid.toLocaleString("en-PH")} already paid.`,
+        `The new total is less than the ${formatMoney(outcome.paid)} already paid.`,
       );
     revalidatePath("/pipeline");
     revalidatePath(`/deals/${v.dealId}`);

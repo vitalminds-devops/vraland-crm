@@ -2,7 +2,7 @@ import Link from "next/link";
 import { format, parseISO } from "date-fns";
 
 import type { DashboardData } from "../queries/dashboard.queries";
-import { compactCurrency } from "../lib/format";
+import { formatMoneyShort } from "@/lib/utils/money";
 import { EmptyList } from "./priority-list";
 
 export function ClosingSoon({
@@ -35,7 +35,7 @@ export function ClosingSoon({
           </div>
           <div className="flex items-baseline justify-between gap-3 @min-[24rem]:block @min-[24rem]:shrink-0 @min-[24rem]:text-right">
             <p className="text-sm font-medium tabular-nums">
-              {compactCurrency(deal.amount, currency)}
+              {formatMoneyShort(deal.amount, currency) ?? ""}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               {deal.expectedCloseDate

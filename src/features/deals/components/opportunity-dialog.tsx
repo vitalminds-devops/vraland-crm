@@ -1,5 +1,6 @@
 "use client";
 
+import { formatAmount } from "@/lib/utils/money";
 import { unitsReservationFee } from "@/features/billing/lib/quoted-terms";
 import { Check, FileText, Loader2, Plus, ScanLine, Upload, X } from "lucide-react";
 import {
@@ -1059,14 +1060,14 @@ export function OpportunityDialog({
                           <div key={line.label} className="flex justify-between gap-3">
                             <dt>{line.label}</dt>
                             <dd className="tabular-nums">
-                              {formatPrice(line.price ?? "0", currentEstimate.currency)}
+                              {formatAmount(line.price ?? "0", currentEstimate.currency)}
                             </dd>
                           </div>
                         ))}
                         <div className="mt-1 flex justify-between gap-3 border-t border-primary/20 pt-3 text-base font-semibold">
                           <dt>Total</dt>
                           <dd className="text-primary tabular-nums">
-                            {formatPrice(currentEstimate.total, currentEstimate.currency)}
+                            {formatAmount(currentEstimate.total, currentEstimate.currency)}
                           </dd>
                         </div>
                         {/* What the opportunity will be quoted, saved with it. */}
@@ -1096,7 +1097,7 @@ export function OpportunityDialog({
                           >
                             <dt>{label}</dt>
                             <dd className="tabular-nums">
-                              {amount ? formatPrice(amount, currentEstimate.currency) : "—"}
+                              {amount ? formatAmount(amount, currentEstimate.currency) : "—"}
                             </dd>
                           </div>
                         ))}
@@ -1207,8 +1208,4 @@ export function OpportunityDialog({
       </DialogPortal>
     </Dialog>
   );
-}
-
-function formatPrice(value: string, currency: string) {
-  return new Intl.NumberFormat("en-PH", { style: "currency", currency }).format(Number(value));
 }

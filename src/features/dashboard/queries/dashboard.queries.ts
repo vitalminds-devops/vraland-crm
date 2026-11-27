@@ -57,7 +57,7 @@ import {
 import { taskDueToday, taskOverdue } from "@/features/tasks/lib/task-predicates";
 import { dashboardSections } from "@/lib/permissions/view-access";
 import { leadNotArchived } from "@/features/deals/lib/lead-not-archived";
-import { compactCurrency } from "../lib/format";
+import { formatMoneyShort } from "@/lib/utils/money";
 import { percentageChange, rate } from "../lib/metrics";
 import { ensurePipelineStages } from "@/features/deals/lib/ensure-pipeline-stages";
 
@@ -675,7 +675,7 @@ export async function getDashboardData() {
     canViewDeals && {
       key: "closed",
       label: "Won this month",
-      value: compactCurrency(wonValue, currency),
+      value: formatMoneyShort(wonValue, currency) ?? "",
       hint: `${wonCount} won · ${lostCount} lost`,
     },
     canViewDeals && {

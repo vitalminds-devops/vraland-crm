@@ -1,5 +1,6 @@
 "use client";
 
+import { formatAmount } from "@/lib/utils/money";
 import { unitsReservationFee } from "@/features/billing/lib/quoted-terms";
 import { ArrowLeftRight, CopyPlus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -27,9 +28,6 @@ import { OpportunityParkingSelector } from "./opportunity-parking-selector";
 
 const field =
   "w-full rounded-lg border border-border/60 bg-background px-3 py-2 pr-9 text-base outline-none sm:text-sm transition-all hover:border-border focus-visible:ring-2 focus-visible:ring-primary/25";
-
-const peso = (value: string, currency: string) =>
-  new Intl.NumberFormat("en-PH", { style: "currency", currency }).format(Number(value));
 
 /** Opens another opportunity for the same client, for a unit in another tower or development. */
 export function AddOpportunityButton({ dealId }: { dealId: string }) {
@@ -227,7 +225,7 @@ function ChangeUnitsDialog({ dealId, onClose }: { dealId: string; onClose: () =>
                   <span className="text-muted-foreground">New total</span>
                   {current?.success ? (
                     <span className="text-base font-semibold text-primary tabular-nums">
-                      {peso(current.total, current.currency)}
+                      {formatAmount(current.total, current.currency)}
                     </span>
                   ) : (
                     <span className={current ? "text-destructive" : "text-muted-foreground"}>
@@ -245,20 +243,20 @@ function ChangeUnitsDialog({ dealId, onClose }: { dealId: string; onClose: () =>
                       {current.parkingReservationFee ? "Unit reservation fee" : "Reservation fee"}
                     </dt>
                     <dd className="tabular-nums">
-                      {unitsFee ? peso(unitsFee, current.currency) : "—"}
+                      {unitsFee ? formatAmount(unitsFee, current.currency) : "—"}
                     </dd>
                     {current.parkingReservationFee && (
                       <>
                         <dt>Parking reservation fee</dt>
                         <dd className="tabular-nums">
-                          {peso(current.parkingReservationFee, current.currency)}
+                          {formatAmount(current.parkingReservationFee, current.currency)}
                         </dd>
                       </>
                     )}
                     <dt>Monthly amortization</dt>
                     <dd className="tabular-nums">
                       {current.monthlyAmortization
-                        ? peso(current.monthlyAmortization, current.currency)
+                        ? formatAmount(current.monthlyAmortization, current.currency)
                         : "—"}
                     </dd>
                   </dl>

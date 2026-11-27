@@ -1,5 +1,4 @@
-const money = (value: number) => value.toFixed(2);
-const cents = (value: number) => Math.round(value * 100) / 100;
+import { toAmount, toCents } from "@/lib/utils/money";
 
 export type RebillInput = {
   units: { id: string; code: string; price: string }[];
@@ -71,7 +70,7 @@ export function rebuildBill(input: RebillInput) {
         { unitId: unit.id, parkingSlotId: null },
         `Unit ${unit.code} · ${input.place}`,
         price,
-        cents(price * miscRate),
+        toCents(price * miscRate) / 100,
       );
     }),
     ...input.slots.map((slot) =>
@@ -95,14 +94,14 @@ export function rebuildBill(input: RebillInput) {
       .map((line) => line.unitLabel)
       .join(" + ")
       .slice(0, 220),
-    unitPrice: money(unitPrice),
-    miscellaneousFee: money(miscellaneousFee),
+    unitPrice: toAmount(unitPrice),
+    miscellaneousFee: toAmount(miscellaneousFee),
     lines: priced.map((line) => ({
       unitId: line.unitId,
       parkingSlotId: line.parkingSlotId,
       unitLabel: line.unitLabel,
-      unitPrice: money(line.price),
-      miscellaneousFee: money(line.fee),
+      unitPrice: toAmount(line.price),
+      miscellaneousFee: toAmount(line.fee),
     })),
   };
 }

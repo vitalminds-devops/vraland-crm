@@ -91,7 +91,7 @@ const input = {
 it("saves the amount and commission from the contact form on an open deal", async () => {
   fixture.status = "open";
   expect((await saveDealForContact("contact", null, input)).success).toBe(true);
-  expect(fixture.updates[0]).toMatchObject({ amount: "6000000", expectedCommission: "1" });
+  expect(fixture.updates[0]).toMatchObject({ amount: "6000000.00", expectedCommission: "1.00" });
 });
 
 it("keeps a won deal's settled amount and commission", async () => {
@@ -107,5 +107,5 @@ it("keeps the commission from the first win while a won deal is reopened", async
   fixture.status = "open";
   fixture.earned = true;
   expect((await saveDealForContact("contact", null, input)).success).toBe(true);
-  expect(fixture.updates[0]).toMatchObject({ amount: "6000000", expectedCommission: "150000.00" });
+  expect(fixture.updates[0]).toMatchObject({ amount: "6000000.00", expectedCommission: "150000.00" });
 });

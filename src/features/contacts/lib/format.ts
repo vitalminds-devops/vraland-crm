@@ -1,39 +1,11 @@
-const peso = new Intl.NumberFormat("en-PH", {
-  style: "currency",
-  currency: "PHP",
-  maximumFractionDigits: 0,
-});
-
-const pesoCompact = new Intl.NumberFormat("en-PH", {
-  style: "currency",
-  currency: "PHP",
-  notation: "compact",
-  maximumFractionDigits: 1,
-});
-
-/** `"1500000.00"` -> `"₱1,500,000"`. Returns null for empty/invalid input. */
-export function formatPeso(value: string | number | null | undefined): string | null {
-  if (value === null || value === undefined || value === "") return null;
-  const amount = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(amount)) return null;
-  return peso.format(amount);
-}
-
-/** `"1500000"` -> `"₱1.5M"`, `"4000000"` -> `"₱4M"`. Handy for the combined budget range. */
-function formatPesoCompact(value: string | number | null | undefined): string | null {
-  if (value === null || value === undefined || value === "") return null;
-  const amount = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(amount)) return null;
-  // `Intl` compact renders whole millions as "₱4.0M"; drop the redundant ".0".
-  return pesoCompact.format(amount).replace(/\.0(?=[A-Z])/, "");
-}
+import { formatMoneyShort } from "@/lib/utils/money";
 
 export function formatPesoRange(
   min: string | number | null | undefined,
   max: string | number | null | undefined,
 ): string | null {
-  const from = formatPesoCompact(min);
-  const to = formatPesoCompact(max);
+  const from = formatMoneyShort(min);
+  const to = formatMoneyShort(max);
   if (from && to) return `${from} – ${to}`;
   return from ?? to;
 }

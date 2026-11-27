@@ -1,13 +1,8 @@
+import { formatAmount } from "@/lib/utils/money";
 import type { DotBadgeTone } from "@/components/ui/dot-badge";
 import type { BillStatus } from "../queries/billing.queries";
 
-export const peso = (value: string | number | null | undefined) =>
-  value === null || value === undefined
-    ? "—"
-    : new Intl.NumberFormat("en-PH", {
-        style: "currency",
-        currency: "PHP",
-      }).format(Number(value));
+export const peso = (value: string | number | null | undefined) => formatAmount(value) ?? "—";
 
 /** `yyyy-MM-dd` from a date column, shown as a Manila calendar date. */
 export const calendarDate = (value: string) =>

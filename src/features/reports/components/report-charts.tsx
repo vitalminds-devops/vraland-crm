@@ -1,5 +1,6 @@
 "use client";
 
+import { formatAmount, formatMoneyShort } from "@/lib/utils/money";
 import {
   Bar,
   Area,
@@ -24,16 +25,6 @@ const tooltipStyle = {
   color: "var(--foreground)",
   fontSize: 12,
 };
-const money = (value: number, currency: string) =>
-  new Intl.NumberFormat("en-PH", { style: "currency", currency }).format(value);
-
-const compact = (value: number, currency: string) =>
-  new Intl.NumberFormat("en-PH", {
-    style: "currency",
-    currency,
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(value);
 
 export function SalesTrendChart({
   data,
@@ -57,14 +48,14 @@ export function SalesTrendChart({
             minTickGap={24}
           />
           <YAxis
-            tickFormatter={(value) => compact(Number(value), currency)}
+            tickFormatter={(value) => formatMoneyShort(Number(value), currency) ?? ""}
             tickLine={false}
             axisLine={false}
             width={70}
             tick={axisTick}
           />
           <Tooltip
-            formatter={(value) => money(Number(value), currency)}
+            formatter={(value) => formatAmount(Number(value), currency) ?? ""}
             labelFormatter={(label) => reportMonth(String(label))}
             contentStyle={tooltipStyle}
           />
@@ -101,14 +92,14 @@ export function ForecastChart({
             minTickGap={24}
           />
           <YAxis
-            tickFormatter={(value) => compact(Number(value), currency)}
+            tickFormatter={(value) => formatMoneyShort(Number(value), currency) ?? ""}
             tickLine={false}
             axisLine={false}
             width={70}
             tick={axisTick}
           />
           <Tooltip
-            formatter={(value) => money(Number(value), currency)}
+            formatter={(value) => formatAmount(Number(value), currency) ?? ""}
             labelFormatter={(label) => reportMonth(String(label))}
             contentStyle={tooltipStyle}
           />
@@ -175,7 +166,7 @@ export function ArimaForecastChart({
             minTickGap={24}
           />
           <YAxis
-            tickFormatter={(value) => compact(Number(value), currency)}
+            tickFormatter={(value) => formatMoneyShort(Number(value), currency) ?? ""}
             tickLine={false}
             axisLine={false}
             width={80}
@@ -184,8 +175,8 @@ export function ArimaForecastChart({
           <Tooltip
             formatter={(value) =>
               Array.isArray(value)
-                ? value.map((number) => money(Number(number), currency)).join(" – ")
-                : money(Number(value), currency)
+                ? value.map((number) => formatAmount(Number(number), currency) ?? "").join(" – ")
+                : (formatAmount(Number(value), currency) ?? "")
             }
             labelFormatter={(label) => reportMonth(String(label))}
             contentStyle={tooltipStyle}

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { toCents } from "@/lib/utils/money";
 import { and, eq, inArray, isNotNull, isNull, ne } from "drizzle-orm";
 import type { db } from "@/db";
 import { bills, deals, pipelineStages, propertyParkingSlots, units } from "@/db/schema";
@@ -94,7 +95,7 @@ export async function readReservationReceived(tx: Transaction, dealId: string): 
 }
 
 export function isFullyPaid(payment: { total: number; paid: number }): boolean {
-  return payment.paid > 0 && payment.total > 0 && payment.paid >= payment.total - 0.004;
+  return payment.paid > 0 && payment.total > 0 && toCents(payment.paid) >= toCents(payment.total);
 }
 
 export function inventoryStatusForDeal(

@@ -12,7 +12,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { compactCurrency } from "../lib/format";
+import { formatMoneyShort } from "@/lib/utils/money";
 
 const chartRamp = Array.from({ length: 8 }, (_, index) => `var(--chart-${index + 1})`);
 
@@ -83,14 +83,14 @@ export function RevenueChart({
               tickMargin={8}
             />
             <YAxis
-              tickFormatter={(value: number) => compactCurrency(value, currency)}
+              tickFormatter={(value: number) => formatMoneyShort(value, currency) ?? ""}
               tickLine={false}
               axisLine={false}
               width={56}
               tick={axisTick}
             />
             <Tooltip
-              formatter={(value) => compactCurrency(Number(value), currency)}
+              formatter={(value) => formatMoneyShort(Number(value), currency) ?? ""}
               contentStyle={tooltipStyle}
             />
             <Area

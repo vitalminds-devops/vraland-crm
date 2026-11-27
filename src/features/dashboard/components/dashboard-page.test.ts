@@ -153,7 +153,7 @@ it("shows reservations received this month with their count, and available units
   expect(html).not.toContain("Total sales");
   expect(html).not.toContain("Reservation value");
   expect(html).toContain("Reservations received this month");
-  expect(html).toContain("₱100.0K");
+  expect(html).toContain("₱100K");
   expect(html).toContain("5 payments");
   expect(html).toContain("Available units");
   expect(html).toContain("of 60 units");
@@ -163,7 +163,7 @@ it("shows reservations received this month with their count, and available units
 
 it("distinguishes won sales value, all-time monthly payments and this month's collections", async () => {
   const html = (await render()).replace(/<[^>]+>/g, " ");
-  expect(html).toContain("₱9.0M");
+  expect(html).toContain("₱9M");
   expect(html).toContain("Won sales value");
   expect(html).toContain("3 won · ₱4.5M collected");
   expect(html).toContain("Monthly payments received");

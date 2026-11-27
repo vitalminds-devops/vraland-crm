@@ -1,8 +1,8 @@
+import { formatMoney } from "@/lib/utils/money";
 import { manilaToday } from "@/lib/utils/manila-time";
 import { ageOn, budgetRangeLabelFor, channelLabel, purchaseTypeLabels } from "./contact-options";
 import {
   facebookHref,
-  formatPeso,
   formatPesoRange,
   formatPhone,
   instagramHref,
@@ -200,7 +200,7 @@ export function buildEmploymentGroups(c: ContactDetailView): InfoFieldGroup[] {
     {
       fields: [
         { label: "Employment", value: c.employmentType },
-        { label: "Annual income", value: formatPeso(c.annualIncome), variant: "stat" as const },
+        { label: "Annual income", value: formatMoney(c.annualIncome), variant: "stat" as const },
       ],
     },
   ];

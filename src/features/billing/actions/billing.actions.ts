@@ -1,5 +1,6 @@
 "use server";
 
+import { formatAmount, formatMoney, toAmount, toCents } from "@/lib/utils/money";
 import { createHash, randomUUID } from "node:crypto";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -48,8 +49,6 @@ import {
   type ActionResult,
 } from "@/lib/types/action-result";
 import { billSchema, paymentSchema, removePaymentSchema } from "../schemas/billing.schema";
-
-const money = (value: number) => value.toFixed(2);
 
 /** Thrown to roll back a void that would leave the deal past a payment gate it no longer meets. */
 class StageNeedsPayment extends Error {}
@@ -125,11 +124,8 @@ export async function saveBill(input: unknown): Promise<ActionResult<{ id: strin
       if (
         deal.isWonStage &&
         existing &&
-        Math.abs(
-          unitPrice -
-            reservationDiscount -
-            (Number(existing.unitPrice) - Number(existing.reservationDiscount)),
-        ) > 0.004
+        toCents(unitPrice - reservationDiscount) !==
+          toCents(Number(existing.unitPrice) - Number(existing.reservationDiscount))
       )
         return { kind: "won-price" as const };
       if (existing) {
@@ -143,9 +139,9 @@ export async function saveBill(input: unknown): Promise<ActionResult<{ id: strin
       const fields = {
         brokerUserId: deal.brokerUserId,
         unitLabel,
-        unitPrice: money(unitPrice),
-        miscellaneousFee: money(miscellaneousFee),
-        reservationDiscount: money(reservationDiscount),
+        unitPrice: toAmount(unitPrice),
+        miscellaneousFee: toAmount(miscellaneousFee),
+        reservationDiscount: toAmount(reservationDiscount),
         notes: value.notes,
         ...(value.applicantDetails === undefined
           ? {}
@@ -180,8 +176,8 @@ export async function saveBill(input: unknown): Promise<ActionResult<{ id: strin
           parkingSlotId:
             item.parkingSlotId && dealSlots.has(item.parkingSlotId) ? item.parkingSlotId : null,
           unitLabel: item.unitLabel,
-          unitPrice: money(item.unitPrice),
-          miscellaneousFee: money(item.miscellaneousFee),
+          unitPrice: toAmount(item.unitPrice),
+          miscellaneousFee: toAmount(item.miscellaneousFee),
         })),
       );
 
@@ -199,7 +195,7 @@ export async function saveBill(input: unknown): Promise<ActionResult<{ id: strin
           unitPrice: fields.unitPrice,
           miscellaneousFee: fields.miscellaneousFee,
           reservationDiscount: fields.reservationDiscount,
-          total: money(total),
+          total: toAmount(total),
           applicantDetailsUpdated: value.applicantDetails !== undefined,
         },
       });
@@ -220,7 +216,7 @@ export async function saveBill(input: unknown): Promise<ActionResult<{ id: strin
       );
     if (outcome.kind === "below-paid")
       return validationFailure(
-        `The total cannot be less than the ₱${outcome.paid.toLocaleString("en-PH")} already paid.`,
+        `The total cannot be less than the ${formatMoney(outcome.paid)} already paid.`,
       );
     refresh(value.dealId, outcome.propertyIds);
     return success({ id: outcome.id });
@@ -288,22 +284,22 @@ export async function recordPayment(
         .innerJoin(deals, eq(deals.id, bills.dealId))
         .where(eq(bills.id, bill.id));
       const balance = Number(bill.total) - Number(paid);
-      if (value.amount > balance + 0.004) return { kind: "over" as const, balance };
-      if (value.classification === "full_payment" && value.amount < balance - 0.004)
+      if (toCents(value.amount) > toCents(balance)) return { kind: "over" as const, balance };
+      if (value.classification === "full_payment" && toCents(value.amount) < toCents(balance))
         return { kind: "short" as const, balance };
       // A Reservation may go above the fee but must cover what is left of it (or the balance, if smaller).
       const reservationDue = Math.min(
         Number(reservationFee ?? 0) - Number(reservationPaid ?? 0),
         balance,
       );
-      if (value.classification === "reservation" && value.amount < reservationDue - 0.004)
+      if (value.classification === "reservation" && toCents(value.amount) < toCents(reservationDue))
         return { kind: "reservation-short" as const, due: reservationDue };
       if (value.classification === "monthly") {
         // Monthly payments start only after the reservation fee (or any reservation, if none is set) is paid.
-        if (reservationDue > 0.004 || !(Number(reservationPaid) > 0))
+        if (toCents(reservationDue) > 0 || !(Number(reservationPaid) > 0))
           return { kind: "reservation-unpaid" as const };
         const monthlyDue = Math.min(Number(monthlyAmount ?? 0), balance);
-        if (value.amount < monthlyDue - 0.004)
+        if (toCents(value.amount) < toCents(monthlyDue))
           return { kind: "monthly-short" as const, due: monthlyDue };
       }
 
@@ -341,7 +337,7 @@ export async function recordPayment(
         .values({
           organizationId: context.organizationId,
           billId: bill.id,
-          amount: money(value.amount),
+          amount: toAmount(value.amount),
           paidOn: value.paidOn,
           method: value.method,
           classification: value.classification,
@@ -360,7 +356,7 @@ export async function recordPayment(
         newValues: {
           billId: bill.id,
           dealId: bill.dealId,
-          amount: money(value.amount),
+          amount: toAmount(value.amount),
           paidOn: value.paidOn,
           method: value.method,
           classification: value.classification,
@@ -401,23 +397,23 @@ export async function recordPayment(
       );
     if (outcome.kind === "short")
       return validationFailure(
-        `A full payment must cover the whole ₱${outcome.balance.toLocaleString("en-PH", { minimumFractionDigits: 2 })} balance. Use Monthly for part of it.`,
+        `A full payment must cover the whole ${formatAmount(outcome.balance)} balance. Use Monthly for part of it.`,
       );
     if (outcome.kind === "reservation-short")
       return validationFailure(
-        `A reservation must be at least the ₱${outcome.due.toLocaleString("en-PH", { minimumFractionDigits: 2 })} reservation fee.`,
+        `A reservation must be at least the ${formatAmount(outcome.due)} reservation fee.`,
       );
     if (outcome.kind === "reservation-unpaid")
       return validationFailure("Pay the reservation fee before recording a monthly payment.");
     if (outcome.kind === "monthly-short")
       return validationFailure(
-        `A monthly payment must be at least the ₱${outcome.due.toLocaleString("en-PH", { minimumFractionDigits: 2 })} monthly amortization.`,
+        `A monthly payment must be at least the ${formatAmount(outcome.due)} monthly amortization.`,
       );
     if (outcome.kind === "over")
       return validationFailure(
         outcome.balance <= 0
           ? "This bill is already fully paid."
-          : `The payment is more than the ₱${outcome.balance.toLocaleString("en-PH", { minimumFractionDigits: 2 })} balance.`,
+          : `The payment is more than the ${formatAmount(outcome.balance)} balance.`,
       );
     savedPaymentId = outcome.id;
     refresh(outcome.dealId, outcome.propertyIds);

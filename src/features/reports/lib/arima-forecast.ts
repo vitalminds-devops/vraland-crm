@@ -1,3 +1,5 @@
+import { toCents } from "@/lib/utils/money";
+
 /** Preserve zero-sales months inside the observed history, without adding invented history before it. */
 export function monthlySalesHistory(rows: { month: string; value: number }[], cutoff: string) {
   const indexOf = (month: string) => Number(month.slice(0, 4)) * 12 + Number(month.slice(5, 7)) - 1;
@@ -55,7 +57,7 @@ export function arimaForecast(values: number[], horizon = 6) {
   let difference = differences.at(-1)!;
   let cumulativeResponse = 0,
     predictionVariance = 0;
-  const money = (value: number) => Math.round(Math.max(0, value * scale) * 100) / 100;
+  const money = (value: number) => toCents(Math.max(0, value * scale)) / 100;
   const forecast = Array.from({ length: horizon }, (_, index) => {
     difference = intercept + phi * difference;
     level += difference;

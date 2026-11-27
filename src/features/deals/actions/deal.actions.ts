@@ -1,5 +1,6 @@
 ﻿"use server";
 
+import { toAmount } from "@/lib/utils/money";
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import { nextRecordCode } from "@/lib/record-codes";
 import { revalidatePath } from "next/cache";
@@ -53,7 +54,6 @@ export type DealActionResult = ActionResult<{
   approvalRequested?: true;
   message?: string;
 }>;
-const money = (value: number | null) => (value === null ? null : String(value));
 
 export async function createDealForContact(
   contactId: string,
@@ -148,8 +148,8 @@ export async function createDealForContact(
           developmentId,
           primaryAgentUserId,
           brokerUserId: contact.brokerUserId,
-          amount: money(v.amount),
-          expectedCommission: money(v.expectedCommission),
+          amount: toAmount(v.amount),
+          expectedCommission: toAmount(v.expectedCommission),
           probability: stage.defaultProbability,
           expectedCloseDate: v.expectedCloseDate,
           createdBy: context.userId,
@@ -280,9 +280,9 @@ export async function saveDealForContact(
       // A won sale's amount and commission were settled when it was won; the contact form can't
       // change them. The commission stays settled while a won deal is reopened.
       const won = before.status === "won";
-      const amount = won ? before.amount : money(v.amount);
+      const amount = won ? before.amount : toAmount(v.amount);
       const expectedCommission =
-        won || before.earned ? before.expectedCommission : money(v.expectedCommission);
+        won || before.earned ? before.expectedCommission : toAmount(v.expectedCommission);
       await tx
         .update(deals)
         .set({

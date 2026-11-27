@@ -1,9 +1,9 @@
+import { toAmount, toCents } from "@/lib/utils/money";
+
 /** One row of what an opportunity was quoted: its price and its reservation fee. */
 export type QuotedRow = { label: string; price: string | null; reservationFee: string | null };
 
-const cents = (value: string | null | undefined) =>
-  value === null || value === undefined || value === "" ? null : Math.round(Number(value) * 100);
-const amount = (value: number | null) => (value === null ? null : (value / 100).toFixed(2));
+const amount = (value: number | null) => toAmount(value === null ? null : value / 100);
 
 /**
  * The units' share of a reservation fee that includes parking: the total less the parking fee.
@@ -13,8 +13,8 @@ export function unitsReservationFee(
   total: string | null | undefined,
   parking: string | null | undefined,
 ): string | null {
-  const units = (cents(total) ?? 0) - (cents(parking) ?? 0);
-  return cents(total) === null || units <= 0 ? null : amount(units);
+  const units = (toCents(total) ?? 0) - (toCents(parking) ?? 0);
+  return toCents(total) === null || units <= 0 ? null : amount(units);
 }
 
 /**
@@ -28,10 +28,10 @@ export function quotedTerms(input: {
   reservationFee: string | null;
   parkingReservationFee: string | null;
 }): { rows: QuotedRow[]; hasParking: boolean } {
-  const total = cents(input.amount);
-  const parking = cents(input.parkingAmount) ?? 0;
-  const feeTotal = cents(input.reservationFee);
-  const parkingFee = cents(input.parkingReservationFee) ?? 0;
+  const total = toCents(input.amount);
+  const parking = toCents(input.parkingAmount) ?? 0;
+  const feeTotal = toCents(input.reservationFee);
+  const parkingFee = toCents(input.parkingReservationFee) ?? 0;
   const hasParking = parking > 0 || parkingFee > 0;
   return {
     hasParking,

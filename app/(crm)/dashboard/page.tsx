@@ -12,7 +12,7 @@ import { PipelineStageChart, RevenueChart } from "@/features/dashboard/component
 import { PriorityList } from "@/features/dashboard/components/priority-list";
 import { ReadingList } from "@/features/dashboard/components/reading-list";
 import { getDashboardData } from "@/features/dashboard/queries/dashboard.queries";
-import { compactCurrency } from "@/features/dashboard/lib/format";
+import { formatMoneyShort } from "@/lib/utils/money";
 import { requirePagePermission } from "@/lib/permissions/authorization";
 import type { DataScope } from "@/lib/permissions/catalog";
 import { cn } from "@/lib/utils/cn";
@@ -49,7 +49,7 @@ export default async function DashboardPage() {
 
   const count = (n: number, one: string, many: string) =>
     `${n.toLocaleString()} ${n === 1 ? one : many}`;
-  const money = (amount: number) => compactCurrency(amount, data.currency);
+  const money = (amount: number) => formatMoneyShort(amount, data.currency) ?? "";
   // The headline money: what was won, then what came in.
   const figureCandidates: (Figure | false)[] = [
     sections.kpis.pipeline && {
