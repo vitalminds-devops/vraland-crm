@@ -1,36 +1,19 @@
 import "server-only";
 
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { dealFirstMonthPaid, dealReservationPaid } from "@/features/billing/lib/deal-payment";
 import {
   inventoryStatusForDeal,
   readReservationReceived,
-  isFullyPaid,
   readDealPayments,
 } from "@/features/billing/lib/billing-inventory";
-import {
-  activities,
-  auditLogs,
-  dealCommissions,
-  deals,
-  dealStageChangeRequests,
-  dealStageHistory,
-  pipelineStages,
-  units,
-} from "@/db/schema";
+import { activities, auditLogs, deals, dealStageHistory, pipelineStages } from "@/db/schema";
 import { canAccessResource } from "@/lib/permissions/authorization";
 import { canManageBilling, type AuthorizationContext } from "@/lib/permissions/policy";
-import { recordDealCommissions } from "./record-commissions";
 import { enrollByTrigger } from "@/features/marketing/lib/auto-enroll";
-import { missingOpportunityDetails } from "./opportunity-requirements";
-import {
-  heldElsewhere,
-  heldElsewhereMessage,
-  InventoryUnavailable,
-  syncDealInventory,
-} from "./deal-inventory";
+import { InventoryUnavailable, syncDealInventory } from "./deal-inventory";
 import {
   canMoveStage,
   missingPaymentMessage,
@@ -45,6 +28,14 @@ import {
 import { stageChangeSchema } from "../schemas/deal.schema";
 import { logError } from "@/lib/logger";
 import { manilaToday } from "@/lib/utils/manila-time";
+import { inventoryOrPaymentRefusal } from "./stage-guards";
+import { dealHasGatedHistory, requestStageApproval } from "./stage-approval";
+import {
+  cancelOpenRequests,
+  recordOutcomeChange,
+  recordUnitsReleased,
+  settleCommissions,
+} from "./stage-effects";
 import {
   databaseFailure,
   failure,
@@ -189,57 +180,13 @@ export async function applyStageChange(
             : moveCheck.message,
           payment: moveCheck.payment,
         };
-      if ((fromStage.slug === "leads" || fromStage.isLostStage) && toStage.slug === "opportunity") {
-        const missing = await missingOpportunityDetails(tx, dealId);
-        // Lost while still a lead, it never had its Opportunity details: go through Leads.
-        if (missing)
-          return {
-            kind: "invalid" as const,
-            message: fromStage.isLostStage
-              ? "This was lost while still a lead. Reopen it to Leads, then use Move to Opportunity."
-              : missing,
-          };
-        // Units and parking stay open to others until Reservation, but one another opportunity
-        // has reserved since (say, while this move waited for approval) can't be this one's too.
-        const taken = await heldElsewhere(tx, {
-          id: dealId,
-          unitIds: before.unitIds,
-          parkingSlotIds: before.parkingSlotIds,
-        });
-        if (taken.length)
-          return {
-            kind: "invalid" as const,
-            message: `${heldElsewhereMessage(taken)} ${
-              fromStage.isLostStage
-                ? "Reopen it to Leads and pick again."
-                : "Pick again with Move to Opportunity."
-            }`,
-          };
-      }
-      // Back in Leads an opportunity lets go of its units, so it can't while money is recorded on
-      // them: the units would stay held by an opportunity that no longer lists them.
-      if (
-        toStage.slug === "leads" &&
-        fromStage.slug !== "leads" &&
-        (await readDealPayments(tx, dealId)).paid > 0
-      )
-        return {
-          kind: "invalid" as const,
-          message:
-            "This opportunity has payments. Remove its payments in Billing before moving it back to Leads.",
-        };
-      // shortcut: no refund record. Closing would put paid-for units back on sale while the money
-      // is still recorded, so any payment has to be removed first; add refunds before allowing this.
-      if (toStage.isLostStage || toStage.isCancelledStage) {
-        const payments = await readDealPayments(tx, dealId);
-        if (payments.paid > 0)
-          return {
-            kind: "invalid" as const,
-            message: isFullyPaid(payments)
-              ? "This opportunity is fully paid. To close it, move it back to Opportunity, remove its payments in Billing, then close it."
-              : "This opportunity has payments. Remove its payments in Billing before closing it.",
-          };
-      }
+      const refusal = await inventoryOrPaymentRefusal(
+        tx,
+        { id: dealId, unitIds: before.unitIds, parkingSlotIds: before.parkingSlotIds },
+        fromStage,
+        toStage,
+      );
+      if (refusal) return { kind: "invalid" as const, message: refusal };
 
       if (
         requiresReason({
@@ -271,62 +218,17 @@ export async function applyStageChange(
           canApprove,
         })
       ) {
-        const [pending] = await tx
-          .select({ id: dealStageChangeRequests.id })
-          .from(dealStageChangeRequests)
-          .where(
-            and(
-              eq(dealStageChangeRequests.dealId, dealId),
-              eq(dealStageChangeRequests.status, "pending"),
-            ),
-          )
-          .limit(1);
-        if (pending)
-          return {
-            kind: "invalid" as const,
-            message: `${before.title} already has a stage change awaiting approval.`,
-          };
-        await tx.insert(dealStageChangeRequests).values({
-          organizationId: context.organizationId,
+        const refused = await requestStageApproval(tx, context, {
           dealId,
+          title: before.title,
           fromStageId: before.stageId,
           toStageId: stageId,
-          requestedBy: context.userId,
-          status: "pending",
-          reason: note.trim() || null,
-          lostReasonId: options.lost?.reasonId ?? null,
-          lostNotes: options.lost?.notes || null,
+          toStageName: stage.name,
+          note,
+          lost: options.lost,
         });
-        await tx.insert(activities).values({
-          organizationId: context.organizationId,
-          actorUserId: context.userId,
-          activityType: "deal.stage_change_requested",
-          summary: `${before.title} was sent to ${stage.name} for manager approval.`,
-          dealId,
-          metadata: {
-            fromStageId: before.stageId,
-            toStageId: stageId,
-            requiresApproval: true,
-          },
-        });
-        await tx.insert(auditLogs).values({
-          organizationId: context.organizationId,
-          actorUserId: context.userId,
-          action: "create",
-          entityType: "deal_stage_change_request",
-          entityId: dealId,
-          newValues: {
-            dealId,
-            fromStageId: before.stageId,
-            toStageId: stageId,
-            status: "pending",
-          },
-        });
-        return {
-          kind: "pending" as const,
-          stageName: stage.name,
-          title: before.title,
-        };
+        if (refused) return { kind: "invalid" as const, message: refused };
+        return { kind: "pending" as const, stageName: stage.name, title: before.title };
       }
 
       const status = dealStatusForStage(stage);
@@ -374,32 +276,13 @@ export async function applyStageChange(
           updatedAt: new Date(),
         })
         .where(eq(deals.id, dealId));
-      if (releasing) {
-        const released = heldUnitIds.length
-          ? await tx
-              .select({ code: units.identifier })
-              .from(units)
-              .where(inArray(units.id, heldUnitIds))
-          : [];
-        const names = [
-          ...released.map((unit) => `Unit ${unit.code}`),
-          ...(before.parkingSlotIds.length
-            ? [
-                `${before.parkingSlotIds.length} parking ${
-                  before.parkingSlotIds.length === 1 ? "slot" : "slots"
-                }`,
-              ]
-            : []),
-        ];
-        await tx.insert(activities).values({
-          organizationId: context.organizationId,
-          actorUserId: context.userId,
-          activityType: "deal.units_released",
-          summary: `${before.title} let go of ${names.join(", ")} on moving back to Leads.`,
-          dealId,
-          metadata: { unitIds: heldUnitIds, parkingSlotIds: before.parkingSlotIds },
+      if (releasing)
+        await recordUnitsReleased(tx, context, {
+          id: dealId,
+          title: before.title,
+          unitIds: heldUnitIds,
+          parkingSlotIds: before.parkingSlotIds,
         });
-      }
       await tx.insert(dealStageHistory).values({
         dealId,
         fromStageId: before.stageId,
@@ -429,68 +312,21 @@ export async function applyStageChange(
         oldValues: { stageId: before.stageId, status: before.status },
         newValues: { stageId, status },
       });
-      const leftOutcome =
-        (before.status === "won" || before.status === "cancelled" || before.status === "lost") &&
-        status !== before.status;
-      if (leftOutcome) {
-        const outcomeChanged = status === "lost" || status === "cancelled";
-        await tx.insert(auditLogs).values({
-          organizationId: context.organizationId,
-          actorUserId: context.userId,
-          action: outcomeChanged ? "outcome_changed" : "reopen",
-          entityType: "deal",
-          entityId: dealId,
-          oldValues: {
-            stageId: before.stageId,
-            stageName: current.name,
-            status: before.status,
-          },
-          newValues: {
-            stageId,
-            stageName: stage.name,
-            status,
-            note: note.trim() || null,
-          },
-        });
-      }
-      // The commission is set by the first win and kept through a reopen, so a price changed in
-      // Billing meanwhile never changes it; only a deal that ends lost or cancelled drops it.
-      if (status === "won" && before.status !== "won") {
-        const [earned] = await tx
-          .select({ total: sql<string | null>`sum(${dealCommissions.amount})` })
-          .from(dealCommissions)
-          .where(eq(dealCommissions.dealId, dealId));
-        if (earned?.total === null || earned?.total === undefined)
-          await recordDealCommissions(tx, {
-            organizationId: context.organizationId,
-            dealId,
-            amount: before.amount,
-            sellerUserId: before.agentUserId,
-            brokerUserId: before.brokerUserId,
-          });
-        else
-          await tx
-            .update(deals)
-            .set({ expectedCommission: earned.total })
-            .where(eq(deals.id, dealId));
-      } else if (status === "lost" || status === "cancelled")
-        await tx.delete(dealCommissions).where(eq(dealCommissions.dealId, dealId));
+      await recordOutcomeChange(tx, context, {
+        dealId,
+        note,
+        from: { stageId: before.stageId, stageName: current.name, status: before.status },
+        to: { stageId, stageName: stage.name, status },
+      });
+      await settleCommissions(
+        tx,
+        context.organizationId,
+        { id: dealId, ...before },
+        before.status,
+        status,
+      );
       await options.afterMove?.(tx);
-      // A request left open by this move is out of date; close it so the card stops showing it.
-      await tx
-        .update(dealStageChangeRequests)
-        .set({
-          status: "cancelled",
-          decidedBy: context.userId,
-          decidedAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .where(
-          and(
-            eq(dealStageChangeRequests.dealId, dealId),
-            eq(dealStageChangeRequests.status, "pending"),
-          ),
-        );
+      await cancelOpenRequests(tx, context.userId, dealId);
       return { kind: "moved" as const, inventoryProperties };
     });
 
@@ -536,14 +372,4 @@ export async function applyStageChange(
     logError("Stage change failed", error, { operation: "deal_stage_change" });
     return databaseFailure("Couldn't change the stage.");
   }
-}
-
-async function dealHasGatedHistory(tx: DbTransaction, dealId: string): Promise<boolean> {
-  const [row] = await tx
-    .select({ id: dealStageHistory.id })
-    .from(dealStageHistory)
-    .innerJoin(pipelineStages, eq(pipelineStages.id, dealStageHistory.toStageId))
-    .where(and(eq(dealStageHistory.dealId, dealId), eq(pipelineStages.requiresApproval, true)))
-    .limit(1);
-  return Boolean(row);
 }

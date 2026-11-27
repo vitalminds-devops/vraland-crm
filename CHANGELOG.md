@@ -9,6 +9,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Sections are called sections in the code too, not floor groups; nothing changes on screen.
 - Unit identifiers are called identifiers in the code, not numbering or code; nothing changes on screen.
 - Parking slots, a property's parking slot limit, and a development's properties use those names in the code too; nothing changes on screen or in the API.
+- Moving an opportunity between stages is split into smaller steps in the code; it works the same.
 
 ## [0.8.0] - 2026-11-27
 
