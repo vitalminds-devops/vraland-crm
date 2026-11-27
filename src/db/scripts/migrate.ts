@@ -22,6 +22,11 @@ const alreadyApplied: Record<string, string> = {
   "0003_careful_jubilee.sql": "SELECT to_regclass('public.integrations') IS NULL AS applied",
   "0004_dazzling_guardsmen.sql":
     "SELECT to_regclass('public.integration_sync_logs') IS NULL AS applied",
+  // These copy the old property prices down; a schema without those columns (0082) has none to copy.
+  "0061_unit_prices_from_property.sql":
+    "SELECT NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'properties' AND column_name = 'asking_price') AS applied",
+  "0069_prices_on_types.sql":
+    "SELECT NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'properties' AND column_name = 'monthly_rent') AS applied",
 };
 
 await client.connect();

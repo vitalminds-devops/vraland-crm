@@ -14,12 +14,7 @@ const fixture = vi.hoisted(() => ({
       listingType: "sale",
       status: "active",
       currency: "PHP",
-      parkingPrice: null as string | null,
-      reservationFee: null,
-      bedrooms: 2,
-      bathrooms: "1",
       parkingSpaces: 1,
-      lotAreaSqm: null,
       floorAreaSqm: "42",
       listedAt: null,
       availableFrom: null,
@@ -163,7 +158,6 @@ async function render(presentation?: string | string[]) {
 
 describe("property presentation", () => {
   beforeEach(() => {
-    fixture.data.record.parkingPrice = null;
     fixture.canWrite = true;
     fixture.permissions.clear();
     fixture.permissions.add("properties.update");

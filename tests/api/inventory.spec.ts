@@ -47,9 +47,7 @@ test("property selectors return seeded hierarchy and return empty for nonexisten
         id: building,
         title: "Test building",
         addressLine1: null,
-        askingPrice: null,
         currency: "PHP",
-        parkingPrice: null,
         parkingSpaces: null,
       },
     ]);

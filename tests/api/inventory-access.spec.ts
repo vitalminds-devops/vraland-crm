@@ -39,9 +39,7 @@ test("selectors enforce no grant, floor grant, exclusions, revocation and organi
       id: ids.property,
       title: "File building",
       addressLine1: null,
-      askingPrice: null,
       currency: "PHP",
-      parkingPrice: null,
       parkingSpaces: null,
     },
   ]);

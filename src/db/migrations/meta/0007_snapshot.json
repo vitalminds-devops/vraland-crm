@@ -5459,18 +5459,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "cover_image_storage_key": {
-          "name": "cover_image_storage_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cover_image_mime_type": {
-          "name": "cover_image_mime_type",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": false
-        },
         "property_type": {
           "name": "property_type",
           "type": "varchar(50)",
@@ -5483,12 +5471,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'sale'"
-        },
-        "purchase_type": {
-          "name": "purchase_type",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false
         },
         "status": {
           "name": "status",
@@ -5504,51 +5486,9 @@
           "notNull": true,
           "default": "'PHP'"
         },
-        "asking_price": {
-          "name": "asking_price",
-          "type": "numeric(18, 2)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "monthly_rent": {
-          "name": "monthly_rent",
-          "type": "numeric(18, 2)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reservation_fee": {
-          "name": "reservation_fee",
-          "type": "numeric(18, 2)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "commission_rate": {
-          "name": "commission_rate",
-          "type": "numeric(7, 4)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "lot_area_sqm": {
-          "name": "lot_area_sqm",
-          "type": "numeric(12, 2)",
-          "primaryKey": false,
-          "notNull": false
-        },
         "floor_area_sqm": {
           "name": "floor_area_sqm",
           "type": "numeric(12, 2)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "bedrooms": {
-          "name": "bedrooms",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "bathrooms": {
-          "name": "bathrooms",
-          "type": "numeric(4, 1)",
           "primaryKey": false,
           "notNull": false
         },

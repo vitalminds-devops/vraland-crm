@@ -14,6 +14,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Removed
 - Retired database columns nothing used: an opportunity's old reservation-fee paid date and payer, and the unused password field on users. Run `npm run db:migrate` (migration 0081).
+- Twelve property columns left from the old property form (property-wide prices and fees, commission rate, lot area, bedrooms, bathrooms, purchase type, cover image). Prices live on unit types, parking types and slots. Run `npm run db:migrate` (migration 0082).
 
 ### Security
 - Email and lead-expiry logs go through the app logger, and email logs no longer record the recipient's address.
