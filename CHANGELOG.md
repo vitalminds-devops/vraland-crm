@@ -5,6 +5,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-27
+
 ### Added
 - Parking can have a monthly amortization, set on a parking type or on one slot. It adds to an opportunity's monthly amortization and to the monthly payment Billing expects, and quotes show the unit and parking parts apart. Run `npm run db:migrate` (migration 0086).
 
