@@ -2,7 +2,6 @@ import {
   boolean,
   date,
   index,
-  integer,
   jsonb,
   numeric,
   pgTable,
@@ -109,20 +108,6 @@ export const properties = pgTable(
   },
   (t) => [unique().on(t.organizationId, t.propertyCode)],
 );
-
-export const propertyMedia = pgTable("property_media", {
-  id: uuid().defaultRandom().primaryKey(),
-  propertyId: uuid("property_id")
-    .notNull()
-    .references(() => properties.id, { onDelete: "cascade" }),
-  mediaType: varchar("media_type", { length: 20 }).notNull(),
-  url: text().notNull(),
-  thumbnailUrl: text("thumbnail_url"),
-  title: varchar({ length: 180 }),
-  sortOrder: integer("sort_order").default(0).notNull(),
-  isPrimary: boolean("is_primary").default(false).notNull(),
-  createdAt,
-});
 
 export const propertyFeatures = pgTable(
   "property_features",

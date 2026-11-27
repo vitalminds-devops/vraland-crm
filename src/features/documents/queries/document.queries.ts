@@ -2,15 +2,7 @@ import "server-only";
 import { and, asc, count, desc, eq, ilike, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db";
-import {
-  contacts,
-  deals,
-  documents,
-  documentSigners,
-  esignEvents,
-  properties,
-  users,
-} from "@/db/schema";
+import { contacts, deals, documents, properties, users } from "@/db/schema";
 import { requirePermission } from "@/lib/permissions/authorization";
 import { grantedPropertyCondition } from "@/lib/permissions/property-access";
 import { contactScopeCondition, dealScopeCondition } from "@/lib/permissions/scope";
@@ -181,22 +173,8 @@ export async function getDocument(id: string) {
     .limit(1);
   if (!record) return null;
   if (record.document.userId) return null;
-  const [signers, events] = await Promise.all([
-    db
-      .select()
-      .from(documentSigners)
-      .where(eq(documentSigners.documentId, id))
-      .orderBy(asc(documentSigners.signingOrder)),
-    db
-      .select()
-      .from(esignEvents)
-      .where(eq(esignEvents.documentId, id))
-      .orderBy(desc(esignEvents.occurredAt)),
-  ]);
   return {
     ...record,
-    signers,
-    events,
     canManage: context.permissions.has("documents.manage"),
   };
 }

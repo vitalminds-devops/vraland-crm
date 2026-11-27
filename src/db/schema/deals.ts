@@ -231,27 +231,6 @@ export const dealStageChangeRequests = pgTable(
   ],
 );
 
-export const offers = pgTable("offers", {
-  id: uuid().defaultRandom().primaryKey(),
-  dealId: uuid("deal_id")
-    .notNull()
-    .references(() => deals.id, { onDelete: "cascade" }),
-  contactId: uuid("contact_id").references(() => contacts.id, {
-    onDelete: "set null",
-  }),
-  amount: numeric({ precision: 18, scale: 2 }).notNull(),
-  currency: varchar({ length: 3 }).default("PHP").notNull(),
-  status: varchar({ length: 20 }).default("submitted").notNull(),
-  submittedAt: timestamp("submitted_at", { withTimezone: true }),
-  expiresAt: timestamp("expires_at", { withTimezone: true }),
-  terms: text(),
-  createdBy: uuid("created_by").references(() => users.id, {
-    onDelete: "set null",
-  }),
-  createdAt,
-  updatedAt,
-});
-
 /** Who earns what on a won opportunity, worked out from Settings → Commissions when it is won. */
 export const dealCommissions = pgTable(
   "deal_commissions",

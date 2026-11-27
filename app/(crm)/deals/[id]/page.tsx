@@ -156,35 +156,6 @@ export default async function DealPage({
             )}
           </Section>
 
-          {/* Offers are no longer recorded here; older ones stay visible. */}
-          {data.offers.length > 0 && (
-            <Section title="Offers">
-              {data.offers.length ? (
-                <ul className="space-y-3">
-                  {data.offers.map((v) => (
-                    <li key={v.id} className="rounded-lg border border-border/60 p-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="font-medium">{money(v.amount, v.currency)}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {person(v.firstName, v.lastName) ?? "No contact attached"} ·{" "}
-                            {label(v.status)}
-                          </p>
-                        </div>
-                        <p className="whitespace-nowrap text-xs text-muted-foreground">
-                          {v.submittedAt ? formatDateTime(v.submittedAt) : "Not submitted"}
-                        </p>
-                      </div>
-                      {v.terms && <p className="mt-2 text-sm text-muted-foreground">{v.terms}</p>}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <EmptyCardState message="No offers yet." />
-              )}
-            </Section>
-          )}
-
           <Section title="Stage history">
             {data.history.length ? (
               <RecordTable

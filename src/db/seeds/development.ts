@@ -9,7 +9,6 @@ import {
   agents,
   authAccount,
   authUser,
-  contactCategories,
   contacts,
   dealContacts,
   deals,
@@ -260,24 +259,6 @@ await db.transaction(async (tx) => {
       target: [lostReasons.organizationId, lostReasons.name],
       set: { isActive: true },
     });
-  for (const name of ["Buyer", "Seller / Owner", "Agent", "Broker"]) {
-    const slug = name
-      .toLowerCase()
-      .replaceAll(/\s+|\//g, "-")
-      .replaceAll(/-+/g, "-");
-    const existing = await tx
-      .select({ id: contactCategories.id })
-      .from(contactCategories)
-      .where(
-        and(
-          eq(contactCategories.organizationId, organization.id),
-          eq(contactCategories.slug, slug),
-        ),
-      )
-      .limit(1);
-    if (!existing.length)
-      await tx.insert(contactCategories).values({ organizationId: organization.id, name, slug });
-  }
 
   const inventory: {
     development: { code: string; name: string; status: string };

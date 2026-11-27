@@ -3,9 +3,7 @@ import {
   index,
   boolean,
   date,
-  jsonb,
   pgTable,
-  smallint,
   text,
   timestamp,
   uuid,
@@ -16,7 +14,7 @@ import { contacts } from "./contacts";
 import { deals } from "./deals";
 import { organizations, users } from "./organization";
 import { properties } from "./properties";
-import { citext, createdAt, updatedAt } from "./shared";
+import { createdAt, updatedAt } from "./shared";
 
 export const documents = pgTable(
   "documents",
@@ -61,34 +59,3 @@ export const documents = pgTable(
     index("documents_deal_id_idx").on(t.dealId),
   ],
 );
-
-export const documentSigners = pgTable("document_signers", {
-  id: uuid().defaultRandom().primaryKey(),
-  documentId: uuid("document_id")
-    .notNull()
-    .references(() => documents.id, { onDelete: "cascade" }),
-  contactId: uuid("contact_id").references(() => contacts.id, {
-    onDelete: "set null",
-  }),
-  name: varchar({ length: 180 }).notNull(),
-  email: citext().notNull(),
-  signingOrder: smallint("signing_order").default(1).notNull(),
-  status: varchar({ length: 30 }).default("pending").notNull(),
-  signedAt: timestamp("signed_at", { withTimezone: true }),
-  externalSignerId: varchar("external_signer_id", { length: 255 }),
-  createdAt,
-});
-
-export const esignEvents = pgTable("esign_events", {
-  id: uuid().defaultRandom().primaryKey(),
-  documentId: uuid("document_id")
-    .notNull()
-    .references(() => documents.id, { onDelete: "cascade" }),
-  signerId: uuid("signer_id").references(() => documentSigners.id, {
-    onDelete: "set null",
-  }),
-  eventType: varchar("event_type", { length: 50 }).notNull(),
-  providerEventId: varchar("provider_event_id", { length: 255 }),
-  payload: jsonb().default({}).notNull(),
-  occurredAt: timestamp("occurred_at", { withTimezone: true }).defaultNow().notNull(),
-});

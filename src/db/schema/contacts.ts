@@ -19,7 +19,6 @@ import { documents } from "./documents";
 import { developments } from "./properties";
 import { citext, createdAt, updatedAt } from "./shared";
 
-
 export const contacts = pgTable(
   "contacts",
   {
@@ -116,21 +115,6 @@ export const contacts = pgTable(
       .on(t.organizationId, t.emailNormalized)
       .where(sql`${t.emailNormalized} is not null and ${t.deletedAt} is null`),
   ],
-);
-
-export const contactCategories = pgTable(
-  "contact_categories",
-  {
-    id: uuid().defaultRandom().primaryKey(),
-    organizationId: uuid("organization_id")
-      .notNull()
-      .references(() => organizations.id, { onDelete: "cascade" }),
-    name: varchar({ length: 80 }).notNull(),
-    slug: varchar({ length: 80 }).notNull(),
-    description: text(),
-    createdAt,
-  },
-  (t) => [unique().on(t.organizationId, t.slug)],
 );
 
 export const contactNotes = pgTable("contact_notes", {

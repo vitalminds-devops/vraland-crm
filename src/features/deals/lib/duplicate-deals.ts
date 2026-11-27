@@ -5,7 +5,7 @@ export type DuplicateDealCandidate = {
   createdAt: Date;
   stageChanges: number;
   agents: number;
-  /** Bills, offers and tasks: anything that would be lost or orphaned by removing the deal. */
+  /** Bills and tasks: anything that would be lost or orphaned by removing the deal. */
   attachments: number;
   /** Opened on purpose with "Add opportunity" (e.g. a unit in another development): never a duplicate. */
   intentional?: boolean;

@@ -27,7 +27,6 @@ import {
   developments,
   floors,
   lostReasons,
-  offers,
   pipelineStages,
   properties,
   tasks,
@@ -475,7 +474,7 @@ export async function getDeal(id: string) {
           .orderBy(asc(propertyParkingSlots.code))
       : [],
   ]);
-  const [contactRows, agentRows, history, offerRows, taskRows, activityRows, commissionRows] =
+  const [contactRows, agentRows, history, taskRows, activityRows, commissionRows] =
     await Promise.all([
       db
         .select({
@@ -517,23 +516,6 @@ export async function getDeal(id: string) {
         .where(eq(dealStageHistory.dealId, id))
         .orderBy(desc(dealStageHistory.changedAt)),
       db
-        .select({
-          id: offers.id,
-          amount: offers.amount,
-          currency: offers.currency,
-          status: offers.status,
-          submittedAt: offers.submittedAt,
-          expiresAt: offers.expiresAt,
-          terms: offers.terms,
-          createdAt: offers.createdAt,
-          firstName: contacts.firstName,
-          lastName: contacts.lastName,
-        })
-        .from(offers)
-        .leftJoin(contacts, eq(offers.contactId, contacts.id))
-        .where(eq(offers.dealId, id))
-        .orderBy(desc(offers.createdAt)),
-      db
         .select()
         .from(tasks)
         .where(and(eq(tasks.dealId, id), isNull(tasks.deletedAt)))
@@ -564,7 +546,6 @@ export async function getDeal(id: string) {
     contacts: contactRows,
     agents: agentRows,
     history,
-    offers: offerRows,
     tasks: taskRows,
     activities: activityRows,
     commissions: commissionRows,

@@ -7,7 +7,6 @@ import {
   properties,
   propertyFeatureValues,
   propertyFeatures,
-  propertyMedia,
   propertyStatusHistory,
   units,
   users,
@@ -251,12 +250,7 @@ export async function getProperty(id: string) {
     )
     .limit(1);
   if (!record) return null;
-  const [media, features, history] = await Promise.all([
-    db
-      .select()
-      .from(propertyMedia)
-      .where(eq(propertyMedia.propertyId, id))
-      .orderBy(desc(propertyMedia.isPrimary), asc(propertyMedia.sortOrder)),
+  const [features, history] = await Promise.all([
     db
       .select({
         id: propertyFeatures.id,
@@ -285,7 +279,7 @@ export async function getProperty(id: string) {
       .where(eq(propertyStatusHistory.propertyId, id))
       .orderBy(desc(propertyStatusHistory.changedAt)),
   ]);
-  return { record, media, features, history };
+  return { record, features, history };
 }
 
 /** Archived properties the person could restore. */

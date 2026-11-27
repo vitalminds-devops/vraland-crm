@@ -6,7 +6,7 @@ import { Client } from "pg";
 import { z } from "zod";
 
 // Empties the sales side of the CRM for a fresh start: every payment, bill, opportunity (the pipeline
-// cards) and contact, plus what hangs off them (stage history, offers, tasks, activities, contact notes,
+// cards) and contact, plus what hangs off them (stage history, tasks, activities, contact notes,
 // the calendar events and documents filed against them, and those documents' stored files).
 // Kept: pipeline stages, developments, properties and units, users, roles, and the audit log.
 // Usage: npm run db:clear-sales-data            (preview, changes nothing)
@@ -54,7 +54,7 @@ try {
     const removed = await client.query<{ storage_key: string }>(
       `DELETE FROM documents WHERE ${linkedDocuments} RETURNING storage_key`,
     );
-    // Cascades take stage history, requests, offers, agents, tasks, activities, notes and the like.
+    // Cascades take stage history, requests, agents, tasks, activities, notes and the like.
     await client.query("DELETE FROM deals");
     await client.query("DELETE FROM contacts");
     await client.query("COMMIT");

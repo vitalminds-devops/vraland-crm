@@ -30,7 +30,6 @@ try {
       intentional: sql<boolean>`exists (select 1 from deal_stage_history h where h.deal_id = ${deals.id} and h.note in ('Another opportunity opened for this contact', 'Another opportunity opened for this client'))`,
       attachments: sql<number>`(
         (select count(*) from bills b where b.deal_id = ${deals.id})
-        + (select count(*) from offers o where o.deal_id = ${deals.id})
         + (select count(*) from tasks t where t.deal_id = ${deals.id} and t.deleted_at is null)
       )::int`,
     })
