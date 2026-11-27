@@ -54,6 +54,8 @@ import {
 import { dealLabel } from "../lib/deal-label";
 import { missingPaymentMessage } from "../lib/stage-transitions";
 import { BOARD_COLUMN_LIMIT } from "../lib/board-limit";
+import { matchesBoardSearch } from "../lib/board-search";
+import { StageSearchBox, StageSearchToggle } from "./stage-search";
 import { formatContactName } from "@/features/contacts";
 import { notify } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
@@ -454,6 +456,9 @@ function StageLane({
   dropHint: DropHint | null;
 }) {
   const { setNodeRef } = useDroppable({ id: stageDropId(stage.id) });
+  const [searching, setSearching] = useState(false);
+  const [query, setQuery] = useState("");
+  const shown = query.trim() ? rows.filter((deal) => matchesBoardSearch(deal, query)) : rows;
 
   return (
     <section
@@ -500,11 +505,24 @@ function StageLane({
               <TooltipContent side="top">Needs approval to enter</TooltipContent>
             </Tooltip>
           )}
+          <StageSearchToggle
+            open={searching}
+            onOpen={() => setSearching(true)}
+            stageName={stage.name}
+          />
           <span className="text-[11px] font-medium tabular-nums text-muted-foreground">
-            {rows.length}
+            {shown === rows ? rows.length : `${shown.length} / ${rows.length}`}
           </span>
         </span>
       </header>
+      {searching && (
+        <StageSearchBox
+          value={query}
+          onChange={setQuery}
+          onClose={() => setSearching(false)}
+          stageName={stage.name}
+        />
+      )}
       {isDropTarget && dropHint && (
         <div className="px-2.5 pt-1.5">
           <p
@@ -518,7 +536,7 @@ function StageLane({
         </div>
       )}
       <div className="flex min-h-40 flex-1 flex-col gap-2 px-2.5 pt-1.5 pb-2.5">
-        {rows.map((deal) => (
+        {shown.map((deal) => (
           <DealCard
             key={deal.id}
             deal={deal}
@@ -530,11 +548,14 @@ function StageLane({
         ))}
         {rows.length >= BOARD_COLUMN_LIMIT && (
           <Link
-            href={`/pipeline/list?stage=${stage.id}`}
+            href={`/pipeline/list?stage=${stage.id}${query.trim() ? `&search=${encodeURIComponent(query.trim())}` : ""}`}
             className="py-1 text-center text-xs font-medium text-primary hover:underline"
           >
             See all in the list
           </Link>
+        )}
+        {rows.length > 0 && !shown.length && (
+          <p className="py-6 text-center text-xs text-muted-foreground">No matches</p>
         )}
         {!rows.length && (
           <div className="grid min-h-28 flex-1 place-items-center rounded-lg border border-dashed border-border/60 px-3 text-center text-xs text-muted-foreground">

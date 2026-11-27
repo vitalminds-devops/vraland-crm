@@ -5,6 +5,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+- Each column of the sales pipeline has a search: find an opportunity in that stage by contact, code, unit, parking, property or agent. A full column's "See all in the list" keeps the search.
+
 ## [0.9.0] - 2026-11-27
 
 ### Added
