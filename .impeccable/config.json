@@ -11,6 +11,15 @@
         ],
         "createdAt": "2026-11-17T01:59:21.654Z",
         "reason": "Claude: ID preview img gets its blob src via ref in an effect"
+      },
+      {
+        "rule": "broken-image",
+        "value": "*",
+        "files": [
+          "src/features/deals/components/opportunity-documents-step.tsx"
+        ],
+        "createdAt": "2026-11-27T06:50:24.289Z",
+        "reason": "Claude: IdPreview sets src from a blob URL via ref in an effect; moved unchanged from opportunity-dialog.tsx"
       }
     ]
   }

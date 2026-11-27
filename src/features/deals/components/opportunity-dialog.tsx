@@ -1,8 +1,6 @@
 "use client";
 
-import { formatAmount } from "@/lib/utils/money";
-import { unitsReservationFee } from "@/features/billing/lib/quoted-terms";
-import { Check, FileText, Loader2, Plus, ScanLine, Upload, X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -22,8 +20,6 @@ import {
   DialogPortal,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { MoneyInput } from "@/components/ui/money-input";
 import {
   opportunityAddressSchema,
   type OpportunityAddress,
@@ -32,21 +28,9 @@ import { COUNTRY_NAME } from "@/lib/location";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { notify, notifyLoading } from "@/components/ui/toast";
 import { documentFileError, requirementFileTypes } from "@/lib/storage/document-validation";
-import {
-  bankOptions,
-  extraDocumentTypes,
-  requiredDocumentLabel,
-  budgetRanges,
-  budgetRangeFor,
-  budgetForRange,
-  purchaseTypes,
-  purchaseTypeLabels,
-  employmentTypes,
-} from "@/features/contacts/lib/contact-options";
-import { PaymentMethodSelect } from "@/features/billing/components/payment-method-select";
+import { budgetRangeFor, budgetForRange } from "@/features/contacts/lib/contact-options";
 import { PropertyFloorUnitSelector } from "@/features/properties";
 import { cn } from "@/lib/utils/cn";
-import { groupDigits } from "@/lib/utils/group-digits";
 import { fieldErrorsOf } from "@/lib/types/action-result.client";
 
 import {
@@ -60,6 +44,14 @@ import type { DealActionResult } from "../actions/deal.actions";
 import { Field, fieldClass } from "./opportunity-field";
 import { OpportunityAddressStep } from "./opportunity-address-step";
 import { OpportunityParkingSelector } from "./opportunity-parking-selector";
+import {
+  OpportunityDocumentsStep,
+  type ExtraDocument,
+  type IdScanStatus,
+} from "./opportunity-documents-step";
+import { OpportunityInterestStep } from "./opportunity-interest-step";
+import { OpportunityFinancingFields } from "./opportunity-financing-fields";
+import { OpportunityEstimatePanel, type OpportunityEstimate } from "./opportunity-estimate";
 import type { IdAddressField } from "../lib/id-address";
 import { applyIdAddress, clearIdAddressHint, noIdAddressHints } from "../lib/id-address-autofill";
 import { readIdAddress } from "../lib/read-id-address";
@@ -70,110 +62,6 @@ import {
   removeOpportunityFormDraft,
   type OpportunityFormDraft,
 } from "../lib/opportunity-form-draft";
-
-/** Matches MAX_EXTRA_FILES on the server. */
-const MAX_EXTRAS = 3;
-
-/** One document as a single row: name and status on the left, an upload button on the right. */
-function FileRow({
-  label,
-  name,
-  onFile,
-  multiple,
-  onPick,
-  picked = "",
-}: {
-  label: string;
-  name: string;
-  onFile?: boolean;
-  multiple?: boolean;
-  onPick?: (files: File[]) => void;
-  picked?: string;
-}) {
-  const required = onFile === false;
-  return (
-    <div className="flex items-center justify-between gap-3 py-2.5">
-      <span className="min-w-0 text-sm">
-        {label}
-        {required && !picked && <span className="text-destructive"> *</span>}
-        {picked ? (
-          <span className="block truncate text-xs text-muted-foreground">{picked}</span>
-        ) : (
-          onFile && (
-            <span className="ml-2 inline-flex items-center gap-1 text-xs text-emerald-700 dark:text-emerald-400">
-              <Check aria-hidden="true" className="size-3.5" /> On file
-            </span>
-          )
-        )}
-      </span>
-      <label className="relative inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border/60 px-2.5 py-1 text-xs font-medium focus-within:ring-2 focus-within:ring-primary/25 hover:bg-muted">
-        <Upload aria-hidden="true" className="size-3.5" />
-        {picked || onFile ? "Replace" : "Upload"}
-        {/* Required files are checked by the Next button: a hidden step cannot show the browser's prompt. */}
-        <input
-          type="file"
-          name={name}
-          aria-label={label}
-          accept=".pdf,.jpg,.jpeg,.png"
-          multiple={multiple}
-          className="sr-only"
-          onChange={(event) => {
-            const files = Array.from(event.target.files ?? []);
-            onPick?.(files);
-          }}
-        />
-      </label>
-    </div>
-  );
-}
-
-/** The ID about to be uploaded, or the one on file when nothing new is picked. */
-function IdPreview({
-  file,
-  onFile,
-}: {
-  file: File | null;
-  onFile: { id: string; mimeType: string | null } | null;
-}) {
-  // Each effect run makes and revokes its own URL; a memoised one stays revoked after Strict Mode's re-run.
-  const preview = useRef<HTMLImageElement & HTMLIFrameElement>(null);
-  useEffect(() => {
-    if (!file || !preview.current) return;
-    const url = URL.createObjectURL(file);
-    preview.current.src = url;
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
-  const [broken, setBroken] = useState(false);
-
-  const box = "h-48 w-full rounded-lg border border-border/60 bg-muted/30";
-  if (file)
-    return file.type === "application/pdf" ? (
-      <iframe ref={preview} title="ID preview" className={box} />
-    ) : (
-      // eslint-disable-next-line @next/next/no-img-element -- a local blob preview
-      <img ref={preview} alt="ID preview" className={cn(box, "object-contain")} />
-    );
-  if (onFile?.mimeType?.startsWith("image/") && !broken)
-    return (
-      // eslint-disable-next-line @next/next/no-img-element -- served from our own authenticated route
-      <img
-        src={`/api/documents/${onFile.id}/download`}
-        alt="ID on file"
-        onError={() => setBroken(true)}
-        className={cn(box, "object-contain")}
-      />
-    );
-  if (onFile)
-    return (
-      <a
-        href={`/api/documents/${onFile.id}/download`}
-        className="text-xs font-medium text-primary hover:underline"
-      >
-        Open the ID on file
-      </a>
-    );
-  return null;
-}
 
 /**
  * Collects what a lead needs to become an opportunity, then moves it. Used by the pipeline board
@@ -232,10 +120,7 @@ export function OpportunityDialog({
     setAddress(next);
     setIdHints((current) => clearIdAddressHint(current, field));
   };
-  const [scanStatus, setScanStatus] = useState<{
-    state: "idle" | "reading" | "found" | "not-found" | "error";
-    progress?: number;
-  }>({ state: "idle" });
+  const [scanStatus, setScanStatus] = useState<IdScanStatus>({ state: "idle" });
   const onFileId = draft?.onFile.validIdFile?.id;
   /** An uploaded or camera-captured ID replaces the last one and is read again. */
   const pickId = (file: File | null) => {
@@ -293,7 +178,7 @@ export function OpportunityDialog({
       idScan.current?.abort();
     };
   }, [idFile, onFileId, scanId]);
-  const [extras, setExtras] = useState<{ file: File; type: string }[]>([]);
+  const [extras, setExtras] = useState<ExtraDocument[]>([]);
   const [nextType, setNextType] = useState("");
   const [tinNumber, setTinNumber] = useState("");
   const [developmentId, setDevelopmentId] = useState("");
@@ -315,7 +200,7 @@ export function OpportunityDialog({
   }, []);
   const [estimate, setEstimate] = useState<{
     key: string;
-    result: Awaited<ReturnType<typeof getOpportunityEstimate>>;
+    result: OpportunityEstimate;
   } | null>(null);
   const [financing, setFinancing] = useState("");
   const [pending, startTransition] = useTransition();
@@ -707,170 +592,22 @@ export function OpportunityDialog({
                   )}
                 </ol>
 
-                {/* Step 1 stays mounted while hidden so its files are still submitted. */}
-                <fieldset className={cn("grid gap-3", step !== 1 && "hidden")}>
-                  <legend className="sr-only">Documents</legend>
-                  <Field label="TIN number" required>
-                    <Input
-                      name="tinNumber"
-                      inputMode="numeric"
-                      value={groupDigits(tinNumber)}
-                      onChange={(event) => setTinNumber(groupDigits(event.target.value))}
-                      required={step === 1}
-                      maxLength={50}
-                      placeholder="Enter the contact's TIN"
-                      className={fieldClass}
-                    />
-                  </Field>
-                  <Field label="PRC license number">
-                    <Input
-                      name="prcLicenseNumber"
-                      defaultValue={restoredFields.prcLicenseNumber ?? draft.prcLicenseNumber}
-                      maxLength={50}
-                      placeholder="If applicable"
-                      className={fieldClass}
-                    />
-                  </Field>
-                  <div className="divide-y divide-border/60 rounded-lg border border-border/60 px-3">
-                    <div>
-                      <FileRow
-                        label={requiredDocumentLabel("valid_id")}
-                        name="validId"
-                        onFile={draft.onFile.validId}
-                        picked={idFile?.name}
-                        onPick={(files) => pickId(files[0] ?? null)}
-                      />
-                      {(idFile || draft.onFile.validIdFile) && (
-                        <div className="pb-3">
-                          <IdPreview file={idFile} onFile={draft.onFile.validIdFile} />
-                          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
-                            <p
-                              role="status"
-                              aria-atomic="true"
-                              className="inline-flex items-start gap-1.5 text-xs text-muted-foreground"
-                            >
-                              {scanStatus.state === "reading" ? (
-                                <Loader2
-                                  aria-hidden="true"
-                                  className="size-3.5 animate-spin motion-reduce:animate-none"
-                                />
-                              ) : (
-                                <ScanLine aria-hidden="true" className="size-3.5" />
-                              )}
-                              <span>
-                                {scanStatus.state === "reading"
-                                  ? `Reading ID address… ${scanStatus.progress || 0}%`
-                                  : scanStatus.state === "found"
-                                    ? "Address detected. Review the Address step."
-                                    : scanStatus.state === "not-found"
-                                      ? "No address found. Retake it closer, in even light, or enter it in the Address step."
-                                      : scanStatus.state === "error"
-                                        ? "Couldn't read this ID. Retake it closer and steady, or enter the address."
-                                        : "The ID address will be scanned automatically."}
-                              </span>
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    <FileRow
-                      label={requiredDocumentLabel("client_appointment_form")}
-                      name="appointmentForm"
-                      onFile={draft.onFile.appointmentForm}
-                      picked={appointmentFile?.name}
-                      onPick={(files) => setAppointmentFile(files[0] ?? null)}
-                    />
-                    <div className="grid gap-2 py-2.5">
-                      <span className="text-sm">
-                        Other documents
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          {extras.length ? `${extras.length}/${MAX_EXTRAS}` : "Optional"}
-                        </span>
-                      </span>
-                      {extras.length > 0 && (
-                        <ul className="grid gap-2">
-                          {extras.map((extra, index) => (
-                            <li
-                              key={index}
-                              className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/30 p-2"
-                            >
-                              <span className="grid size-8 shrink-0 place-content-center rounded-md bg-background text-muted-foreground">
-                                <FileText aria-hidden="true" className="size-4" />
-                              </span>
-                              <span className="min-w-0 flex-1">
-                                <span className="block truncate text-xs font-medium">
-                                  {requiredDocumentLabel(extra.type)}
-                                </span>
-                                <span className="block truncate text-[11px] text-muted-foreground">
-                                  {extra.file.name} ·{" "}
-                                  {extra.file.size < 1024 * 1024
-                                    ? `${Math.max(1, Math.round(extra.file.size / 1024))} KB`
-                                    : `${(extra.file.size / 1024 / 1024).toFixed(1)} MB`}
-                                </span>
-                              </span>
-                              <button
-                                type="button"
-                                aria-label={`Remove ${extra.file.name}`}
-                                onClick={() =>
-                                  setExtras((current) => current.filter((_, i) => i !== index))
-                                }
-                                className="grid size-7 shrink-0 place-content-center rounded-md text-muted-foreground hover:bg-background hover:text-foreground"
-                              >
-                                <X aria-hidden="true" className="size-3.5" />
-                              </button>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      {extras.length < MAX_EXTRAS && (
-                        // The type is picked first, so every file is filed correctly.
-                        <div className="flex items-center gap-2">
-                          <NativeSelect
-                            aria-label="Document type"
-                            value={nextType}
-                            onChange={(event) => setNextType(event.target.value)}
-                            className={cn(fieldClass, "h-8 py-1 pr-8 text-xs")}
-                            wrapperClassName="min-w-0 flex-1"
-                          >
-                            <NativeSelectOption value="">Select type</NativeSelectOption>
-                            {extraDocumentTypes.map((item) => (
-                              <NativeSelectOption key={item.documentType} value={item.documentType}>
-                                {item.label}
-                              </NativeSelectOption>
-                            ))}
-                          </NativeSelect>
-                          <label
-                            className={cn(
-                              "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-border/60 px-2.5 text-xs font-medium focus-within:ring-2 focus-within:ring-primary/25",
-                              nextType
-                                ? "cursor-pointer hover:bg-muted"
-                                : "pointer-events-none opacity-50",
-                            )}
-                          >
-                            <Plus aria-hidden="true" className="size-3.5" />
-                            Add file
-                            <input
-                              type="file"
-                              aria-label="Other documents"
-                              accept=".pdf,.jpg,.jpeg,.png"
-                              disabled={!nextType}
-                              className="sr-only"
-                              onChange={(event) => {
-                                const file = event.target.files?.[0];
-                                event.target.value = "";
-                                if (!file || !nextType) return;
-                                setExtras((current) =>
-                                  [...current, { file, type: nextType }].slice(0, MAX_EXTRAS),
-                                );
-                                setNextType("");
-                              }}
-                            />
-                          </label>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </fieldset>
+                <OpportunityDocumentsStep
+                  active={step === 1}
+                  draft={draft}
+                  restoredFields={restoredFields}
+                  tinNumber={tinNumber}
+                  onTinNumberChange={setTinNumber}
+                  idFile={idFile}
+                  onPickId={pickId}
+                  scanStatus={scanStatus}
+                  appointmentFile={appointmentFile}
+                  onAppointmentFileChange={setAppointmentFile}
+                  extras={extras}
+                  onExtrasChange={setExtras}
+                  nextType={nextType}
+                  onNextTypeChange={setNextType}
+                />
 
                 <fieldset className={cn("grid gap-4", step !== 2 && "hidden")}>
                   <legend className="sr-only">Address</legend>
@@ -882,61 +619,13 @@ export function OpportunityDialog({
                   />
                 </fieldset>
 
-                <div className={cn("grid gap-4", step !== 3 && "hidden")}>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <Field label="Budget range" required>
-                      <NativeSelect
-                        required={step === 3}
-                        value={budget}
-                        onChange={(event) => setBudget(event.target.value)}
-                      >
-                        <NativeSelectOption value="">Select budget</NativeSelectOption>
-                        {budgetRanges.map((range) => (
-                          <NativeSelectOption key={range.value} value={range.value}>
-                            {range.label}
-                          </NativeSelectOption>
-                        ))}
-                      </NativeSelect>
-                    </Field>
-                    <Field label="Property type">
-                      <NativeSelect
-                        name="purchaseType"
-                        defaultValue={
-                          restoredFields.purchaseType ?? draft.interest.purchaseType ?? ""
-                        }
-                      >
-                        <NativeSelectOption value="">Not specified</NativeSelectOption>
-                        {purchaseTypes.map((type) => (
-                          <NativeSelectOption key={type} value={type}>
-                            {purchaseTypeLabels[type]}
-                          </NativeSelectOption>
-                        ))}
-                      </NativeSelect>
-                    </Field>
-                    <Field label="Employment">
-                      <NativeSelect
-                        name="employmentType"
-                        defaultValue={
-                          restoredFields.employmentType ?? draft.interest.employmentType ?? ""
-                        }
-                      >
-                        <NativeSelectOption value="">Not specified</NativeSelectOption>
-                        {employmentTypes.map((type) => (
-                          <NativeSelectOption key={type} value={type}>
-                            {type}
-                          </NativeSelectOption>
-                        ))}
-                      </NativeSelect>
-                    </Field>
-                    <Field label="Annual income">
-                      <MoneyInput
-                        name="annualIncome"
-                        defaultValue={restoredFields.annualIncome ?? draft.interest.annualIncome}
-                        className={fieldClass}
-                      />
-                    </Field>
-                  </div>
-                </div>
+                <OpportunityInterestStep
+                  active={step === 3}
+                  draft={draft}
+                  restoredFields={restoredFields}
+                  budget={budget}
+                  onBudgetChange={setBudget}
+                />
                 <div className={cn("grid gap-4", step !== 4 && "hidden")}>
                   <div className="grid gap-3">
                     <Field label="Development" required>
@@ -998,160 +687,21 @@ export function OpportunityDialog({
                     )}
                   </div>
 
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label="Financing" required>
-                      <PaymentMethodSelect
-                        required={step === 4}
-                        name="financingPreference"
-                        value={financing}
-                        onValueChange={setFinancing}
-                        disabled={pending}
-                      />
-                    </Field>
-                    {financing === "bank_financing" && (
-                      <Field label="Bank" required>
-                        <Input
-                          required={step === 4}
-                          name="bankName"
-                          list="opportunity-banks"
-                          defaultValue={restoredFields.bankName ?? draft.bankName}
-                          placeholder="e.g. BDO Unibank"
-                          className={fieldClass}
-                        />
-                        <datalist id="opportunity-banks">
-                          {bankOptions.map((bank) => (
-                            <option key={bank} value={bank} />
-                          ))}
-                        </datalist>
-                      </Field>
-                    )}
-                    {financing === "other" && (
-                      <Field label="Other financing" required>
-                        <Input
-                          required={step === 4}
-                          name="financingPreferenceOther"
-                          defaultValue={
-                            restoredFields.financingPreferenceOther ??
-                            draft.financingPreferenceOther
-                          }
-                          className={fieldClass}
-                        />
-                      </Field>
-                    )}
-                  </div>
-                  <div
-                    className="rounded-lg border border-primary/20 bg-primary/5 p-4"
-                    aria-live="polite"
-                  >
-                    <h3 className="text-sm font-semibold">Expected amount</h3>
-                    {currentEstimate?.success ? (
-                      <dl className="mt-3 grid gap-2 text-sm">
-                        {/* A line per unit and slot, so differing prices are all visible. */}
-                        {[
-                          ...currentEstimate.selectedUnits.map((unit) => ({
-                            label: `Unit ${unit.code}`,
-                            price: unit.price,
-                          })),
-                          ...currentEstimate.selectedSlots.map((slot) => ({
-                            label: `Parking ${slot.code}`,
-                            price: slot.price,
-                          })),
-                        ].map((line) => (
-                          <div key={line.label} className="flex justify-between gap-3">
-                            <dt>{line.label}</dt>
-                            <dd className="tabular-nums">
-                              {formatAmount(line.price ?? "0", currentEstimate.currency)}
-                            </dd>
-                          </div>
-                        ))}
-                        <div className="mt-1 flex justify-between gap-3 border-t border-primary/20 pt-3 text-base font-semibold">
-                          <dt>Total</dt>
-                          <dd className="text-primary tabular-nums">
-                            {formatAmount(currentEstimate.total, currentEstimate.currency)}
-                          </dd>
-                        </div>
-                        {/* What the opportunity will be quoted, saved with it. */}
-                        {(
-                          [
-                            ...(currentEstimate.parkingReservationFee
-                              ? ([
-                                  [
-                                    "Unit reservation fee",
-                                    unitsReservationFee(
-                                      currentEstimate.reservationFee,
-                                      currentEstimate.parkingReservationFee,
-                                    ),
-                                  ],
-                                  [
-                                    "Parking reservation fee",
-                                    currentEstimate.parkingReservationFee,
-                                  ],
-                                ] as const)
-                              : ([["Reservation fee", currentEstimate.reservationFee]] as const)),
-                            ["Monthly amortization", currentEstimate.monthlyAmortization],
-                          ] as const
-                        ).map(([label, amount]) => (
-                          <div
-                            key={label}
-                            className="flex justify-between gap-3 text-muted-foreground"
-                          >
-                            <dt>{label}</dt>
-                            <dd className="tabular-nums">
-                              {amount ? formatAmount(amount, currentEstimate.currency) : "—"}
-                            </dd>
-                          </div>
-                        ))}
-                        {currentEstimate.missingFee && (
-                          <p role="note" className="text-xs text-amber-700 dark:text-amber-400">
-                            {currentEstimate.missingFee}
-                          </p>
-                        )}
-                      </dl>
-                    ) : (
-                      <p
-                        className={cn(
-                          "mt-2 text-sm",
-                          currentEstimate ? "text-destructive" : "text-muted-foreground",
-                        )}
-                      >
-                        {currentEstimate && !currentEstimate.success ? (
-                          <>
-                            {currentEstimate.message}{" "}
-                            {"unavailableUnitIds" in currentEstimate &&
-                              currentEstimate.unavailableUnitIds && (
-                                <button
-                                  type="button"
-                                  className="font-medium underline underline-offset-2"
-                                  onClick={() =>
-                                    setUnitIds(
-                                      unitIds.filter(
-                                        (id) => !currentEstimate.unavailableUnitIds?.includes(id),
-                                      ),
-                                    )
-                                  }
-                                >
-                                  Remove them
-                                </button>
-                              )}
-                          </>
-                        ) : propertyId && unitIds.length ? (
-                          "Calculating…"
-                        ) : (
-                          "Select a property and unit to see the total."
-                        )}
-                      </p>
-                    )}
-                    {droppedPicks > 0 && (
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        {droppedPicks} earlier {droppedPicks === 1 ? "pick was" : "picks were"} no
-                        longer available and {droppedPicks === 1 ? "was" : "were"} removed.
-                      </p>
-                    )}
-                    <p className="mt-3 text-xs text-muted-foreground">
-                      Based on unit and parking prices. Units and parking stay available until the
-                      reservation fee is paid.
-                    </p>
-                  </div>
+                  <OpportunityFinancingFields
+                    active={step === 4}
+                    draft={draft}
+                    restoredFields={restoredFields}
+                    financing={financing}
+                    onFinancingChange={setFinancing}
+                    disabled={pending}
+                  />
+                  <OpportunityEstimatePanel
+                    estimate={currentEstimate}
+                    propertyId={propertyId}
+                    unitIds={unitIds}
+                    onUnitIdsChange={setUnitIds}
+                    droppedPicks={droppedPicks}
+                  />
                 </div>
 
                 <div className="flex justify-end gap-2 pt-1">

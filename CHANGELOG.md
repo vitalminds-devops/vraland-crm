@@ -16,6 +16,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Saving a bill and recording a payment give each refusal's message where the rule is checked; the messages are unchanged.
 - Adding a user and adding an agent share one way of creating the sign-in account; both work the same.
 - Form rules for users, units and property access live with the other form rules in the code; nothing changes on screen.
+- The Move to Opportunity window is built from one part per step (documents, property interest, financing, expected amount); it looks and works the same.
 
 ## [0.8.0] - 2026-11-27
 
