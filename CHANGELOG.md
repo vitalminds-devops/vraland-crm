@@ -5,6 +5,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+- An agent with no separate broker who holds several roles earns the first role's rate that is above 0%, instead of no commission when another of their roles is at 0%.
+
 ## [0.10.0] - 2026-11-27
 
 ### Added

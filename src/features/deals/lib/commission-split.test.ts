@@ -71,4 +71,21 @@ describe("commissionSplit", () => {
       })[0].amount,
     ).toBe(30.86);
   });
+
+  it("pays a seller with no broker their first role that has a rate above 0%", () => {
+    const rates = new Map<string, number | null>([
+      ["viewer", 0],
+      ["unset", null],
+      ["agent", 3],
+    ]);
+    expect(
+      commissionSplit({
+        base: 1_000_000,
+        sellerRoleIds: ["viewer", "unset", "agent"],
+        brokerRoleIds: [],
+        roleRates: rates,
+        links,
+      }),
+    ).toEqual([{ recipient: "seller", roleId: "agent", rate: 3, amount: 30_000 }]);
+  });
 });

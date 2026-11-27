@@ -42,7 +42,8 @@ export function commissionSplit(input: {
     : input.sellerRoleIds
         .flatMap((roleId) => {
           const rate = input.roleRates.get(roleId);
-          return rate == null ? [] : [share("seller", roleId, rate)];
+          // A role without a rate, or at 0%, must not hide another role the seller holds that pays.
+          return rate == null || rate <= 0 ? [] : [share("seller", roleId, rate)];
         })
         .slice(0, 1);
   return shares.filter((s) => s.rate > 0);
