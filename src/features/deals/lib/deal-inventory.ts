@@ -3,6 +3,7 @@ import "server-only";
 import { and, asc, eq, inArray, or } from "drizzle-orm";
 import type { db } from "@/db";
 import { activities, auditLogs, properties, propertyParkingSlots, units } from "@/db/schema";
+import { isHeld } from "@/features/properties/lib/unit-codes";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type InventoryStatus = "available" | "deposit_paid" | "sold";
@@ -99,8 +100,7 @@ export async function syncDealInventory(
           row.buildingId !== buildingId ||
           !(
             (row.status === "available" && !row.reservedDealId) ||
-            (row.reservedDealId === input.dealId &&
-              (row.status === "deposit_paid" || row.status === "sold"))
+            (row.reservedDealId === input.dealId && isHeld(row.status))
           )
         )
           throw new InventoryUnavailable(

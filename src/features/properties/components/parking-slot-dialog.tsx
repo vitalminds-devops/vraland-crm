@@ -15,6 +15,7 @@ import {
   unitStatusLabels,
   unitStatuses,
   unitStatusToneFor,
+  isHeld,
 } from "../lib/unit-codes";
 import { DetailList, FloorItemDialog } from "./floor-item-dialog";
 
@@ -62,7 +63,7 @@ export function ParkingSlotDialog({
   const changed =
     !sameAmount(own.price, slot.ownPrice) ||
     !sameAmount(own.reservationFee, slot.ownReservationFee);
-  const taken = slot.status === "deposit_paid" || slot.status === "sold";
+  const taken = isHeld(slot.status);
   const run = (action: () => Promise<{ success: boolean; message: string }>, after?: () => void) =>
     startTransition(async () => {
       const result = await action();

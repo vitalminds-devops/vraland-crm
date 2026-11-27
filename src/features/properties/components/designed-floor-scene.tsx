@@ -1,5 +1,6 @@
 "use client";
 
+import { isHeld } from "../lib/unit-codes";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -187,7 +188,7 @@ export default function DesignedFloorScene({
             ))}
             {(layout.parking ?? []).map((spot) => {
               const slot = spot.slotId ? slotById.get(spot.slotId) : undefined;
-              const taken = slot?.status === "deposit_paid" || slot?.status === "sold";
+              const taken = isHeld(slot?.status);
               return (
                 <group
                   key={spot.id}

@@ -1,3 +1,4 @@
+import { isHeld } from "./unit-codes";
 import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import type { db } from "@/db";
 import { deals, units } from "@/db/schema";
@@ -30,9 +31,7 @@ export async function removalBlocker(
     .where(inArray(units.id, unitIds))
     .orderBy(asc(units.id))
     .for("update", { of: units });
-  const sold = rows.find(
-    (row) => row.status === "deposit_paid" || row.status === "sold" || row.reservedDealId,
-  );
+  const sold = rows.find((row) => isHeld(row.status) || row.reservedDealId);
   if (sold)
     return `Unit ${sold.code} is ${sold.status === "sold" ? "sold" : "reserved"}, so it cannot be removed. Mark it Available or Inactive first.`;
   const inDeal = rows.find((row) => row.dealCode);

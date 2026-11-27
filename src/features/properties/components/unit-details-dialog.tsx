@@ -1,5 +1,6 @@
 "use client";
 
+import { isHeld } from "../lib/unit-codes";
 import { Tag } from "lucide-react";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
@@ -86,7 +87,7 @@ function UnitDetailsDialog({
   const [pending, startTransition] = useTransition();
   const type = unitTypes.find((option) => option.id === values.unitTypeId);
   // A reserved or sold unit keeps the price it was sold at, even under another type.
-  const held = unit.status === "deposit_paid" || unit.status === "sold";
+  const held = isHeld(unit.status);
   const priceType = held ? unitTypes.find((option) => option.id === unit.unitTypeId) : type;
   // Bills that hold a price other than the one saved on the unit.
   const listed = Number(unit.price ?? unitTypes.find((o) => o.id === unit.unitTypeId)?.price);

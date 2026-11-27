@@ -1,6 +1,10 @@
 export const unitStatuses = ["available", "deposit_paid", "sold", "inactive"] as const;
 export type UnitStatus = (typeof unitStatuses)[number];
 
+/** Reserved or sold out: the unit or parking slot is no longer for sale. */
+export const isHeld = (status: string | undefined) =>
+  status === "deposit_paid" || status === "sold";
+
 export const unitStatusLabels: Record<UnitStatus, string> = {
   available: "Available",
   deposit_paid: "Reserved",

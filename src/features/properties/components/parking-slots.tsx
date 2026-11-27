@@ -26,7 +26,7 @@ import {
   renameParkingSlot,
   setParkingSlotStatus,
 } from "../actions/parking.actions";
-import { unitStatusLabel, unitStatusLabels, unitStatuses } from "../lib/unit-codes";
+import { isHeld, unitStatusLabel, unitStatusLabels, unitStatuses } from "../lib/unit-codes";
 import { UnitStatusLegend } from "./unit-grid";
 import { AddCountDialog } from "./add-count-dialog";
 import { BulkRemoveDialog } from "./bulk-remove-dialog";
@@ -303,7 +303,7 @@ export function ParkingBay({ slot, canManage }: { slot: ParkingSlot; canManage: 
   const currency = useParkingFloors((state) => state.currency);
   // The slot's own price, set on it or by its parking type: what an opportunity charges.
   const price = formatMoneyShort(slot.price, currency);
-  const taken = slot.status === "deposit_paid" || slot.status === "sold";
+  const taken = isHeld(slot.status);
   return (
     <li
       className={styles.bay}

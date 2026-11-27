@@ -16,10 +16,9 @@ import {
 import { notify } from "@/components/ui/toast";
 import { cn } from "@/lib/utils/cn";
 import type { ActionResult } from "@/lib/types/action-result";
-import { unitStatusLabel } from "../lib/unit-codes";
+import { isHeld, unitStatusLabel } from "../lib/unit-codes";
 
 /** Reserved and sold items are part of a sale, so they can't be ticked for removal. */
-const locked = (status: string) => status === "deposit_paid" || status === "sold";
 
 /**
  * "Remove several": tick units or parking slots and remove them in one go. Reserved and sold
@@ -56,7 +55,7 @@ export function BulkRemoveDialog({
     if (open) setPicked(new Set());
   }
   const [pending, startTransition] = useTransition();
-  const removable = items.filter((item) => !locked(item.status));
+  const removable = items.filter((item) => !isHeld(item.status));
   const allPicked = removable.length > 0 && removable.every((item) => picked.has(item.id));
   const count = picked.size;
   const name = (n: number) => (n === 1 ? noun[0] : noun[1]);
@@ -155,7 +154,7 @@ export function BulkRemoveDialog({
                     {/* Two columns on wider screens, so a full floor fits without long scrolling. */}
                     <ul className="grid divide-border/40 sm:grid-cols-2 [&>li]:border-b [&>li]:border-border/40 sm:[&>li:nth-child(odd)]:border-r">
                       {rows.map((item) => {
-                        const fixed = locked(item.status);
+                        const fixed = isHeld(item.status);
                         return (
                           <li key={item.id}>
                             <label

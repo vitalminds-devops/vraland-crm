@@ -1,3 +1,4 @@
+import { isHeld } from "./unit-codes";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { db } from "@/db";
 import { deals, propertyParkingSlots } from "@/db/schema";
@@ -21,9 +22,7 @@ export async function parkingRemovalBlocker(
     .from(propertyParkingSlots)
     .where(inArray(propertyParkingSlots.id, slotIds))
     .for("update");
-  const taken = slots.find(
-    (slot) => slot.status === "deposit_paid" || slot.status === "sold" || slot.reservedDealId,
-  );
+  const taken = slots.find((slot) => isHeld(slot.status) || slot.reservedDealId);
   if (taken)
     return `Parking ${taken.code} is ${taken.status === "sold" ? "sold" : "reserved"}, so it cannot be removed.`;
   const [linked] = await tx

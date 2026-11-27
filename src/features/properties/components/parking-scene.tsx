@@ -1,5 +1,6 @@
 "use client";
 
+import { isHeld } from "../lib/unit-codes";
 import { useEffect, useMemo, useRef, type ReactNode, type RefObject } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, RoundedBox } from "@react-three/drei";
@@ -93,7 +94,7 @@ export default function ParkingScene({
         )}
         {slots.map((slot, index) => {
           const row = index < columns ? 0 : 1;
-          const taken = slot.status === "deposit_paid" || slot.status === "sold";
+          const taken = isHeld(slot.status);
           const placed = layout && placedById.get(slot.id);
           if (placed)
             return (
