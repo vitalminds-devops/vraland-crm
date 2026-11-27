@@ -12,6 +12,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - When another opportunity has reserved a unit or parking slot, Billing names every one taken, as the pipeline does, instead of only the first.
 - Who can see which contacts and opportunities is decided by one shared rule in every list, report and export.
 
+### Security
+- Email and lead-expiry logs go through the app logger, and email logs no longer record the recipient's address.
+
 ## [0.7.1] - 2026-11-26
 
 ### Fixed

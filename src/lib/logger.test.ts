@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from "vitest";
 
-import { logError } from "./logger";
+import { logError, logInfo, logWarn } from "./logger";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -25,4 +25,21 @@ it("includes the database error code in production without logging query paramet
   expect(message).toContain("duplicate key value violates unique constraint");
   expect(message).not.toContain("private@example.com");
   expect(message).not.toContain("Stack:");
+});
+
+it("keeps info and warnings out of production logs", () => {
+  vi.stubEnv("NODE_ENV", "production");
+  const info = vi.spyOn(console, "info").mockImplementation(() => {});
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  logInfo("Lead expiry: leads expired", { count: 2 });
+  logWarn("Email service: SMTP not configured.");
+  expect(info).not.toHaveBeenCalled();
+  expect(warn).not.toHaveBeenCalled();
+});
+
+it("shows info with its context in development", () => {
+  vi.stubEnv("NODE_ENV", "development");
+  const info = vi.spyOn(console, "info").mockImplementation(() => {});
+  logInfo("Lead expiry: leads expired", { count: 2 });
+  expect(info.mock.calls[0][0]).toContain('{"count":2}');
 });

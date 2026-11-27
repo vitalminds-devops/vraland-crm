@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import type { Transporter } from "nodemailer";
+import { logError, logInfo, logWarn } from "@/lib/logger";
 
 type EmailConfig = {
   host: string;
@@ -32,7 +33,7 @@ class EmailService {
   private initializeTransporter() {
     // Skip initialization if SMTP is not configured
     if (!this.isConfigured()) {
-      console.warn("Email service: SMTP not configured. Emails will be logged to console.");
+      logWarn("Email service: SMTP not configured. Emails will be logged, not sent.");
       return;
     }
 
@@ -48,9 +49,9 @@ class EmailService {
 
     try {
       this.transporter = nodemailer.createTransport(config);
-      console.info("Email service: SMTP transporter initialized successfully");
+      logInfo("Email service: SMTP transporter initialized");
     } catch (error) {
-      console.error("Email service: Failed to initialize transporter", error);
+      logError("Email service: transporter setup failed", error, { operation: "email_setup" });
     }
   }
 
@@ -66,9 +67,7 @@ class EmailService {
   async send(message: EmailMessage): Promise<void> {
     // Development mode: log to console
     if (process.env.NODE_ENV === "development" && !this.isConfigured()) {
-      console.info(`[DEV EMAIL] To: ${message.to}`);
-      console.info(`[DEV EMAIL] Subject: ${message.subject}`);
-      console.info(`[DEV EMAIL] HTML: ${message.html}`);
+      logInfo("[DEV EMAIL]", { to: message.to, subject: message.subject, html: message.html });
       return;
     }
 
@@ -85,9 +84,9 @@ class EmailService {
         html: message.html,
         text: message.text,
       });
-      console.info(`Email service: Email sent successfully to ${message.to}`);
+      logInfo("Email service: email sent", { subject: message.subject });
     } catch (error) {
-      console.error(`Email service: Failed to send email to ${message.to}`, error);
+      logError("Email service: send failed", error, { operation: "email_send" });
       throw new Error(
         `Couldn't send email: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
@@ -103,7 +102,7 @@ class EmailService {
       await this.transporter.verify();
       return true;
     } catch (error) {
-      console.error("Email service: SMTP connection verification failed", error);
+      logError("Email service: SMTP verification failed", error, { operation: "email_verify" });
       return false;
     }
   }

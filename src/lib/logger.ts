@@ -139,3 +139,13 @@ export function logError(
 
   outputLog(entry);
 }
+
+/** Log something worth a look that isn't a failure. */
+export function logWarn(message: string, context?: Record<string, unknown>): void {
+  outputLog({ level: "warn", message, timestamp: new Date().toISOString(), context });
+}
+
+/** Log routine progress; shown in development only. */
+export function logInfo(message: string, context?: Record<string, unknown>): void {
+  outputLog({ level: "info", message, timestamp: new Date().toISOString(), context });
+}
