@@ -225,7 +225,7 @@ it("keeps hand-set bill prices when the same selection is saved again", async ()
     unitIds: [unitB, unitA],
     parkingSlotIds: [heldSlot],
   };
-  mock.bill = { id: "bill", unitPrice: "1", miscellaneousFee: "0", reservationDiscount: "0" };
+  mock.bill = { id: "bill", itemsTotal: "1", miscellaneousFee: "0", reservationDiscount: "0" };
   queueChange();
   expect((await changeOpportunityUnits(selection)).success).toBe(true);
   expect(written("update", bills)).toEqual([]);
@@ -238,7 +238,7 @@ it("keeps a held unit's billed price when another is added", async () => {
   mock.deal = { ...mock.deal, propertyId: buildingId, unitIds: [unitA], parkingSlotIds: [] };
   mock.bill = {
     id: "bill",
-    unitPrice: "3000000",
+    itemsTotal: "3000000",
     miscellaneousFee: "150000",
     reservationDiscount: "0",
   };
@@ -266,14 +266,14 @@ it("rebuilds the bill for the new units at their fee rate, with a line per parki
   // A 5% fee on the old 2,000,000 bill.
   mock.bill = {
     id: "bill",
-    unitPrice: "2000000",
+    itemsTotal: "2000000",
     miscellaneousFee: "100000",
     reservationDiscount: "0",
   };
   queueChange();
   expect((await changeOpportunityUnits(selection)).success).toBe(true);
   expect(written("update", bills)[0].values).toMatchObject({
-    unitPrice: "5500000.00",
+    itemsTotal: "5500000.00",
     // 5% on the units only; parking carries no miscellaneous fee.
     miscellaneousFee: "250000.00",
   });
@@ -304,7 +304,12 @@ it("prices each unit by its own price and refuses an unpriced unit", async () =>
 });
 
 it("refuses a new total below what is already paid and writes nothing", async () => {
-  mock.bill = { id: "bill", unitPrice: "2000000", miscellaneousFee: "0", reservationDiscount: "0" };
+  mock.bill = {
+    id: "bill",
+    itemsTotal: "2000000",
+    miscellaneousFee: "0",
+    reservationDiscount: "0",
+  };
   mock.paid = 9_000_000;
   queueChange();
   const result = await changeOpportunityUnits(selection);

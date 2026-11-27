@@ -87,9 +87,9 @@ export async function saveBill(input: unknown): Promise<ActionResult<{ id: strin
   const parsed = billSchema.safeParse(input);
   if (!parsed.success) return validationFailureFromZod(parsed.error);
   const value = parsed.data;
-  const unitPrice = value.items.reduce((sum, item) => sum + item.unitPrice, 0);
+  const itemsTotal = value.items.reduce((sum, item) => sum + item.unitPrice, 0);
   const miscellaneousFee = value.items.reduce((sum, item) => sum + item.miscellaneousFee, 0);
-  const unitLabel = value.items
+  const itemsLabel = value.items
     .map((item) => item.unitLabel)
     .join(" + ")
     .slice(0, 220);
@@ -106,8 +106,7 @@ export async function saveBill(input: unknown): Promise<ActionResult<{ id: strin
       const [existing] = await tx
         .select({
           id: bills.id,
-          unitLabel: bills.unitLabel,
-          unitPrice: bills.unitPrice,
+          itemsTotal: bills.itemsTotal,
           miscellaneousFee: bills.miscellaneousFee,
           reservationDiscount: bills.reservationDiscount,
         })
@@ -116,16 +115,16 @@ export async function saveBill(input: unknown): Promise<ActionResult<{ id: strin
         .for("update");
       const reservationDiscount =
         value.reservationDiscount ?? Number(existing?.reservationDiscount ?? 0);
-      if (reservationDiscount > unitPrice) return { kind: "discount-too-large" as const };
-      const total = unitPrice - reservationDiscount + miscellaneousFee;
+      if (reservationDiscount > itemsTotal) return { kind: "discount-too-large" as const };
+      const total = itemsTotal - reservationDiscount + miscellaneousFee;
       // A ₱0 bill would read as paid in full and open the stage gates with nothing paid.
       if (total <= 0) return { kind: "zero-total" as const };
       // Commissions were split from the net price when the deal was won.
       if (
         deal.isWonStage &&
         existing &&
-        toCents(unitPrice - reservationDiscount) !==
-          toCents(Number(existing.unitPrice) - Number(existing.reservationDiscount))
+        toCents(itemsTotal - reservationDiscount) !==
+          toCents(Number(existing.itemsTotal) - Number(existing.reservationDiscount))
       )
         return { kind: "won-price" as const };
       if (existing) {
@@ -138,8 +137,8 @@ export async function saveBill(input: unknown): Promise<ActionResult<{ id: strin
 
       const fields = {
         brokerUserId: deal.brokerUserId,
-        unitLabel,
-        unitPrice: toAmount(unitPrice),
+        itemsLabel,
+        itemsTotal: toAmount(itemsTotal),
         miscellaneousFee: toAmount(miscellaneousFee),
         reservationDiscount: toAmount(reservationDiscount),
         notes: value.notes,
@@ -192,7 +191,7 @@ export async function saveBill(input: unknown): Promise<ActionResult<{ id: strin
           dealId: value.dealId,
           brokerUserId: deal.brokerUserId,
           items: value.items,
-          unitPrice: fields.unitPrice,
+          unitPrice: fields.itemsTotal,
           miscellaneousFee: fields.miscellaneousFee,
           reservationDiscount: fields.reservationDiscount,
           total: toAmount(total),

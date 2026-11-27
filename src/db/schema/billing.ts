@@ -36,8 +36,9 @@ export const bills = pgTable(
     brokerUserId: uuid("broker_user_id").references(() => users.id, {
       onDelete: "set null",
     }),
-    unitLabel: varchar("unit_label", { length: 220 }).notNull(),
-    unitPrice: numeric("unit_price", { precision: 18, scale: 2 }).notNull(),
+    // The lines' labels and prices summed, kept for lists and balances (columns keep their old names).
+    itemsLabel: varchar("unit_label", { length: 220 }).notNull(),
+    itemsTotal: numeric("unit_price", { precision: 18, scale: 2 }).notNull(),
     miscellaneousFee: numeric("miscellaneous_fee", { precision: 18, scale: 2 })
       .default("0")
       .notNull(),

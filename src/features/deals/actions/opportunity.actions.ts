@@ -148,7 +148,7 @@ async function rebillForSelection(
   const [bill] = await tx
     .select({
       id: bills.id,
-      unitPrice: bills.unitPrice,
+      itemsTotal: bills.itemsTotal,
       miscellaneousFee: bills.miscellaneousFee,
       reservationDiscount: bills.reservationDiscount,
     })
@@ -181,8 +181,8 @@ async function rebillForSelection(
   await tx
     .update(bills)
     .set({
-      unitLabel: rebuilt.unitLabel,
-      unitPrice: rebuilt.unitPrice,
+      itemsLabel: rebuilt.itemsLabel,
+      itemsTotal: rebuilt.itemsTotal,
       miscellaneousFee: rebuilt.miscellaneousFee,
       updatedBy: input.userId,
       updatedAt: new Date(),

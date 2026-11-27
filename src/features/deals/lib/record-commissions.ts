@@ -25,7 +25,7 @@ export async function recordDealCommissions(
   const brokerUserId = deal.brokerUserId === deal.sellerUserId ? null : deal.brokerUserId;
 
   const [bill] = await tx
-    .select({ net: sql<string>`${bills.unitPrice} - ${bills.reservationDiscount}` })
+    .select({ net: sql<string>`${bills.itemsTotal} - ${bills.reservationDiscount}` })
     .from(bills)
     .where(eq(bills.dealId, deal.dealId));
   const base = Number(bill?.net ?? deal.amount ?? 0);

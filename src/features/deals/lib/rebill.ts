@@ -7,7 +7,7 @@ export type RebillInput = {
   buildingTitle: string;
   /** Each parking slot's identifier and price; one bill line each. */
   slots: { id: string; code: string; price: string }[];
-  previous: { unitPrice: string; miscellaneousFee: string; reservationDiscount: string };
+  previous: { itemsTotal: string; miscellaneousFee: string; reservationDiscount: string };
   /** The bill's current lines: a unit or slot already billed keeps its price and fee. */
   keep?: readonly {
     unitLabel: string;
@@ -44,7 +44,7 @@ export function selectionChanged(
  * new units take today's price and the old bill's miscellaneous fee rate, new parking none. The reservation discount stays, and the total may not fall below what is paid.
  */
 export function rebuildBill(input: RebillInput) {
-  const oldPrice = Number(input.previous.unitPrice);
+  const oldPrice = Number(input.previous.itemsTotal);
   const miscRate = oldPrice > 0 ? Number(input.previous.miscellaneousFee) / oldPrice : 0;
   const keep = input.keep ?? [];
   const line = (
@@ -81,18 +81,19 @@ export function rebuildBill(input: RebillInput) {
     ),
   ];
 
-  const unitPrice = priced.reduce((sum, line) => sum + line.price, 0);
+  const itemsTotal = priced.reduce((sum, line) => sum + line.price, 0);
   const miscellaneousFee = priced.reduce((sum, line) => sum + line.fee, 0);
   const discount = Number(input.previous.reservationDiscount);
-  if (discount > unitPrice) return { error: "discount" as const };
-  if (unitPrice - discount + miscellaneousFee < input.paid) return { error: "below-paid" as const };
+  if (discount > itemsTotal) return { error: "discount" as const };
+  if (itemsTotal - discount + miscellaneousFee < input.paid)
+    return { error: "below-paid" as const };
 
   return {
-    unitLabel: priced
+    itemsLabel: priced
       .map((line) => line.unitLabel)
       .join(" + ")
       .slice(0, 220),
-    unitPrice: toAmount(unitPrice),
+    itemsTotal: toAmount(itemsTotal),
     miscellaneousFee: toAmount(miscellaneousFee),
     lines: priced.map((line) => ({
       unitId: line.unitId,

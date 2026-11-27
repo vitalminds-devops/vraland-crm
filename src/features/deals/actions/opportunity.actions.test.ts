@@ -431,12 +431,12 @@ it("rebuilds a lead's old bill when it re-enters Opportunity with another pick",
   // Moved back to Leads earlier: units released, bill kept from the old pick.
   inventory.bill = {
     id: "bill",
-    unitPrice: "90000",
+    itemsTotal: "90000",
     miscellaneousFee: "0",
     reservationDiscount: "0",
   };
   expect(await openOpportunity(leadForm())).toMatchObject({ success: true });
-  expect(inventory.updates).toContainEqual(expect.objectContaining({ unitPrice: "145000.75" }));
+  expect(inventory.updates).toContainEqual(expect.objectContaining({ itemsTotal: "145000.75" }));
   expect(inventory.billItems).toHaveLength(1);
 });
 
