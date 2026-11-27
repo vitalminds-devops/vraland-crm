@@ -10,14 +10,17 @@ const lead = {
 it("creates a lead without address or property interest", () => {
   expect(contactCreateSchema.safeParse(lead).success).toBe(true);
 });
-it("keeps address and budget validation when editing a contact", () => {
-  const result = contactSchema.safeParse(lead);
-  expect(result.success).toBe(false);
-  if (!result.success)
-    expect(result.error.flatten().fieldErrors).toMatchObject({
-      currentProvince: expect.any(Array),
-      budgetMax: expect.any(Array),
-    });
+it("edits a contact without agent, address or budget", () => {
+  const result = contactSchema.safeParse({ firstName: "Test", lastName: "Lead", agentUserId: "" });
+  expect(result.success).toBe(true);
+  // A blank agent reaches the action as null, which keeps the current agent.
+  if (result.success) expect(result.data.agentUserId).toBeNull();
+  // A partial address is fine when editing.
+  expect(contactSchema.safeParse({ ...lead, currentProvince: "Cebu" }).success).toBe(true);
+});
+it("still asks a new contact for an agent and a complete address once started", () => {
+  expect(contactCreateSchema.safeParse({ ...lead, agentUserId: "" }).success).toBe(false);
+  expect(contactCreateSchema.safeParse({ ...lead, currentProvince: "Cebu" }).success).toBe(false);
 });
 it("requires the complete address when moving to Opportunity", () => {
   expect(opportunityAddressSchema.safeParse({}).success).toBe(false);

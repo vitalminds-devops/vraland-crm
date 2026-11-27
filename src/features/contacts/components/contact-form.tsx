@@ -185,7 +185,6 @@ export function ContactForm({
       // Country is pinned to Philippines
       currentCountry: COUNTRY_NAME,
       preferredUnitIds: initial?.preferredUnitIds ?? [],
-      // Province, city and barangay are required fields - user must select them
       currentProvince: initial?.currentProvince ?? "",
       currentCity: initial?.currentCity ?? "",
       currentBarangay: initial?.currentBarangay ?? "",
@@ -660,7 +659,11 @@ export function ContactForm({
           <>
             <FormSection id="section-2" number={2} title="Address">
               <FormRow>
-                <FormField label="Province" required error={errors.currentProvince?.message}>
+                <FormField
+                  label="Province"
+                  required={!contactId}
+                  error={errors.currentProvince?.message}
+                >
                   <FormSelect
                     {...register("currentProvince", {
                       onChange: () => handleProvinceChange(),
@@ -676,7 +679,7 @@ export function ContactForm({
                 </FormField>
                 <FormField
                   label="City"
-                  required
+                  required={!contactId}
                   hint={cityOptions.length === 0 ? "Select a province first" : undefined}
                   error={errors.currentCity?.message}
                 >
@@ -698,7 +701,7 @@ export function ContactForm({
               <FormRow>
                 <FormField
                   label="Barangay"
-                  required
+                  required={!contactId}
                   hint={barangayOptions.length === 0 ? "Select a city first" : undefined}
                   error={errors.currentBarangay?.message}
                 >
@@ -737,7 +740,11 @@ export function ContactForm({
 
             <FormSection id="section-3" number={3} title="Property interest">
               <FormRow>
-                <FormField label="Budget range" required error={errors.budgetMax?.message}>
+                <FormField
+                  label="Budget range"
+                  required={!contactId}
+                  error={errors.budgetMax?.message}
+                >
                   <FormSelect value={budgetRange ?? ""} onChange={handleBudgetRangeChange}>
                     <option value="">Select budget</option>
                     {budgetRanges.map((range) => (
@@ -804,7 +811,7 @@ export function ContactForm({
                     : "It starts in Leads."}
           </p>
           <FormRow>
-            <FormField label="Agent" required error={errors.agentUserId?.message}>
+            <FormField label="Agent" required={!contactId} error={errors.agentUserId?.message}>
               <FormSelect {...register("agentUserId")}>
                 <option value="">Select an agent</option>
                 {initial?.agentUserId &&

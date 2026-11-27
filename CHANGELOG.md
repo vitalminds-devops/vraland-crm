@@ -6,6 +6,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Changed
+- Editing a contact no longer requires the agent, budget range, province, city or barangay. Leaving the agent blank keeps the current one.
 - Billing and Move to Opportunity change the stage under the permission they already checked, instead of checking it a second time.
 - Dashboard amounts drop a trailing ".0" (₱9M instead of ₱9.0M), as property tags do, and a contact's annual income keeps its centavos.
 - Units and parking slots are treated as reserved or sold out by one shared rule everywhere.

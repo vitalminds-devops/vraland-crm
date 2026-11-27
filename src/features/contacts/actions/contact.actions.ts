@@ -641,7 +641,6 @@ export async function updateContact(id: string, input: ContactInput): Promise<Co
     return notFoundFailure("Contact");
   const parsed = contactSchema.safeParse(input);
   if (!parsed.success) return validationFailureFromZod(parsed.error, reviewMessage(parsed.error));
-  const value = parsed.data;
   const [existing] = await db
     .select({
       agentUserId: contacts.agentUserId,
@@ -650,6 +649,8 @@ export async function updateContact(id: string, input: ContactInput): Promise<Co
     .where(and(eq(contacts.id, id), eq(contacts.organizationId, context.organizationId)))
     .limit(1);
   if (!existing) return notFoundFailure("Contact");
+  // A blank Agent keeps the current one; editing never unassigns a contact.
+  const value = { ...parsed.data, agentUserId: parsed.data.agentUserId || existing.agentUserId };
   const duplicate = await findDuplicateMatch(context.organizationId, value, {
     excludeContactId: id,
   });

@@ -45,7 +45,8 @@ const optionalMoney = z
   .union([z.literal(""), z.null(), z.coerce.number().nonnegative()])
   .optional()
   .transform((value) => (value === "" || value === undefined ? null : value));
-function contactSchemaFor(requireDetails: boolean) {
+/** Editing asks for nothing beyond the name: a blank agent keeps the current one. */
+function contactSchemaFor(editing: boolean) {
   return z
     .object({
       firstName: nameText(120),
@@ -104,7 +105,12 @@ function contactSchemaFor(requireDetails: boolean) {
         .transform((v) => v || null),
       financingPreferenceOther: optionalText(180),
       bankName: optionalText(180),
-      agentUserId: requiredUuid("Select an agent to assign this contact."),
+      agentUserId: editing
+        ? z
+            .union([z.uuid(), z.literal(""), z.null()])
+            .optional()
+            .transform((value) => value || null)
+        : requiredUuid("Select an agent to assign this contact."),
       budgetMin: optionalMoney,
       budgetMax: optionalMoney,
       // Chosen when the lead becomes an opportunity.
@@ -121,36 +127,19 @@ function contactSchemaFor(requireDetails: boolean) {
       marketingConsent: z.boolean().default(false),
     })
     .superRefine((v, ctx) => {
-      // Ensure province is selected
-      if (requireDetails && !v.currentProvince) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["currentProvince"],
-          message: "Select a province.",
-        });
-      }
-      // Ensure city is selected when province is selected
-      if (v.currentProvince && !v.currentCity) {
+      // A new contact's address is complete once started; an edit may leave any part blank.
+      if (!editing && v.currentProvince && !v.currentCity) {
         ctx.addIssue({
           code: "custom",
           path: ["currentCity"],
           message: "Select a city.",
         });
       }
-      // Ensure barangay is selected when city is selected
-      if (v.currentCity && !v.currentBarangay) {
+      if (!editing && v.currentCity && !v.currentBarangay) {
         ctx.addIssue({
           code: "custom",
           path: ["currentBarangay"],
           message: "Select a barangay.",
-        });
-      }
-      // Ensure budget range is selected
-      if (requireDetails && v.budgetMin === null && v.budgetMax === null) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["budgetMax"],
-          message: "Select a budget range.",
         });
       }
       if (v.financingPreference === "other" && !v.financingPreferenceOther)
