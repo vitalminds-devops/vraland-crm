@@ -1,10 +1,14 @@
 import "server-only";
 
 import { toCents } from "@/lib/utils/money";
-import { and, eq, inArray, isNotNull, isNull, ne } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import type { db } from "@/db";
-import { bills, deals, pipelineStages, propertyParkingSlots, units } from "@/db/schema";
-import { syncDealInventory } from "@/features/deals/lib/deal-inventory";
+import { bills, deals, pipelineStages } from "@/db/schema";
+import {
+  heldElsewhere,
+  heldElsewhereMessage,
+  syncDealInventory,
+} from "@/features/deals/lib/deal-inventory";
 import { billPaid, billTotal, dealReservationReceived } from "./deal-payment";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -45,27 +49,12 @@ export async function inventoryHeldElsewhere(
   tx: Transaction,
   deal: NonNullable<Awaited<ReturnType<typeof lockDealForInventory>>>,
 ): Promise<string | null> {
-  const unitIds = deal.unitIds.length ? deal.unitIds : deal.unitId ? [deal.unitId] : [];
-  for (const [table, ids, label] of [
-    [units, unitIds, "Unit"],
-    [propertyParkingSlots, deal.parkingSlotIds, "Parking slot"],
-  ] as const) {
-    if (!ids.length) continue;
-    const [held] = await tx
-      .select({ code: table.code })
-      .from(table)
-      .where(
-        and(
-          inArray(table.id, ids),
-          isNotNull(table.reservedDealId),
-          ne(table.reservedDealId, deal.id),
-        ),
-      )
-      .limit(1);
-    if (held)
-      return `${label} ${held.code} is already reserved by another opportunity. Pick another ${label.toLowerCase()}.`;
-  }
-  return null;
+  const taken = await heldElsewhere(tx, {
+    id: deal.id,
+    unitIds: deal.unitIds.length ? deal.unitIds : deal.unitId ? [deal.unitId] : [],
+    parkingSlotIds: deal.parkingSlotIds,
+  });
+  return taken.length ? `${heldElsewhereMessage(taken)} Pick again.` : null;
 }
 
 export async function readDealPayments(tx: Transaction, dealId: string) {

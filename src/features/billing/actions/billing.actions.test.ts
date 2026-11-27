@@ -254,7 +254,7 @@ it.each(["save", "record"])(
 it.each(["save", "record"])(
   "refuses to %s billing when another opportunity holds the unit",
   async (op) => {
-    mock.held = "Unit 5A is already reserved by another opportunity. Pick another unit.";
+    mock.held = "Unit 5A is already reserved by another opportunity. Pick again.";
     mock.reads = [[{ dealId: input.dealId }]];
     const result =
       op === "save" ? await saveBill(input) : await recordPayment(paymentInput, transactionSlip());

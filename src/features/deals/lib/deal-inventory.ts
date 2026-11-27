@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, eq, inArray, or } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, ne, or } from "drizzle-orm";
 import type { db } from "@/db";
 import { activities, auditLogs, properties, propertyParkingSlots, units } from "@/db/schema";
 import { isHeld } from "@/features/properties/lib/unit-codes";
@@ -17,6 +17,36 @@ type InventoryRow = {
 };
 
 export class InventoryUnavailable extends Error {}
+
+/** "Unit 2A", "Parking P3": the deal's units and parking slots another opportunity has reserved. */
+export async function heldElsewhere(
+  tx: Transaction,
+  deal: { id: string; unitIds: readonly string[]; parkingSlotIds: readonly string[] },
+): Promise<string[]> {
+  const taken: string[] = [];
+  for (const [table, ids, label] of [
+    [units, deal.unitIds, "Unit"],
+    [propertyParkingSlots, deal.parkingSlotIds, "Parking"],
+  ] as const) {
+    if (!ids.length) continue;
+    const rows = await tx
+      .select({ code: table.code })
+      .from(table)
+      .where(
+        and(
+          inArray(table.id, [...ids]),
+          isNotNull(table.reservedDealId),
+          ne(table.reservedDealId, deal.id),
+        ),
+      );
+    taken.push(...rows.map((row) => `${label} ${row.code}`));
+  }
+  return taken;
+}
+
+/** The start of every refusal for inventory another opportunity holds; callers add what to do. */
+export const heldElsewhereMessage = (taken: readonly string[]) =>
+  `${taken.join(", ")} ${taken.length === 1 ? "is" : "are"} already reserved by another opportunity.`;
 
 /** Called while the deal is locked; both inventory sets are locked and checked before either changes. */
 export async function syncDealInventory(

@@ -1,7 +1,6 @@
 import "server-only";
 
-import { and, asc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
-import type { AnyPgColumn } from "drizzle-orm/pg-core";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { dealFirstMonthPaid, dealReservationPaid } from "@/features/billing/lib/deal-payment";
@@ -19,7 +18,6 @@ import {
   dealStageChangeRequests,
   dealStageHistory,
   pipelineStages,
-  propertyParkingSlots,
   units,
 } from "@/db/schema";
 import { canAccessResource } from "@/lib/permissions/authorization";
@@ -27,7 +25,12 @@ import { canManageBilling, type AuthorizationContext } from "@/lib/permissions/p
 import { recordDealCommissions } from "./record-commissions";
 import { enrollByTrigger } from "@/features/marketing/lib/auto-enroll";
 import { missingOpportunityDetails } from "./opportunity-requirements";
-import { InventoryUnavailable, syncDealInventory } from "./deal-inventory";
+import {
+  heldElsewhere,
+  heldElsewhereMessage,
+  InventoryUnavailable,
+  syncDealInventory,
+} from "./deal-inventory";
 import {
   canMoveStage,
   missingPaymentMessage,
@@ -199,38 +202,15 @@ export async function applyStageChange(
           };
         // Units and parking stay open to others until Reservation, but one another opportunity
         // has reserved since (say, while this move waited for approval) can't be this one's too.
-        const pickedUnits = before.unitIds.length
-          ? before.unitIds
-          : before.unitId
-            ? [before.unitId]
-            : [];
-        const takenElsewhere = (reservedDealId: AnyPgColumn) =>
-          and(isNotNull(reservedDealId), ne(reservedDealId, dealId));
-        const taken = [
-          ...(pickedUnits.length
-            ? await tx
-                .select({ code: units.code })
-                .from(units)
-                .where(and(inArray(units.id, pickedUnits), takenElsewhere(units.reservedDealId)))
-            : []
-          ).map((unit) => `Unit ${unit.code}`),
-          ...(before.parkingSlotIds.length
-            ? await tx
-                .select({ code: propertyParkingSlots.code })
-                .from(propertyParkingSlots)
-                .where(
-                  and(
-                    inArray(propertyParkingSlots.id, before.parkingSlotIds),
-                    takenElsewhere(propertyParkingSlots.reservedDealId),
-                  ),
-                )
-            : []
-          ).map((slot) => `Parking ${slot.code}`),
-        ];
+        const taken = await heldElsewhere(tx, {
+          id: dealId,
+          unitIds: before.unitIds.length ? before.unitIds : before.unitId ? [before.unitId] : [],
+          parkingSlotIds: before.parkingSlotIds,
+        });
         if (taken.length)
           return {
             kind: "invalid" as const,
-            message: `${taken.join(", ")} ${taken.length === 1 ? "is" : "are"} already reserved by another opportunity. ${
+            message: `${heldElsewhereMessage(taken)} ${
               fromStage.isLostStage
                 ? "Reopen it to Leads and pick again."
                 : "Pick again with Move to Opportunity."

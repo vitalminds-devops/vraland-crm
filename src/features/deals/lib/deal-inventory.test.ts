@@ -2,7 +2,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { PgDialect } from "drizzle-orm/pg-core";
 import type { SQL } from "drizzle-orm";
 import { units, propertyParkingSlots } from "@/db/schema";
-import { InventoryUnavailable, syncDealInventory } from "./deal-inventory";
+import { heldElsewhereMessage, InventoryUnavailable, syncDealInventory } from "./deal-inventory";
 
 vi.mock("@/db", () => ({ db: {} }));
 type Row = {
@@ -187,4 +187,13 @@ it("keeps syncing inventory a deal already owns after its building is archived",
     syncDealInventory(transaction(), { ...input, status: "sold" }),
   ).resolves.toBeDefined();
   expect(writes).toEqual([]);
+});
+
+it("names everything another opportunity holds in one refusal", () => {
+  expect(heldElsewhereMessage(["Unit 2A"])).toBe(
+    "Unit 2A is already reserved by another opportunity.",
+  );
+  expect(heldElsewhereMessage(["Unit 2A", "Parking P3"])).toBe(
+    "Unit 2A, Parking P3 are already reserved by another opportunity.",
+  );
 });
