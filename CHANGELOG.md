@@ -18,6 +18,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - A unit's, floor's and parking slot's property is called the property in the code too, not the building. A Move to Opportunity form left half-filled before this update starts fresh.
 - The Agent on a contact or opportunity has one name in the code instead of five; tasks keep their Assignee. Nothing changes on screen or in CSV files.
 
+### Fixed
+- The sign-in page fits phones: the form scrolls with the page, "Remember me" stays a square checkbox, and its links stay on one line with finger-sized tap targets.
+
 ### Removed
 - Retired database columns nothing used: an opportunity's old reservation-fee paid date and payer, and the unused password field on users. Run `npm run db:migrate` (migration 0081).
 - Twelve property columns left from the old property form (property-wide prices and fees, commission rate, lot area, bedrooms, bathrooms, purchase type, cover image). Prices live on unit types, parking types and slots. Run `npm run db:migrate` (migration 0082).

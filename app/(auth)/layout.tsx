@@ -44,8 +44,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           className="absolute inset-0 -z-10 bg-[linear-gradient(135deg,rgba(2,6,23,0.82),rgba(15,23,42,0.55)_55%,rgba(2,6,23,0.82))]"
         />
 
-        {/* Both cards share one height that fits the window, with a 32px gap above and below. */}
-        <div className="mx-auto grid w-full max-w-[1520px] gap-6 px-4 py-8 sm:px-8 lg:grid-cols-[minmax(0,1.7fr)_minmax(420px,1fr)] lg:grid-rows-[min(760px,calc(100dvh-64px))]">
+        {/* Desktop cards share one height; mobile keeps room for the form and keyboard. */}
+        <div className="mx-auto grid w-full max-w-[1520px] gap-6 px-3 py-4 sm:px-8 sm:py-8 lg:grid-cols-[minmax(0,1.7fr)_minmax(420px,1fr)] lg:grid-rows-[min(760px,calc(100dvh-64px))]">
           <section className="relative hidden overflow-hidden rounded-3xl shadow-2xl ring-1 shadow-black/40 ring-white/15 lg:block">
             {projects.map((project, index) => (
               <div key={project.name} className={`absolute inset-0 ${project.fade}`}>
@@ -89,8 +89,8 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             </div>
           </section>
 
-          {/* Scrolls inside itself when the window is too short, so the page never does. */}
-          <section className="relative flex flex-col overflow-x-hidden overflow-y-auto rounded-3xl bg-white px-7 py-8 shadow-2xl shadow-black/40 sm:px-10 dark:bg-card">
+          {/* Desktop scrolls inside the card; mobile uses the page's natural scroll. */}
+          <section className="relative flex flex-col overflow-x-hidden rounded-2xl bg-white px-5 py-6 shadow-2xl shadow-black/40 sm:rounded-3xl sm:px-10 sm:py-8 lg:overflow-y-auto dark:bg-card">
             {/* Soft glows in two corners, clipped in their own layer so they never add scroll. */}
             <div
               aria-hidden="true"

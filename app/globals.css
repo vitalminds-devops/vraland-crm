@@ -248,7 +248,7 @@ textarea {
 }
 /* Comfortable touch targets and no automatic iOS input zoom. */
 @media (pointer: coarse) {
-  button,
+  button:not([role="checkbox"]),
   select {
     min-height: 44px;
   }

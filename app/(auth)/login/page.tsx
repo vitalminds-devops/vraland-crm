@@ -18,14 +18,15 @@ export default async function LoginPage() {
       description="Sign in to continue."
       footer={
         <div className="text-center">
-          <p className="text-sm text-muted-foreground">
-            No account yet? <span className="text-foreground">Ask your administrator.</span>
+          <p className="text-sm leading-6 text-muted-foreground">
+            No account yet?{" "}
+            <span className="inline-block text-foreground">Ask your administrator.</span>
           </p>
           <p className="mt-3 flex items-center justify-center gap-5">
-            <Link href="/privacy" className={authLinkClass}>
+            <Link href="/privacy" className={`${authLinkClass} inline-flex min-h-11 items-center`}>
               Privacy
             </Link>
-            <Link href="/terms" className={authLinkClass}>
+            <Link href="/terms" className={`${authLinkClass} inline-flex min-h-11 items-center`}>
               Terms
             </Link>
           </p>
