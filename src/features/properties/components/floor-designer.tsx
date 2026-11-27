@@ -33,7 +33,7 @@ import {
   toLayout,
   toPieces,
 } from "../lib/floor-pieces";
-import { floorCodes, nextFreeCode, type UnitNumbering } from "../lib/unit-numbering";
+import { floorCodes, nextFreeCode, type UnitIdentifier } from "../lib/unit-identifier";
 import { nextSlotCode, slotRenames } from "../lib/parking-codes";
 import { SLOT_SIZE, floorWithParking, type ParkingLayout } from "../lib/parking-layout";
 import type { ParkingType } from "../lib/parking-types";
@@ -44,7 +44,7 @@ import { DesignPropertiesPanel } from "./design-properties-panel";
 import { PanelSection } from "./geometry-fields";
 import { LayoutCanvas } from "./layout-canvas";
 import { ParkingArt, PlacedLabel, SpaceArt, UnitArt } from "./layout-art";
-import { UnitNumberingButton } from "./unit-numbering-button";
+import { UnitIdentifierButton } from "./unit-identifier-button";
 import { UnitTypeWorkspace } from "./unit-type-workspace";
 import { useLayoutHistory } from "./use-layout-history";
 
@@ -79,7 +79,7 @@ export function FloorDesigner({
   /** Units on this floor, in code order. */
   floorUnits: { id: string; code: string }[];
   unitTypes: UnitTypeFacts[];
-  numbering: UnitNumbering;
+  numbering: UnitIdentifier;
   /** Parking slots on this floor, in code order. */
   floorSlots?: { id: string; code: string }[];
   /** Slot codes on other floors, which new slots skip. */
@@ -189,7 +189,7 @@ export function FloorDesigner({
     setSize({ ...size, [key]: Math.min(200, Math.max(minSize[key], metres)) });
   // A new numbering renames this floor's units on the plan, in their current order, and its
   // parking too when parking goes by floor.
-  const renumber = (next: UnitNumbering) => {
+  const renumber = (next: UnitIdentifier) => {
     const order = [...placed].sort((a, b) =>
       (codes.get(a.id) ?? "").localeCompare(codes.get(b.id) ?? "", undefined, { numeric: true }),
     );
@@ -428,7 +428,7 @@ export function FloorDesigner({
                       <>
                         {propertyId && (
                           <PanelSection title="Identifier">
-                            <UnitNumberingButton
+                            <UnitIdentifierButton
                               propertyId={propertyId}
                               numbering={numbering}
                               level={floor.level}

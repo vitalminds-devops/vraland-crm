@@ -1,12 +1,12 @@
 import type { FloorSetupInput } from "../schemas/floor-setup.schema";
-import { parseEndings, parseFloorList, type UnitNumbering } from "./unit-numbering";
+import { parseEndings, parseFloorList, type UnitIdentifier } from "./unit-identifier";
 
 /** The Floors fields as typed. Leaving both floor fields blank builds no floors. */
 export type FloorSetupDraft = {
   fromLevel: string;
   toLevel: string;
   skip: string;
-  style: UnitNumbering["style"];
+  style: UnitIdentifier["style"];
   endings: string;
 };
 

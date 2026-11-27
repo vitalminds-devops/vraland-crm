@@ -188,7 +188,7 @@ export default async function PropertyDetailPage({
               floors={inventory.floors}
               units={inventory.units}
               unitTypes={inventory.unitTypes}
-              numbering={inventory.property.unitNumbering}
+              numbering={inventory.property.unitIdentifier}
               parkingSlots={parking}
               parkingTypes={inventory.property.parkingTypes}
               sections={inventory.property.sections}

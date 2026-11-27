@@ -19,28 +19,28 @@ import { saveUnitNaming } from "../actions/unit-naming.actions";
 import { floorParkingCode } from "../lib/parking-codes";
 import {
   floorCodes,
-  numberingStyles,
+  identifierStyles,
   parseEndings,
-  type UnitNumbering,
-} from "../lib/unit-numbering";
+  type UnitIdentifier,
+} from "../lib/unit-identifier";
 import { unitNamingSchema } from "../schemas/unit-naming.schema";
 
 /** Design floor's Identifier button: how the property's units and parking are identified, applied to this floor. */
-export function UnitNumberingButton({
+export function UnitIdentifierButton({
   propertyId,
   numbering,
   level,
   onApply,
 }: {
   propertyId: string;
-  numbering: UnitNumbering;
+  numbering: UnitIdentifier;
   /** The floor being designed, so the examples and new codes use its number. */
   level: number;
   /** Renumbers this floor's units on the plan with the saved numbering. */
-  onApply: (next: UnitNumbering) => void;
+  onApply: (next: UnitIdentifier) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const current = numberingStyles.find((option) => option.value === numbering.style);
+  const current = identifierStyles.find((option) => option.value === numbering.style);
   return (
     <>
       <Button
@@ -54,7 +54,7 @@ export function UnitNumberingButton({
         Identifier: {current?.label ?? "Numbers"}
       </Button>
       {open && (
-        <NumberingDialog
+        <IdentifierDialog
           propertyId={propertyId}
           numbering={numbering}
           level={level}
@@ -66,7 +66,7 @@ export function UnitNumberingButton({
   );
 }
 
-function NumberingDialog({
+function IdentifierDialog({
   propertyId,
   numbering,
   level,
@@ -74,9 +74,9 @@ function NumberingDialog({
   onClose,
 }: {
   propertyId: string;
-  numbering: UnitNumbering;
+  numbering: UnitIdentifier;
   level: number;
-  onApply: (next: UnitNumbering) => void;
+  onApply: (next: UnitIdentifier) => void;
   onClose: () => void;
 }) {
   const [style, setStyle] = useState(numbering.style);
@@ -87,7 +87,7 @@ function NumberingDialog({
   const [everyFloor, setEveryFloor] = useState(false);
   const typedEndings = parseEndings(endings);
   // Each style's first codes on this floor: 5A, 5B, 5C or 501, 502, 503.
-  const example = (value: UnitNumbering["style"], fallback: string) => {
+  const example = (value: UnitIdentifier["style"], fallback: string) => {
     const sample = floorCodes(
       { ...numbering, style: value, endings: value === "custom" ? typedEndings : [] },
       level,
@@ -153,7 +153,7 @@ function NumberingDialog({
                 aria-label="Identifier style"
                 className="grid gap-2 sm:grid-cols-3"
               >
-                {numberingStyles.map((option) => (
+                {identifierStyles.map((option) => (
                   <label
                     key={option.value}
                     className={cn(
@@ -165,7 +165,7 @@ function NumberingDialog({
                   >
                     <input
                       type="radio"
-                      name="unit-numbering"
+                      name="unit-identifier"
                       value={option.value}
                       checked={style === option.value}
                       onChange={() => setStyle(option.value)}

@@ -33,7 +33,7 @@ import {
   type FloorLayout,
 } from "../lib/floor-layout";
 import { slotTypeChange } from "../lib/parking-types";
-import { legacyNumbering, nextFreeCode } from "../lib/unit-numbering";
+import { legacyIdentifier, nextFreeCode } from "../lib/unit-identifier";
 import { removalBlocker } from "../lib/unit-removal";
 import { nextSlotCode } from "../lib/parking-codes";
 import { renameActivities } from "../lib/rename-activities";
@@ -61,7 +61,7 @@ export async function saveFloorLayout(
       id: floors.id,
       propertyId: floors.propertyId,
       developmentId: properties.developmentId,
-      numbering: properties.unitNumbering,
+      numbering: properties.unitIdentifier,
       parkingTypes: properties.parkingTypes,
     })
     .from(floors)
@@ -86,7 +86,7 @@ export async function saveFloorLayout(
     if (found.length !== typeIds.length)
       return validationFailure("A placed unit uses a type from another property.");
   }
-  const numbering = source.numbering ?? legacyNumbering;
+  const numbering = source.numbering ?? legacyIdentifier;
 
   try {
     const outcome = await db.transaction(async (tx) => {
@@ -125,10 +125,10 @@ export async function saveFloorLayout(
           };
         });
         const floorUnits = await tx
-          .select({ id: units.id, code: units.code })
+          .select({ id: units.id, code: units.identifier })
           .from(units)
           .where(eq(units.floorId, floor.id))
-          .orderBy(asc(units.code))
+          .orderBy(asc(units.identifier))
           .for("update");
         const resolved = resolvePlacements({
           placements,
@@ -170,11 +170,11 @@ export async function saveFloorLayout(
                   developmentId: source.developmentId,
                   propertyId: source.propertyId,
                   floorId: floor.id,
-                  code: entry.code,
+                  identifier: entry.code,
                   unitTypeId: typeOf.get(entry.placementId)!,
                 })),
               )
-              .returning({ id: units.id, code: units.code })
+              .returning({ id: units.id, code: units.identifier })
           : [];
         created += inserted.length;
         const idOfCode = new Map(inserted.map((unit) => [unit.code, unit.id]));
@@ -198,12 +198,12 @@ export async function saveFloorLayout(
         for (const rename of renames)
           await tx
             .update(units)
-            .set({ code: `~${rename.unitId}` })
+            .set({ identifier: `~${rename.unitId}` })
             .where(eq(units.id, rename.unitId));
         for (const rename of renames)
           await tx
             .update(units)
-            .set({ code: rename.code, updatedAt: new Date() })
+            .set({ identifier: rename.code, updatedAt: new Date() })
             .where(eq(units.id, rename.unitId));
         // Each rename shows in the unit's history, as a single rename does.
         if (renames.length)
@@ -248,7 +248,7 @@ export async function saveFloorLayout(
         const propertySlots = await tx
           .select({
             id: propertyParkingSlots.id,
-            code: propertyParkingSlots.code,
+            code: propertyParkingSlots.identifier,
             floorId: propertyParkingSlots.floorId,
             status: propertyParkingSlots.status,
             parkingTypeId: propertyParkingSlots.parkingTypeId,
@@ -302,14 +302,14 @@ export async function saveFloorLayout(
                   return {
                     propertyId: source.propertyId,
                     floorId: floor.id,
-                    code: entry.code,
+                    identifier: entry.code,
                     parkingTypeId: type?.id ?? null,
                     price: type?.price ?? null,
                     reservationFee: type?.reservationFee ?? null,
                   };
                 }),
               )
-              .returning({ id: propertyParkingSlots.id, code: propertyParkingSlots.code })
+              .returning({ id: propertyParkingSlots.id, code: propertyParkingSlots.identifier })
           : [];
         const slotIdOfCode = new Map(insertedSlots.map((slot) => [slot.code, slot.id]));
         const slotIdOf = new Map(
@@ -331,12 +331,12 @@ export async function saveFloorLayout(
         for (const rename of slotRenames)
           await tx
             .update(propertyParkingSlots)
-            .set({ code: `~${rename.slotId}` })
+            .set({ identifier: `~${rename.slotId}` })
             .where(eq(propertyParkingSlots.id, rename.slotId));
         for (const rename of slotRenames)
           await tx
             .update(propertyParkingSlots)
-            .set({ code: rename.code, updatedAt: new Date() })
+            .set({ identifier: rename.code, updatedAt: new Date() })
             .where(eq(propertyParkingSlots.id, rename.slotId));
 
         // A slot given a parking type on the plan joins it; an available one takes its price and

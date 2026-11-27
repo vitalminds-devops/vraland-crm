@@ -9,7 +9,7 @@ import { db } from "@/db";
 import { floors, properties, unitTypes, units } from "@/db/schema";
 import type { UnitIdentifierStyle } from "@/features/properties/lib/unit-codes";
 import { type FloorLayout, type UnitDesign } from "@/features/properties/lib/floor-layout";
-import type { UnitNumbering } from "@/features/properties/lib/unit-numbering";
+import type { UnitIdentifier } from "@/features/properties/lib/unit-identifier";
 import { AuthorizationError, requirePermission } from "@/lib/permissions/authorization";
 import type { AuthorizationContext } from "@/lib/permissions/policy";
 import { canGrantUnitAccess } from "@/lib/permissions/policy";
@@ -41,7 +41,7 @@ async function findProperty(context: AuthorizationContext, propertyId: string) {
       floorCount: properties.floorCount,
       unitsPerFloor: properties.unitsPerFloor,
       unitIdentifierStyle: properties.unitIdentifierStyle,
-      unitNumbering: properties.unitNumbering,
+      unitIdentifier: properties.unitIdentifier,
       sections: properties.sections,
       currency: properties.currency,
       parkingTypes: properties.parkingTypes,
@@ -128,7 +128,7 @@ export async function getUnitImageRecord(unitId: string) {
       id: units.id,
       storageKey: units.imageStorageKey,
       mimeType: units.imageMimeType,
-      code: units.code,
+      code: units.identifier,
     })
     .from(units)
     .innerJoin(properties, eq(units.propertyId, properties.id))
@@ -154,7 +154,7 @@ export async function getUnitsForFloor(context: AuthorizationContext, floorId: s
   const rows = await db
     .select({
       id: units.id,
-      code: units.code,
+      code: units.identifier,
       status: units.status,
       imageStorageKey: units.imageStorageKey,
       level: floors.level,
@@ -179,7 +179,7 @@ export async function getUnitsForFloor(context: AuthorizationContext, floorId: s
         }),
       ),
     )
-    .orderBy(units.code);
+    .orderBy(units.identifier);
 
   return rows.map(({ sections, level, ...unit }) => ({
     ...unit,
@@ -196,7 +196,7 @@ export type PropertyInventory = {
     floorCount: number | null;
     unitsPerFloor: number | null;
     unitIdentifierStyle: UnitIdentifierStyle;
-    unitNumbering: UnitNumbering | null;
+    unitIdentifier: UnitIdentifier | null;
     sections: Section[];
     currency: string;
     parkingTypes: ParkingType[];
@@ -274,7 +274,7 @@ async function loadInventory(
     db
       .select({
         id: units.id,
-        code: units.code,
+        code: units.identifier,
         status: units.status,
         floorId: units.floorId,
         imageStorageKey: units.imageStorageKey,
@@ -285,7 +285,7 @@ async function loadInventory(
       .from(units)
       .innerJoin(floors, eq(units.floorId, floors.id))
       .where(and(eq(units.propertyId, propertyId), unitFilter))
-      .orderBy(asc(floors.level), asc(units.code)),
+      .orderBy(asc(floors.level), asc(units.identifier)),
     db
       .select({
         id: unitTypes.id,

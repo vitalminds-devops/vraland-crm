@@ -19,7 +19,7 @@ vi.mock("@/db", () => ({
         select: (columns: Record<string, unknown>) => ({
           from: () => ({
             where: () =>
-              "unitNumbering" in columns
+              "unitIdentifier" in columns
                 ? { for: async () => (db.current ? [db.current] : []) }
                 : Promise.resolve(db.ownFloors),
           }),
@@ -41,7 +41,7 @@ vi.mock("../queries/property-scope.queries", () => ({ canWriteProperty: async ()
 vi.mock("../lib/revalidate-property", () => ({ revalidateProperty: vi.fn() }));
 
 beforeEach(() => {
-  db.current = { unitNumbering: numbering, sections: [sunrise] };
+  db.current = { unitIdentifier: numbering, sections: [sunrise] };
   db.ownFloors = [{ id: floorA }];
   db.saved = null;
 });
@@ -49,7 +49,7 @@ beforeEach(() => {
 it("saves only the identifier style when no sections are sent", async () => {
   expect((await saveUnitNaming({ propertyId, style: "number" })).success).toBe(true);
   expect(db.saved).toMatchObject({
-    unitNumbering: { style: "number", skipFloors: [4] },
+    unitIdentifier: { style: "number", skipFloors: [4] },
     sections: [sunrise],
   });
 });
@@ -58,7 +58,7 @@ it("saves only sections when no style is sent, dropping a floor removed since", 
   const both = { ...sunrise, floorIds: [floorA, floorGone] };
   const gone = { ...sunrise, id: "g2", name: "Old wing", side: "odd", floorIds: [floorGone] };
   expect((await saveUnitNaming({ propertyId, sections: [both, gone] })).success).toBe(true);
-  expect(db.saved?.unitNumbering).toBe(numbering);
+  expect(db.saved?.unitIdentifier).toBe(numbering);
   // The removed floor leaves its section, and a section left with no floors goes too.
   expect(db.saved?.sections).toEqual([{ ...both, floorIds: [floorA], endings: [] }]);
 });

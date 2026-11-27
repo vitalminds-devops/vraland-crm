@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { MAX_SETUP_FLOORS, MAX_UNITS_PER_FLOOR, floorLevels } from "../lib/unit-numbering";
+import { MAX_SETUP_FLOORS, MAX_UNITS_PER_FLOOR, floorLevels } from "../lib/unit-identifier";
 
 const level = z
   .number()

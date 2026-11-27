@@ -15,7 +15,7 @@ export async function parkingRemovalBlocker(
   const slots = await tx
     .select({
       id: propertyParkingSlots.id,
-      code: propertyParkingSlots.code,
+      code: propertyParkingSlots.identifier,
       status: propertyParkingSlots.status,
       reservedDealId: propertyParkingSlots.reservedDealId,
     })

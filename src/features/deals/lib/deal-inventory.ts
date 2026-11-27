@@ -30,7 +30,7 @@ export async function heldElsewhere(
   ] as const) {
     if (!ids.length) continue;
     const rows = await tx
-      .select({ code: table.code })
+      .select({ code: table.identifier })
       .from(table)
       .where(
         and(
@@ -68,7 +68,7 @@ export async function syncDealInventory(
     .select({
       id: units.id,
       propertyId: units.propertyId,
-      code: units.code,
+      code: units.identifier,
       status: units.status,
       reservedDealId: units.reservedDealId,
       propertyDeletedAt: properties.deletedAt,
@@ -90,7 +90,7 @@ export async function syncDealInventory(
     .select({
       id: propertyParkingSlots.id,
       propertyId: propertyParkingSlots.propertyId,
-      code: propertyParkingSlots.code,
+      code: propertyParkingSlots.identifier,
       status: propertyParkingSlots.status,
       reservedDealId: propertyParkingSlots.reservedDealId,
       propertyDeletedAt: properties.deletedAt,

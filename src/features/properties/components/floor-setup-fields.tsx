@@ -3,7 +3,7 @@
 import { Input } from "@/components/ui/input";
 import { floorSetupInput, type FloorSetupDraft } from "../lib/floor-setup-draft";
 import { floorLabel } from "../lib/unit-codes";
-import { floorCodes, floorLevels, type UnitNumbering } from "../lib/unit-numbering";
+import { floorCodes, floorLevels, type UnitIdentifier } from "../lib/unit-identifier";
 import { floorSetupSchema } from "../schemas/floor-setup.schema";
 
 /** Floors shown in the preview before it skips to the top floor. */
@@ -26,7 +26,7 @@ export function FloorSetupFields({
   const error = checked && !checked.success ? checked.error.issues[0]?.message : null;
   const levels =
     input && checked?.success ? floorLevels(input.fromLevel, input.toLevel, input.skipFloors) : [];
-  const numbering: UnitNumbering = {
+  const numbering: UnitIdentifier = {
     style: value.style,
     unitsPerFloor: 0,
     endings: input?.endings ?? [],

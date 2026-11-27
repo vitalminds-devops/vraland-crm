@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { notify } from "@/components/ui/toast";
 import { setUpFloors } from "../actions/floor-setup.actions";
 import { emptyFloorSetup, floorSetupInput } from "../lib/floor-setup-draft";
-import type { UnitNumbering } from "../lib/unit-numbering";
+import type { UnitIdentifier } from "../lib/unit-identifier";
 import { FloorSetupFields } from "./floor-setup-fields";
 
 /** The Design page's first step for a property with no floors: pick the floors, then design them. */
@@ -14,7 +14,7 @@ export function FloorSetupPanel({
   style,
 }: {
   propertyId: string;
-  style: UnitNumbering["style"] | undefined;
+  style: UnitIdentifier["style"] | undefined;
 }) {
   const [draft, setDraft] = useState({ ...emptyFloorSetup, style: style ?? emptyFloorSetup.style });
   const [pending, startTransition] = useTransition();

@@ -1,8 +1,8 @@
 import { expect, it } from "vitest";
 import { compareParkingCodes, nextParkingCode, nextSlotCode, slotRenames } from "./parking-codes";
-import type { UnitNumbering } from "./unit-numbering";
+import type { UnitIdentifier } from "./unit-identifier";
 
-const letters: UnitNumbering = { style: "letter", unitsPerFloor: 0, endings: [], skipFloors: [] };
+const letters: UnitIdentifier = { style: "letter", unitsPerFloor: 0, endings: [], skipFloors: [] };
 
 it("numbers new parking slots after the ones taken", () => {
   expect(nextParkingCode([])).toBe("P1");

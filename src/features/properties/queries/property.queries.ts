@@ -130,7 +130,7 @@ export async function exportPropertyUnits(input: PropertyListFilters) {
         city: properties.city,
         province: properties.province,
         floorLabel: floors.label,
-        unitCode: units.code,
+        unitCode: units.identifier,
         unitStatus: units.status,
       })
       .from(properties)
@@ -149,7 +149,7 @@ export async function exportPropertyUnits(input: PropertyListFilters) {
       .leftJoin(floors, eq(units.floorId, floors.id))
       .leftJoin(unitTypes, eq(units.unitTypeId, unitTypes.id))
       .where(propertyListWhere(context, input))
-      .orderBy(asc(properties.title), asc(floors.level), asc(units.code))
+      .orderBy(asc(properties.title), asc(floors.level), asc(units.identifier))
       // shortcut: capped at 20,000 unit rows; stream it if the inventory ever outgrows that.
       .limit(PROPERTY_EXPORT_LIMIT)
   );

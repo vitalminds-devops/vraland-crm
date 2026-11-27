@@ -8,10 +8,10 @@ import {
   nextLevel,
   parseEndings,
   parseFloorList,
-  type UnitNumbering,
-} from "./unit-numbering";
+  type UnitIdentifier,
+} from "./unit-identifier";
 
-const custom: UnitNumbering = {
+const custom: UnitIdentifier = {
   style: "custom",
   unitsPerFloor: 0,
   endings: ["01", "03", "05", "07", "09", "11", "15", "17"],
@@ -35,7 +35,7 @@ it("numbers a custom floor from its endings, keeping floor 10 apart from floor 1
 });
 
 it("numbers and letters a floor in sequence", () => {
-  const number: UnitNumbering = { ...custom, style: "number", endings: [] };
+  const number: UnitIdentifier = { ...custom, style: "number", endings: [] };
   expect(floorCodes(number, 2, 3)).toEqual(["201", "202", "203"]);
   expect(codeAt(number, 10, 12)).toBe("1012");
   expect(floorCodes({ ...number, style: "letter" }, 2, 3)).toEqual(["2A", "2B", "2C"]);
@@ -44,7 +44,7 @@ it("numbers and letters a floor in sequence", () => {
 it("fills the first free code and stops when a custom floor is full", () => {
   expect(nextFreeCode(custom, 2, new Set(["201", "203", "207"]))).toBe("205");
   expect(nextFreeCode(custom, 2, new Set(floorCodes(custom, 2, 99)))).toBeNull();
-  const number: UnitNumbering = { ...custom, style: "number", endings: [] };
+  const number: UnitIdentifier = { ...custom, style: "number", endings: [] };
   expect(nextFreeCode(number, 3, new Set(["301", "302"]))).toBe("303");
 });
 

@@ -43,7 +43,7 @@ export async function listParkingSlots(
   const rows = await db
     .select({
       id: propertyParkingSlots.id,
-      code: propertyParkingSlots.code,
+      code: propertyParkingSlots.identifier,
       status: propertyParkingSlots.status,
       floorId: propertyParkingSlots.floorId,
       reservedDealId: propertyParkingSlots.reservedDealId,

@@ -4,7 +4,7 @@ import { unitCode } from "./unit-codes";
  * How a property numbers its units, chosen once when its floors are set up:
  * letters (2A, 2B), numbers (201, 202) or custom endings (201, 203 … 217).
  */
-export type UnitNumbering = {
+export type UnitIdentifier = {
   style: "letter" | "number" | "custom";
   /** Units created on each new floor, for letters and numbers. */
   unitsPerFloor: number;
@@ -17,7 +17,7 @@ export type UnitNumbering = {
 };
 
 /** Properties set up before numbering was chosen: letters, with floor 4 skipped. */
-export const legacyNumbering: UnitNumbering = {
+export const legacyIdentifier: UnitIdentifier = {
   style: "letter",
   unitsPerFloor: 0,
   endings: [],
@@ -64,7 +64,7 @@ export function nextLevel(existing: readonly number[], skip: readonly number[]):
 }
 
 /** The unit's code for its position on the floor (1 = first); null past the last custom ending. */
-export function codeAt(numbering: UnitNumbering, level: number, position: number): string | null {
+export function codeAt(numbering: UnitIdentifier, level: number, position: number): string | null {
   if (numbering.style === "custom") {
     const ending = numbering.endings[position - 1];
     return ending === undefined ? null : `${level}${ending}`;
@@ -75,14 +75,14 @@ export function codeAt(numbering: UnitNumbering, level: number, position: number
 }
 
 /** A full floor's codes: every custom ending, or `count` letters or numbers. */
-export function floorCodes(numbering: UnitNumbering, level: number, count: number): string[] {
+export function floorCodes(numbering: UnitIdentifier, level: number, count: number): string[] {
   const total = numbering.style === "custom" ? Math.min(count, numbering.endings.length) : count;
   return Array.from({ length: total }, (_, index) => codeAt(numbering, level, index + 1)!);
 }
 
 /** The first code on the floor not yet used; null when a custom floor is full. */
 export function nextFreeCode(
-  numbering: UnitNumbering,
+  numbering: UnitIdentifier,
   level: number,
   taken: ReadonlySet<string>,
 ): string | null {
@@ -95,7 +95,7 @@ export function nextFreeCode(
 }
 
 /** The ways a property can number its units, for choosing one. */
-export const numberingStyles = [
+export const identifierStyles = [
   { value: "letter", label: "Letters", example: "2A, 2B, 2C" },
   { value: "number", label: "Numbers", example: "201, 202, 203" },
   { value: "custom", label: "Custom", example: "201, 203 … 217" },
@@ -108,7 +108,7 @@ export const numberingStyles = [
  */
 export function floorRenames(
   units: readonly { id: string; code: string }[],
-  numbering: UnitNumbering,
+  numbering: UnitIdentifier,
   level: number,
 ): { id: string; code: string }[] | null {
   const ordered = [...units].sort((a, b) =>

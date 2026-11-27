@@ -25,7 +25,7 @@ import { canWriteProperty } from "../queries/property-scope.queries";
 import { revalidateProperty } from "../lib/revalidate-property";
 import { compareParkingCodes, slotRenames } from "../lib/parking-codes";
 import { renameActivities } from "../lib/rename-activities";
-import { floorRenames, legacyNumbering } from "../lib/unit-numbering";
+import { floorRenames, legacyIdentifier } from "../lib/unit-identifier";
 
 /**
  * Gives every floor's units and parking the property's identifier style, in their current order,
@@ -42,7 +42,7 @@ export async function applyIdentifiersToAllFloors(
   try {
     const outcome = await db.transaction(async (tx) => {
       const [property] = await tx
-        .select({ numbering: properties.unitNumbering })
+        .select({ numbering: properties.unitIdentifier })
         .from(properties)
         .where(
           and(
@@ -53,14 +53,14 @@ export async function applyIdentifiersToAllFloors(
         )
         .for("update");
       if (!property) return null;
-      const numbering = property.numbering ?? legacyNumbering;
+      const numbering = property.numbering ?? legacyIdentifier;
       const floorRows = await tx
         .select({ id: floors.id, level: floors.level, label: floors.label })
         .from(floors)
         .where(eq(floors.propertyId, propertyId));
       const unitRows = floorRows.length
         ? await tx
-            .select({ id: units.id, code: units.code, floorId: units.floorId })
+            .select({ id: units.id, code: units.identifier, floorId: units.floorId })
             .from(units)
             .where(
               inArray(
@@ -85,7 +85,7 @@ export async function applyIdentifiersToAllFloors(
       const slotRows = await tx
         .select({
           id: propertyParkingSlots.id,
-          code: propertyParkingSlots.code,
+          code: propertyParkingSlots.identifier,
           floorId: propertyParkingSlots.floorId,
         })
         .from(propertyParkingSlots)
@@ -114,23 +114,23 @@ export async function applyIdentifiersToAllFloors(
       for (const rename of slotChanges)
         await tx
           .update(propertyParkingSlots)
-          .set({ code: `~${rename.id}` })
+          .set({ identifier: `~${rename.id}` })
           .where(eq(propertyParkingSlots.id, rename.id));
       for (const rename of slotChanges)
         await tx
           .update(propertyParkingSlots)
-          .set({ code: rename.code, updatedAt: new Date() })
+          .set({ identifier: rename.code, updatedAt: new Date() })
           .where(eq(propertyParkingSlots.id, rename.id));
       // Two steps, through a temporary code, so shifted or swapped identifiers never collide.
       for (const rename of renames)
         await tx
           .update(units)
-          .set({ code: `~${rename.id}` })
+          .set({ identifier: `~${rename.id}` })
           .where(eq(units.id, rename.id));
       for (const rename of renames)
         await tx
           .update(units)
-          .set({ code: rename.code, updatedAt: new Date() })
+          .set({ identifier: rename.code, updatedAt: new Date() })
           .where(eq(units.id, rename.id));
       const codeOf = new Map(unitRows.map((unit) => [unit.id, unit.code]));
       if (renames.length)

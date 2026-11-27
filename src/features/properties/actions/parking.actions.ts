@@ -11,7 +11,7 @@ import { activeHold, heldMessage, InventoryHeldError } from "../lib/inventory-ho
 import { canWriteProperty } from "../queries/property-scope.queries";
 import { unitStatuses } from "../lib/unit-codes";
 import { nextSlotCode } from "../lib/parking-codes";
-import { legacyNumbering } from "../lib/unit-numbering";
+import { legacyIdentifier } from "../lib/unit-identifier";
 import { placeOnDesignedFloor, syncParkingCount } from "../lib/parking-sync";
 import { parkingRemovalBlocker } from "../lib/parking-removal";
 import { dropFromFloorPlans } from "../lib/floor-plan-cleanup";
@@ -36,7 +36,7 @@ async function loadWritableSlot(slotId: string) {
   const [slot] = await db
     .select({
       id: propertyParkingSlots.id,
-      code: propertyParkingSlots.code,
+      code: propertyParkingSlots.identifier,
       status: propertyParkingSlots.status,
       floorId: propertyParkingSlots.floorId,
       propertyId: propertyParkingSlots.propertyId,
@@ -83,15 +83,15 @@ export async function addParkingSlot(
     const code = await db.transaction(async (tx) => {
       const taken = (
         await tx
-          .select({ code: propertyParkingSlots.code })
+          .select({ code: propertyParkingSlots.identifier })
           .from(propertyParkingSlots)
           .where(eq(propertyParkingSlots.propertyId, propertyId))
       ).map((slot) => slot.code);
       const [property] = await tx
-        .select({ numbering: properties.unitNumbering })
+        .select({ numbering: properties.unitIdentifier })
         .from(properties)
         .where(eq(properties.id, propertyId));
-      const numbering = property?.numbering ?? legacyNumbering;
+      const numbering = property?.numbering ?? legacyIdentifier;
       let next = "";
       const added: string[] = [];
       for (let made = 0; made < count; made += 1) {
@@ -99,7 +99,7 @@ export async function addParkingSlot(
         taken.push(next);
         const [slot] = await tx
           .insert(propertyParkingSlots)
-          .values({ propertyId: propertyId, floorId, code: next })
+          .values({ propertyId: propertyId, floorId, identifier: next })
           .returning({ id: propertyParkingSlots.id });
         added.push(slot.id);
         await tx.insert(auditLogs).values({
@@ -189,7 +189,7 @@ export async function renameParkingSlot(
     .where(
       and(
         eq(propertyParkingSlots.propertyId, slot.propertyId),
-        eq(propertyParkingSlots.code, next),
+        eq(propertyParkingSlots.identifier, next),
       ),
     )
     .limit(1);
@@ -199,7 +199,7 @@ export async function renameParkingSlot(
     await db.transaction(async (tx) => {
       await tx
         .update(propertyParkingSlots)
-        .set({ code: next, updatedAt: new Date() })
+        .set({ identifier: next, updatedAt: new Date() })
         .where(eq(propertyParkingSlots.id, slot.id));
       await tx.insert(auditLogs).values({
         organizationId: context.organizationId,

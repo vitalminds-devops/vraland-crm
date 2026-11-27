@@ -103,7 +103,7 @@ export default async function PropertyDesignPage({
       )}
       {tab === "floors" && !inventory.floors.length && (
         <Panel title="Floors" flush>
-          <FloorSetupPanel propertyId={id} style={property.unitNumbering?.style} />
+          <FloorSetupPanel propertyId={id} style={property.unitIdentifier?.style} />
         </Panel>
       )}
       {tab === "floors" && inventory.floors.length > 0 && (
@@ -116,7 +116,7 @@ export default async function PropertyDesignPage({
             floors={inventory.floors}
             units={inventory.units}
             unitTypes={inventory.unitTypes}
-            numbering={property.unitNumbering}
+            numbering={property.unitIdentifier}
             propertyType={property.propertyType}
             parkingSlots={parking}
             parkingTypes={property.parkingTypes}

@@ -19,7 +19,7 @@ import { deals } from "./deals";
 import { organizations, users } from "./organization";
 import { createdAt, updatedAt } from "./shared";
 import type { UnitIdentifierStyle } from "@/features/properties/lib/unit-codes";
-import type { UnitNumbering } from "@/features/properties/lib/unit-numbering";
+import type { UnitIdentifier } from "@/features/properties/lib/unit-identifier";
 import type { Section } from "@/features/properties/lib/sections";
 import type { ParkingType } from "@/features/properties/lib/parking-types";
 import type { FloorLayout, UnitDesign } from "@/features/properties/lib/floor-layout";
@@ -88,7 +88,7 @@ export const properties = pgTable(
       .notNull()
       .$type<UnitIdentifierStyle>(),
     /** Chosen when floors are first set up; null keeps the old letters with floor 4 skipped. */
-    unitNumbering: jsonb("unit_numbering").$type<UnitNumbering>(),
+    unitIdentifier: jsonb("unit_numbering").$type<UnitIdentifier>(),
     /** Floors named together with a colour (e.g. Tower A, teal), shown on each of their units. */
     sections: jsonb("floor_groups").$type<Section[]>().default([]).notNull(),
     /** Slot designs (size, price, reservation fee) dragged onto floors in Design floor. */
@@ -207,7 +207,7 @@ export const units = pgTable(
     floorId: uuid("floor_id")
       .notNull()
       .references(() => floors.id, { onDelete: "cascade" }),
-    code: varchar({ length: 50 }).notNull(),
+    identifier: varchar("code", { length: 50 }).notNull(),
     status: varchar({ length: 20 }).default("available").notNull(),
     reservedDealId: uuid("reserved_deal_id").references((): AnyPgColumn => deals.id, {
       onDelete: "restrict",
@@ -222,7 +222,7 @@ export const units = pgTable(
     updatedAt,
   },
   (t) => [
-    unique().on(t.floorId, t.code),
+    unique().on(t.floorId, t.identifier),
     index("units_unit_type_idx").on(t.unitTypeId),
     index("units_building_status_idx").on(t.propertyId, t.status),
     index("units_development_idx").on(t.developmentId),
@@ -240,7 +240,7 @@ export const propertyParkingSlots = pgTable(
       .references(() => properties.id, { onDelete: "cascade" }),
     /** The floor this slot belongs to, when it is assigned to one. */
     floorId: uuid("floor_id").references(() => floors.id, { onDelete: "set null" }),
-    code: varchar({ length: 50 }).notNull(),
+    identifier: varchar("code", { length: 50 }).notNull(),
     status: varchar({ length: 20 }).default("available").notNull(),
     /** This slot's own price and reservation fee; null uses the property's parking amounts. */
     price: numeric({ precision: 18, scale: 2 }),
@@ -254,7 +254,7 @@ export const propertyParkingSlots = pgTable(
     updatedAt,
   },
   (t) => [
-    unique().on(t.propertyId, t.code),
+    unique().on(t.propertyId, t.identifier),
     index("parking_slots_reserved_deal_id_idx").on(t.reservedDealId),
   ],
 );

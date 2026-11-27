@@ -34,7 +34,7 @@ export async function saveSlotPrices(input: unknown): Promise<ActionResult> {
     const [slot] = await db
       .select({
         propertyId: propertyParkingSlots.propertyId,
-        code: propertyParkingSlots.code,
+        code: propertyParkingSlots.identifier,
         price: propertyParkingSlots.price,
         reservationFee: propertyParkingSlots.reservationFee,
         reservedDealId: propertyParkingSlots.reservedDealId,

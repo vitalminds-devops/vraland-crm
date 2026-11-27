@@ -16,7 +16,7 @@ import { canWriteProperty } from "../queries/property-scope.queries";
 import { removalBlocker } from "../lib/unit-removal";
 import { dropFromFloorPlans } from "../lib/floor-plan-cleanup";
 import { floorLabel, unitStatuses } from "../lib/unit-codes";
-import { floorCodes, legacyNumbering, nextFreeCode, nextLevel } from "../lib/unit-numbering";
+import { floorCodes, legacyIdentifier, nextFreeCode, nextLevel } from "../lib/unit-identifier";
 import { ActionResult, failure, databaseFailure } from "@/lib/types/action-result";
 import { outOfScope } from "@/lib/errors";
 
@@ -146,7 +146,7 @@ async function loadFloor(organizationId: string, floorId: string) {
       propertyId: floors.propertyId,
       developmentId: properties.developmentId,
       propertyTitle: properties.title,
-      unitNumbering: properties.unitNumbering,
+      unitIdentifier: properties.unitIdentifier,
     })
     .from(floors)
     .innerJoin(properties, eq(floors.propertyId, properties.id))
@@ -195,7 +195,7 @@ export async function addFloor(
       id: properties.id,
       title: properties.title,
       developmentId: properties.developmentId,
-      unitNumbering: properties.unitNumbering,
+      unitIdentifier: properties.unitIdentifier,
     })
     .from(properties)
     .where(
@@ -217,7 +217,7 @@ export async function addFloor(
           .where(eq(floors.propertyId, propertyId))
       ).map((floor) => floor.level);
       // New floors follow the property's numbering; older properties keep letters, skipping 4.
-      const numbering = property.unitNumbering ?? legacyNumbering;
+      const numbering = property.unitIdentifier ?? legacyIdentifier;
       let label = "";
       for (let added = 0; added < count; added += 1) {
         const level = nextLevel(levels, numbering.skipFloors);
@@ -233,7 +233,7 @@ export async function addFloor(
               developmentId: property.developmentId,
               propertyId: propertyId,
               floorId: floor.id,
-              code,
+              identifier: code,
             })),
           );
         await tx.insert(auditLogs).values({
@@ -361,12 +361,12 @@ export async function addUnit(floorId: string, count = 1): Promise<UnitActionRes
   try {
     const code = await db.transaction(async (tx) => {
       const taken = new Set(
-        (await tx.select({ code: units.code }).from(units).where(eq(units.floorId, floor.id))).map(
-          (unit) => unit.code,
-        ),
+        (
+          await tx.select({ code: units.identifier }).from(units).where(eq(units.floorId, floor.id))
+        ).map((unit) => unit.code),
       );
       // The first number the floor doesn't use yet, so a removed unit's number comes back first.
-      const numbering = floor.unitNumbering ?? legacyNumbering;
+      const numbering = floor.unitIdentifier ?? legacyIdentifier;
       let next = "";
       for (let added = 0; added < count; added += 1) {
         const code = nextFreeCode(numbering, floor.level, taken);
@@ -379,7 +379,7 @@ export async function addUnit(floorId: string, count = 1): Promise<UnitActionRes
             developmentId: floor.developmentId,
             propertyId: floor.propertyId,
             floorId: floor.id,
-            code: next,
+            identifier: next,
           })
           .returning({ id: units.id });
         await tx.insert(auditLogs).values({
@@ -475,7 +475,7 @@ export async function renameUnit(unitId: string, code: string): Promise<UnitActi
   const [taken] = await db
     .select({ id: units.id })
     .from(units)
-    .where(and(eq(units.floorId, target.floorId), eq(units.code, next)))
+    .where(and(eq(units.floorId, target.floorId), eq(units.identifier, next)))
     .limit(1);
   if (taken) return { success: false, message: `Unit ${next} already exists on this floor.` };
 
@@ -483,7 +483,7 @@ export async function renameUnit(unitId: string, code: string): Promise<UnitActi
     await db.transaction(async (tx) => {
       await tx
         .update(units)
-        .set({ code: next, updatedAt: new Date() })
+        .set({ identifier: next, updatedAt: new Date() })
         .where(eq(units.id, target.id));
       await tx.insert(activities).values({
         organizationId: context.organizationId,
@@ -514,7 +514,7 @@ async function loadUnit(organizationId: string, unitId: string) {
   const [row] = await db
     .select({
       id: units.id,
-      code: units.code,
+      code: units.identifier,
       status: units.status,
       floorId: units.floorId,
       propertyId: units.propertyId,
@@ -559,7 +559,7 @@ async function loadUnitWithProperty(
   const [row] = await db
     .select({
       id: units.id,
-      code: units.code,
+      code: units.identifier,
       propertyId: properties.id,
       propertyTitle: properties.title,
       imageStorageKey: units.imageStorageKey,

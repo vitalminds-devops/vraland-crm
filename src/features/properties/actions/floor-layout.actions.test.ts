@@ -83,7 +83,10 @@ vi.mock("@/db", async () => {
       db.writes.push({ op, table, values });
       const list = Array.isArray(values) ? values : [values];
       return chain(table, () =>
-        list.map((row: Record<string, unknown>, index) => ({ id: `new-${index}`, code: row.code })),
+        list.map((row: Record<string, unknown>, index) => ({
+          id: `new-${index}`,
+          code: row.identifier,
+        })),
       );
     },
     where: async () => void db.writes.push({ op, table, values: null }),
@@ -134,7 +137,7 @@ it("swaps two units' identifiers through temporary codes, so they never collide"
   });
   expect(result.success).toBe(true);
   const codes = updatesTo(units)
-    .map((write) => (write.values as { code?: string }).code)
+    .map((write) => (write.values as { identifier?: string }).identifier)
     .filter(Boolean);
   // Both step aside first, then both take their new identifier.
   expect(codes).toEqual([`~${u1}`, `~${u2}`, "102", "101"]);
@@ -193,9 +196,9 @@ it("copies a floor with the identifiers typed in the same save", async () => {
   expect(result.success).toBe(true);
   const copied = db.writes
     .filter((write) => write.op === "insert" && write.table === units)
-    .flatMap((write) => write.values as { code: string; floorId: string }[])
+    .flatMap((write) => write.values as { identifier: string; floorId: string }[])
     .filter((row) => row.floorId === floor5)
-    .map((row) => row.code);
+    .map((row) => row.identifier);
   // 101 renamed to 110 on floor 1 becomes 510 on floor 5, not 501.
   expect(copied.sort()).toEqual(["502", "510"]);
 });

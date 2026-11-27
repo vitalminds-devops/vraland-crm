@@ -131,7 +131,7 @@ export async function getPipelineBoard() {
         propertyTitle: properties.title,
         developmentName: developments.name,
         floorLabel: floors.label,
-        unitCode: units.code,
+        unitCode: units.identifier,
         /** The deal's units; a lead's first deal without its own falls back to the units the lead picked. */
         unitCodes: sql<
           string | null
@@ -296,7 +296,7 @@ export async function listDeals(input: {
         propertyTitle: properties.title,
         developmentName: developments.name,
         floorLabel: floors.label,
-        unitCode: units.code,
+        unitCode: units.identifier,
         agentFirstName: users.firstName,
         agentLastName: users.lastName,
       })
@@ -452,21 +452,21 @@ export async function getDeal(id: string) {
       ? db
           .select({
             id: units.id,
-            code: units.code,
+            code: units.identifier,
             status: units.status,
             floorLabel: floors.label,
           })
           .from(units)
           .leftJoin(floors, eq(units.floorId, floors.id))
           .where(inArray(units.id, unitIds))
-          .orderBy(asc(units.code))
+          .orderBy(asc(units.identifier))
       : [],
     record.deal.parkingSlotIds.length
       ? db
-          .select({ id: propertyParkingSlots.id, code: propertyParkingSlots.code })
+          .select({ id: propertyParkingSlots.id, code: propertyParkingSlots.identifier })
           .from(propertyParkingSlots)
           .where(inArray(propertyParkingSlots.id, record.deal.parkingSlotIds))
-          .orderBy(asc(propertyParkingSlots.code))
+          .orderBy(asc(propertyParkingSlots.identifier))
       : [],
   ]);
   const [contactRows, agentRows, history, taskRows, activityRows, commissionRows] =

@@ -7,6 +7,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 - Sections are called sections in the code too, not floor groups; nothing changes on screen.
+- Unit identifiers are called identifiers in the code, not numbering or code; nothing changes on screen.
 
 ## [0.8.0] - 2026-11-27
 

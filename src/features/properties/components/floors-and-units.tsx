@@ -32,7 +32,7 @@ import {
   type UnitTypeFacts,
   fitPlacements,
 } from "../lib/floor-layout";
-import { legacyNumbering, type UnitNumbering } from "../lib/unit-numbering";
+import { legacyIdentifier, type UnitIdentifier } from "../lib/unit-identifier";
 
 import { UnitPanoramaViewer } from "./unit-panorama-viewer";
 import { UnitPictureDialog } from "./unit-picture-dialog";
@@ -106,7 +106,7 @@ export function FloorsAndUnits({
   }[];
   unitTypes?: UnitTypeFacts[];
   /** How the property numbers its units; designed floors number new units with it. */
-  numbering?: UnitNumbering | null;
+  numbering?: UnitIdentifier | null;
   /** Sets what the 3D view draws around the building. */
   propertyType?: string | null;
   /** The property's currency, for each unit's price tag. */
@@ -665,7 +665,7 @@ export function FloorsAndUnits({
               }))}
             floorUnits={activeUnits.map((unit) => ({ id: unit.id, code: unit.code }))}
             unitTypes={unitTypes}
-            numbering={numbering ?? legacyNumbering}
+            numbering={numbering ?? legacyIdentifier}
             canManagePrices={canManagePrices}
             onClose={() => setDesigning(false)}
           />

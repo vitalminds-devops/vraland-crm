@@ -138,7 +138,7 @@ export async function getDevelopment(id: string) {
             id: units.id,
             propertyId: units.propertyId,
             floorId: units.floorId,
-            code: units.code,
+            code: units.identifier,
             status: units.status,
           })
           .from(units)
@@ -153,7 +153,7 @@ export async function getDevelopment(id: string) {
               }),
             ),
           )
-          .orderBy(asc(floors.level), asc(units.code)),
+          .orderBy(asc(floors.level), asc(units.identifier)),
       ])
     : [[], []];
 

@@ -87,14 +87,14 @@ async function seedFloorsAndUnits(
           developmentId: building.developmentId,
           propertyId: building.id,
           floorId: floor.id,
-          code: unitCode(floor.level, index + 1),
+          identifier: unitCode(floor.level, index + 1),
         })),
       ),
     )
-    .onConflictDoNothing({ target: [units.floorId, units.code] });
+    .onConflictDoNothing({ target: [units.floorId, units.identifier] });
 
   const rows = await tx
-    .select({ id: units.id, code: units.code })
+    .select({ id: units.id, code: units.identifier })
     .from(units)
     .where(eq(units.propertyId, building.id));
   return new Map(rows.map((row) => [row.code, row.id]));

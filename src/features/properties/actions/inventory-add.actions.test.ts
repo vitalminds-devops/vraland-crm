@@ -48,7 +48,7 @@ function insert(table: unknown) {
       if (table === floors) mock.floorLevels.push(...rows.map((row) => row.level as number));
       const returned = rows.map((row, index) => ({
         ...row,
-        id: `${String(row.level ?? row.code ?? index)}-id`,
+        id: `${String(row.level ?? row.identifier ?? index)}-id`,
       }));
       return Object.assign(Promise.resolve(), { returning: async () => returned });
     },
@@ -96,7 +96,7 @@ it("adds several floors above the top one, skipping level 4, each with its units
     [5, "5th Floor"],
     [6, "6th Floor"],
   ]);
-  expect(rowsIn(units).map((row) => row.code)).toEqual(["5A", "5B", "5C", "6A", "6B", "6C"]);
+  expect(rowsIn(units).map((row) => row.identifier)).toEqual(["5A", "5B", "5C", "6A", "6B", "6C"]);
   expect(rowsIn(units).every((row) => row.developmentId === "development")).toBe(true);
   expect(rowsIn(auditLogs)).toHaveLength(2);
 });
@@ -122,7 +122,7 @@ it.each([
 it("fills the floor's free unit numbers first, using none twice", async () => {
   mock.unitCodes = ["3A", "3C"];
   expect(await addUnit(id, 3)).toEqual({ success: true, message: "3 units added to 3rd Floor." });
-  expect(rowsIn(units).map((row) => row.code)).toEqual(["3B", "3D", "3E"]);
+  expect(rowsIn(units).map((row) => row.identifier)).toEqual(["3B", "3D", "3E"]);
 });
 
 it("adds one unit with the original message", async () => {
@@ -135,7 +135,7 @@ it("adds several parking slots on the chosen floor and keeps the count in step",
     success: true,
     message: "3 parking slots added.",
   });
-  expect(rowsIn(propertyParkingSlots).map((row) => [row.code, row.floorId])).toEqual([
+  expect(rowsIn(propertyParkingSlots).map((row) => [row.identifier, row.floorId])).toEqual([
     ["P3", id],
     ["P4", id],
     ["P5", id],

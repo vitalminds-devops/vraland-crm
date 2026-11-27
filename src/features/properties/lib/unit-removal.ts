@@ -14,7 +14,7 @@ export async function removalBlocker(
   if (!unitIds.length) return null;
   const rows = await tx
     .select({
-      code: units.code,
+      code: units.identifier,
       status: units.status,
       reservedDealId: units.reservedDealId,
       dealCode: deals.dealCode,

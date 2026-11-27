@@ -66,7 +66,12 @@ export async function deleteUnits(input: unknown): Promise<ActionResult<{ remove
   try {
     const removed = await db.transaction(async (tx) => {
       const targets = await tx
-        .select({ id: units.id, code: units.code, status: units.status, floorId: units.floorId })
+        .select({
+          id: units.id,
+          code: units.identifier,
+          status: units.status,
+          floorId: units.floorId,
+        })
         .from(units)
         .where(and(inArray(units.id, ids), eq(units.propertyId, property.id)))
         .for("update");
@@ -135,7 +140,7 @@ export async function deleteParkingSlots(
       const targets = await tx
         .select({
           id: propertyParkingSlots.id,
-          code: propertyParkingSlots.code,
+          code: propertyParkingSlots.identifier,
           status: propertyParkingSlots.status,
           floorId: propertyParkingSlots.floorId,
         })

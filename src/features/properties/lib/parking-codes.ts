@@ -1,4 +1,4 @@
-import { codeAt, type UnitNumbering } from "./unit-numbering";
+import { codeAt, type UnitIdentifier } from "./unit-identifier";
 
 /** The first free "P<n>" after the slots already taken, so P1, P2, … with gaps refilled last. */
 export function nextParkingCode(taken: string[]): string {
@@ -18,7 +18,7 @@ export const NO_FLOOR = "none";
 
 /** A slot's code by floor: P and the unit identifier (P2A, P201). Custom endings are for units, so it counts. */
 export function floorParkingCode(
-  numbering: UnitNumbering,
+  numbering: UnitIdentifier,
   level: number,
   position: number,
 ): string {
@@ -28,7 +28,7 @@ export function floorParkingCode(
 
 /** The next free code for a new slot: by floor when the property names parking by floor, else P1, P2… */
 export function nextSlotCode(
-  numbering: UnitNumbering,
+  numbering: UnitIdentifier,
   level: number | null,
   taken: readonly string[],
 ): string {
@@ -45,7 +45,7 @@ export function nextSlotCode(
  */
 export function slotRenames(
   slots: readonly { id: string; code: string }[],
-  numbering: UnitNumbering,
+  numbering: UnitIdentifier,
   level: number | null,
 ): { id: string; code: string }[] {
   const ordered =

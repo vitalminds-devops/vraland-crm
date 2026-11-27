@@ -346,7 +346,7 @@ async function estimateSelection(
   const selected = await db
     .select({
       id: units.id,
-      code: units.code,
+      code: units.identifier,
       price: sql<string | null>`coalesce(${units.price}, ${unitTypes.price})`,
       reservationFee: unitTypes.reservationFee,
       monthlyAmortization: unitTypes.monthlyAmortization,

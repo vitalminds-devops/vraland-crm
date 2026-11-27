@@ -107,7 +107,7 @@ const dealRows = () =>
       province: contacts.currentProvince,
       propertyTitle: properties.title,
       developmentName: developments.name,
-      unitCode: units.code,
+      unitCode: units.identifier,
       dealUnitIds: deals.unitIds,
       preferredUnitIds: contacts.preferredUnitIds,
       firstDeal: isContactsFirstDeal,
@@ -193,7 +193,7 @@ async function billLinesFor(
       ? db
           .select({
             id: units.id,
-            code: units.code,
+            code: units.identifier,
             propertyTitle: properties.title,
             developmentName: developments.name,
             price: sql<string | null>`coalesce(${units.price}, ${unitTypes.price})`,
@@ -208,7 +208,7 @@ async function billLinesFor(
       ? db
           .select({
             id: propertyParkingSlots.id,
-            code: propertyParkingSlots.code,
+            code: propertyParkingSlots.identifier,
             price: propertyParkingSlots.price,
           })
           .from(propertyParkingSlots)
@@ -334,7 +334,7 @@ export async function listBilling(input: {
           ilike(deals.dealCode, term),
           ilike(deals.title, term),
           ilike(properties.title, term),
-          ilike(units.code, term),
+          ilike(units.identifier, term),
           ilike(developments.name, term),
           ilike(bills.itemsLabel, term),
           ilike(brokerUser.firstName, term),

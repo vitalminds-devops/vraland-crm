@@ -376,7 +376,10 @@ export async function applyStageChange(
         .where(eq(deals.id, dealId));
       if (releasing) {
         const released = heldUnitIds.length
-          ? await tx.select({ code: units.code }).from(units).where(inArray(units.id, heldUnitIds))
+          ? await tx
+              .select({ code: units.identifier })
+              .from(units)
+              .where(inArray(units.id, heldUnitIds))
           : [];
         const names = [
           ...released.map((unit) => `Unit ${unit.code}`),

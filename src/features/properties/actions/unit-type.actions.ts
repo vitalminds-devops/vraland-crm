@@ -226,7 +226,7 @@ export async function saveUnitDetails(input: unknown): Promise<ActionResult> {
       unitTypeId: units.unitTypeId,
       floorArea: units.floorArea,
       price: units.price,
-      code: units.code,
+      code: units.identifier,
       reservedDealId: units.reservedDealId,
       typePrice: unitTypes.price,
     })

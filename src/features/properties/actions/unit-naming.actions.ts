@@ -16,7 +16,7 @@ import {
 } from "@/lib/types/action-result";
 import { canWriteProperty } from "../queries/property-scope.queries";
 import { revalidateProperty } from "../lib/revalidate-property";
-import { legacyNumbering } from "../lib/unit-numbering";
+import { legacyIdentifier } from "../lib/unit-identifier";
 import { unitNamingSchema } from "../schemas/unit-naming.schema";
 
 /**
@@ -34,7 +34,7 @@ export async function saveUnitNaming(input: unknown): Promise<ActionResult> {
     const saved = await db.transaction(async (tx) => {
       const [current] = await tx
         .select({
-          unitNumbering: properties.unitNumbering,
+          unitIdentifier: properties.unitIdentifier,
           sections: properties.sections,
         })
         .from(properties)
@@ -66,18 +66,18 @@ export async function saveUnitNaming(input: unknown): Promise<ActionResult> {
       const numbering =
         value.style || value.parking
           ? {
-              ...(current.unitNumbering ?? legacyNumbering),
+              ...(current.unitIdentifier ?? legacyIdentifier),
               ...(value.style && {
                 style: value.style,
                 endings: value.style === "custom" ? value.endings : [],
               }),
               ...(value.parking && { parking: value.parking }),
             }
-          : current.unitNumbering;
+          : current.unitIdentifier;
       await tx
         .update(properties)
         .set({
-          unitNumbering: numbering,
+          unitIdentifier: numbering,
           sections: sections ?? current.sections,
           updatedAt: new Date(),
         })
@@ -89,11 +89,11 @@ export async function saveUnitNaming(input: unknown): Promise<ActionResult> {
         entityType: "property",
         entityId: value.propertyId,
         oldValues: {
-          unitNumbering: current.unitNumbering,
+          unitIdentifier: current.unitIdentifier,
           sections: current.sections,
         },
         newValues: {
-          unitNumbering: numbering,
+          unitIdentifier: numbering,
           sections: sections ?? current.sections,
         },
       });

@@ -3,7 +3,7 @@ import type { db } from "@/db";
 import { floors, properties } from "@/db/schema";
 import type { FloorSetupInput } from "../schemas/floor-setup.schema";
 import { floorLabel } from "./unit-codes";
-import { floorLevels, type UnitNumbering } from "./unit-numbering";
+import { floorLevels, type UnitIdentifier } from "./unit-identifier";
 
 /** The property already has floors; later ones are added one by one. */
 export class HasFloorsError extends Error {}
@@ -22,7 +22,7 @@ export async function createFloors(
     .from(floors)
     .where(eq(floors.propertyId, propertyId));
   if (existing > 0) throw new HasFloorsError();
-  const numbering: UnitNumbering = {
+  const numbering: UnitIdentifier = {
     style: setup.style,
     // Units come from designing each floor, so new floors start empty.
     unitsPerFloor: 0,
@@ -35,7 +35,7 @@ export async function createFloors(
     .values(levels.map((level) => ({ propertyId: propertyId, level, label: floorLabel(level) })));
   await tx
     .update(properties)
-    .set({ unitNumbering: numbering, floorCount: levels.length, updatedAt: new Date() })
+    .set({ unitIdentifier: numbering, floorCount: levels.length, updatedAt: new Date() })
     .where(eq(properties.id, propertyId));
   return levels;
 }
