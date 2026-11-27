@@ -110,18 +110,11 @@ export const deals = pgTable(
     cancellationReason: text("cancellation_reason"),
     // The reservation fee and monthly amortization quoted when the units and parking were chosen,
     // so later unit type or slot edits don't change the sale. Whether they are paid comes from its
-    // payments (see billing/lib/deal-payment.ts), not from the two retired columns below.
+    // payments (see billing/lib/deal-payment.ts).
     reservationFee: numeric("reservation_fee", { precision: 18, scale: 2 }),
     monthlyAmortization: numeric("monthly_amortization", { precision: 18, scale: 2 }),
     /** The parking part of the quoted reservation fee; the total stays in reservationFee. */
     parkingReservationFee: numeric("parking_reservation_fee", { precision: 18, scale: 2 }),
-    // Retired: nothing reads or writes these any more; kept so older values are not lost.
-    reservationFeePaidAt: timestamp("reservation_fee_paid_at", {
-      withTimezone: true,
-    }),
-    reservationFeePaidBy: uuid("reservation_fee_paid_by").references(() => users.id, {
-      onDelete: "set null",
-    }),
     createdBy: uuid("created_by").references(() => users.id, {
       onDelete: "set null",
     }),

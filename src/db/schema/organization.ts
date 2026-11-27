@@ -46,7 +46,6 @@ export const users = pgTable(
       .notNull()
       .references(() => organizations.id, { onDelete: "cascade" }),
     email: citext().notNull(),
-    passwordHash: text("password_hash"),
     brokerId: uuid("broker_id").references((): AnyPgColumn => users.id, {
       onDelete: "set null",
     }),
